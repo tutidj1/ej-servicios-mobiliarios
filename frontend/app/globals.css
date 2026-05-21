@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --negro-carbon: #1A1A1A;      /* Texto principal, headers, footer */
+  --crema-base: #F5F1EA;         /* Fondo principal */
+  --blanco-puro: #FFFFFF;        /* Cards, secciones de contraste */
+  --gris-suave: #8A8A8A;         /* Textos secundarios */
+  --gris-borde: #E5E5E5;         /* Bordes finos */
+  --acento-amarillo: #FCD34D;    /* Solo para el banner de promo */
+}
+
+@layer base {
+  body {
+    background-color: var(--crema-base);
+    color: var(--negro-carbon);
+    font-family: var(--font-manrope), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), serif;
+    font-weight: 500;
+  }
+}
+
+/* Clases de utilidad personalizadas */
+.text-serif {
+  font-family: var(--font-playfair), serif;
+}
+
+.text-sans {
+  font-family: var(--font-manrope), sans-serif;
+}
+
+.glow-yellow {
+  box-shadow: 0 0 15px rgba(252, 211, 77, 0.4);
+}
+
+/* Personalización del scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--crema-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gris-suave);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--negro-carbon);
+}
