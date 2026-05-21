@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd Interfaz && npm run build",
-  "installCommand": "cd Interfaz && npm install",
-  "outputDirectory": "Interfaz/.next"
-}
