@@ -1,82 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
 import { cotizacionSchema } from '@/lib/validators/cotizacionValidator';
-import { generarUrlWhatsapp } from '@/lib/services/whatsappService';
+import { generarUrlWhatsapp, CotizacionData } from '@/lib/services/whatsappService';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Validar datos recibidos con Zod
-    const validation = cotizacionSchema.safeParse(body);
-    if (!validation.success) {
+
+    // VALIDAR con Zod
+    const parsed = cotizacionSchema.parse(body);
+
+    // Mapear a CotizacionData
+    const cotizacionData: CotizacionData = {
+      nombre: parsed.nombre,
+      whatsapp: parsed.whatsapp,
+      fechaEvento: parsed.fechaEvento,
+      tipoEvento: parsed.tipoEvento,
+      cantidadInvitados: parsed.cantidadInvitados,
+      ubicacion: parsed.ubicacion,
+      mobiliarioSolicitado: body.mobiliarioSolicitado || [],
+      mensaje: parsed.mensaje,
+    };
+
+    // GUARDAR EN SUPABASE (si está configurado, si no continuar igual)
+    let cotizacionId = '';
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('cotizaciones')
+        .insert([
+          {
+            nombre: cotizacionData.nombre,
+            whatsapp: cotizacionData.whatsapp,
+            fecha_evento: cotizacionData.fechaEvento,
+            tipo_evento: cotizacionData.tipoEvento,
+            cantidad_invitados: cotizacionData.cantidadInvitados,
+            ubicacion: cotizacionData.ubicacion,
+            mobiliario_solicitado: cotizacionData.mobiliarioSolicitado,
+            mensaje: cotizacionData.mensaje,
+            creado_en: new Date().toISOString(),
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.warn('⚠️ No se guardó en Supabase:', error.message);
+      } else if (data && data.length > 0) {
+        cotizacionId = data[0].id;
+        console.log('✅ Cotización guardada:', cotizacionId);
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Error conectando Supabase:', dbError);
+    }
+
+    // GENERAR URL WHATSAPP
+    const cotizacionDataConId: CotizacionData = {
+      ...cotizacionData,
+      cotizacionId,
+    };
+    const urlWhatsapp = generarUrlWhatsapp(cotizacionDataConId);
+
+    // RESPONDER al cliente
+    return NextResponse.json(
+      {
+        success: true,
+        urlWhatsapp,
+        cotizacionId,
+        message: '✅ Cotización generada. Abriendo WhatsApp...',
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error('❌ Error en POST /api/cotizacion:', error);
+
+    // Error de validación Zod
+    if (error.errors) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Datos inválidos', 
-          details: validation.error.flatten().fieldErrors 
+        {
+          success: false,
+          error: 'Validación fallida',
+          details: error.errors,
         },
-        { status: 400 }
+        { status: 422 }
       );
     }
-    
-    const data = validation.data;
-    
-    let cotizacionId = undefined;
-    let dbSaved = false;
 
-    // Intentar guardar en Supabase si las credenciales están presentes
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (supabaseUrl && adminKey && !supabaseUrl.includes('xxxx')) {
-      try {
-        const supabaseAdmin = getSupabaseAdmin();
-        const { data: cotizacion, error } = await supabaseAdmin
-          .from('cotizaciones')
-          .insert({
-            nombre: data.nombre,
-            whatsapp: data.whatsapp,
-            fecha_evento: data.fechaEvento,
-            tipo_evento: data.tipoEvento,
-            cantidad_invitados: data.cantidadInvitados,
-            ubicacion: data.ubicacion || null,
-            mobiliario_solicitado: data.mobiliarioSolicitado,
-            mensaje: data.mensaje || null,
-            estado: 'pendiente'
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error al insertar en Supabase:', error);
-        } else if (cotizacion) {
-          cotizacionId = cotizacion.id;
-          dbSaved = true;
-        }
-      } catch (dbError) {
-        console.error('Excepción al conectar con Supabase:', dbError);
-      }
-    } else {
-      console.warn('⚠️ Base de datos omitida: NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configurada.');
-    }
-
-    // Generar la URL de redirección a WhatsApp (con ID corto o placeholder)
-    const urlWhatsapp = generarUrlWhatsapp({
-      ...data,
-      cotizacionId: cotizacionId
-    });
-
-    return NextResponse.json({
-      success: true,
-      dbSaved,
-      cotizacionId: cotizacionId || 'LOCAL-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
-      urlWhatsapp
-    });
-  } catch (error) {
-    console.error('Error del servidor:', error);
+    // Error genérico
     return NextResponse.json(
-      { success: false, error: 'Error interno del servidor al procesar la cotización' },
+      {
+        success: false,
+        error: error.message || 'Error interno',
+      },
       { status: 500 }
     );
   }
