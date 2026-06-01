@@ -87,3 +87,5 @@ export const Nosotros: React.FC = () => {
     </section>
   );
 };
+
+export default Nosotros;

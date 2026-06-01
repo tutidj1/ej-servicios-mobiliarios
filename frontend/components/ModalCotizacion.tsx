@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cotizacionSchema, CotizacionInput } from '@/lib/validators/cotizacionValidator';
 import { generarUrlWhatsapp } from '@/lib/services/whatsappService';
-import { Button } from './ui/Button';
+import Button from './ui/Button';
 import { Input } from './ui/Input';
 import { Checkbox } from './ui/Checkbox';
 
@@ -27,6 +27,16 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
   });
 
   const [mobiliario, setMobiliario] = useState<string[]>([]);
+
+  // Prevenir scroll de la página cuando el modal está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const toggleMobiliario = (item: string) => {
     setMobiliario((prev) =>
@@ -64,8 +74,8 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-blanco-puro rounded-none w-full max-w-lg mx-4 p-6 relative" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-hidden" onClick={onClose}>
+      <div className="bg-blanco-puro rounded-none w-full max-w-lg mx-4 p-6 relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <button
           onClick={onClose}

@@ -1,10 +1,11 @@
-// 'use client';
+
+
 
 import React from 'react';
 import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
-import { Button } from './ui/Button';
+import Button from './ui/Button';
 
-export const Footer: React.FC = () => {
+const Footer: React.FC = () => {
   return (
     <footer className="bg-negro-carbon text-crema-base py-12 border-t border-gris-borde">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -52,3 +53,5 @@ export const Footer: React.FC = () => {
     </footer>
   );
 };
+
+export default Footer;

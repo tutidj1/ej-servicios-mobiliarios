@@ -3,13 +3,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Percent, ArrowRight } from 'lucide-react';
-import { Button } from './ui/Button';
+import Button from './ui/Button';
 
 interface PromoBannerProps {
   onOpenCotizar: () => void;
 }
 
-export const PromoBanner: React.FC<PromoBannerProps> = ({ onOpenCotizar }) => {
+export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
   return (
     <section className="bg-acento-amarillo py-16 text-negro-carbon border-b border-negro-carbon overflow-hidden relative">
       {/* Decorative large percentage icon background */}
@@ -19,17 +19,14 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ onOpenCotizar }) => {
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
-          
           {/* Promo Left Panel */}
           <div className="text-left max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-negro-carbon text-acento-amarillo text-xs font-bold uppercase tracking-widest px-4 py-1.5 mb-6">
               <span>🎉 PROMO MAYO</span>
             </div>
-            
             <h2 className="font-playfair text-4xl sm:text-5xl md:text-6xl font-bold text-negro-carbon leading-tight mb-4">
               Si señás en mayo...
             </h2>
-            
             <p className="font-manrope text-sm sm:text-base font-semibold leading-relaxed text-negro-carbon/80 max-w-xl">
               ...para eventos a realizarse en los meses de **junio, julio y agosto**, obtenés un descuento exclusivo directo sobre el total presupuestado.
             </p>
@@ -49,7 +46,6 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ onOpenCotizar }) => {
                 En el total de tu alquiler
               </span>
             </div>
-
             <div className="flex flex-col justify-center w-full sm:w-auto">
               <Button
                 variant="primary"
@@ -65,9 +61,8 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ onOpenCotizar }) => {
               </span>
             </div>
           </div>
-
         </div>
       </div>
     </section>
   );
-};
+}

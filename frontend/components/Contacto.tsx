@@ -1,11 +1,11 @@
-// 'use client';
+'use client';
 
 import React from 'react';
-import { Input } from './ui/Input';
-import { Button } from './ui/Button';
 import { Phone, Mail, MapPin } from 'lucide-react';
+import Button from './ui/Button';
+import { Input } from './ui/Input';
 
-export const Contacto: React.FC = () => {
+const Contacto: React.FC = () => {
   return (
     <section id="contacto" className="bg-blanco-puro py-20 border-b border-gris-borde">
       <div className="max-w-5xl mx-auto px-6">
@@ -48,3 +48,5 @@ export const Contacto: React.FC = () => {
     </section>
   );
 };
+export default Contacto;
+

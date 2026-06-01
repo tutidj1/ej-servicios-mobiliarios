@@ -4,27 +4,31 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Truck, Sparkles, Zap, FileText } from 'lucide-react';
 
-export const Diferenciales: React.FC = () => {
+export default function Diferenciales() {
   const items = [
     {
       icon: <Truck className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Llevamos y traemos',
-      description: 'Flete incluido dentro de Santa Fe Capital. Comodidad absoluta, sin cargos sorpresa.',
+      description:
+        'Flete incluido dentro de Santa Fe Capital. Comodidad absoluta, sin cargos sorpresa.',
     },
     {
       icon: <Sparkles className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Nosotros lavamos',
-      description: 'No te preocupes por limpiar la vajilla. Te la entregamos lista y la retiramos sucia.',
+      description:
+        'No te preocupes por limpiar la vajilla. Te la entregamos lista y la retiramos sucia.',
     },
     {
       icon: <Zap className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Sin antelación mínima',
-      description: '¿Surgió un imprevisto? Si tenemos disponibilidad de stock, te lo alquilamos en el día.',
+      description:
+        '¿Surgió un imprevisto? Si tenemos disponibilidad de stock, te lo alquilamos en el día.',
     },
     {
       icon: <FileText className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Contrato formal',
-      description: 'Tranquilidad total y respaldo formal en cada alquiler para garantizar tu evento.',
+      description:
+        'Tranquilidad total y respaldo formal en cada alquiler para garantizar tu evento.',
     },
   ];
 
@@ -58,4 +62,4 @@ export const Diferenciales: React.FC = () => {
       </div>
     </section>
   );
-};
+}

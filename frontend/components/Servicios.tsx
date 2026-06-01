@@ -4,35 +4,37 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Armchair, MapPin, GlassWater, ShieldCheck } from 'lucide-react';
 
-export const Servicios: React.FC = () => {
+export default function Servicios() {
   const services = [
     {
       icon: <Armchair className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Mobiliario completo',
-      description: 'Disponemos de sillas reforzadas, tablones de madera, caballetes, vajilla completa, mantelería y cristalería para eventos de hasta 100 invitados.',
+      description:
+        'Disponemos de sillas reforzadas, tablones de madera, caballetes, vajilla completa, mantelería y cristalería para eventos de hasta 100 invitados.',
     },
     {
       icon: <MapPin className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Logística integrada',
-      description: 'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe Capital y zonas de influencia.',
+      description:
+        'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe Capital y zonas de influencia.',
     },
     {
       icon: <GlassWater className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Sin lavado posterior',
-      description: 'Disfrutá al máximo de tu reunión. Al finalizar, nos encargamos de retirar toda la vajilla y mantelería sucia para lavarla en nuestras instalaciones.',
+      description:
+        'Disfrutá al máximo de tu reunión. Al finalizar, nos encargamos de retirar toda la vajilla y mantelería sucia para lavarla en nuestras instalaciones.',
     },
     {
       icon: <ShieldCheck className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Respaldo y seguridad',
-      description: 'Firmamos un contrato formal de alquiler que detalla la entrega, el stock solicitado y las condiciones, garantizando la seriedad de nuestro servicio.',
+      description:
+        'Firmamos un contrato formal de alquiler que detalla la entrega, el stock solicitado y las condiciones, garantizando la seriedad de nuestro servicio.',
     },
   ];
 
   return (
     <section id="servicios" className="bg-crema-base py-24 border-b border-gris-borde">
       <div className="max-w-7xl mx-auto px-6">
-        
-        {/* Header de sección */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <span className="font-manrope text-xs font-bold uppercase tracking-[0.2em] text-gris-suave mb-4 block">
             Nuestros Servicios
@@ -41,11 +43,11 @@ export const Servicios: React.FC = () => {
             Todo resuelto en un solo lugar
           </h2>
           <p className="font-manrope text-sm leading-relaxed text-gris-suave">
-            Nos enfocamos en brindarte comodidad y seguridad. Olvidate del traslado pesado y del lavado de platos.
+            Nos enfocamos en brindarte comodidad y seguridad. Olvidate del traslado pesado
+            y del lavado de platos.
           </p>
         </div>
 
-        {/* Grid de servicios */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {services.map((service, index) => (
             <motion.div
@@ -70,8 +72,7 @@ export const Servicios: React.FC = () => {
             </motion.div>
           ))}
         </div>
-
       </div>
     </section>
   );
-};
+}

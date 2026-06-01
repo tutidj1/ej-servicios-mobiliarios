@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 
-export const Resenas: React.FC = () => {
+const Resenas: React.FC = () => {
   const reviews = [
     {
       text: 'Re recomendable. Nos llevaron todo a la quinta, súper puntuales, y lo mejor: nos retiraron todo sucio. No tuvimos que lavar ni un plato. Mi mamá quedó fascinada.',
@@ -60,7 +60,7 @@ export const Resenas: React.FC = () => {
                 </div>
                 {/* Text */}
                 <p className="font-playfair italic text-lg leading-relaxed text-negro-carbon mb-8">
-                  "{review.text}"
+                  {review.text}
                 </p>
               </div>
 
@@ -81,3 +81,5 @@ export const Resenas: React.FC = () => {
     </section>
   );
 };
+
+export default Resenas;

@@ -3,13 +3,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { Button } from './ui/Button';
+import Button from './ui/Button';
 
 interface HeroProps {
   onOpenCotizar: () => void;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onOpenCotizar }) => {
+export default function Hero({ onOpenCotizar }: HeroProps) {
   const handleScrollToCatalogo = () => {
     const target = document.querySelector('#catalogo');
     if (target) {
@@ -18,17 +18,14 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCotizar }) => {
   };
 
   return (
-    <section
-      id="inicio"
-      className="relative h-screen min-h-[600px] w-full flex items-center justify-center overflow-hidden bg-negro-carbon text-crema-base"
-    >
+    <section id="inicio" className="relative h-screen min-h-[600px] w-full flex items-center justify-center overflow-hidden bg-negro-carbon text-crema-base">
       {/* Background Image with Fallback gradient */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center transition-all duration-700 select-none pointer-events-none"
         style={{
           backgroundImage: "url('/hero-banner.jpg')",
           // Fallback en caso de que no exista la imagen aún
-          backgroundColor: '#1E2C22', 
+          backgroundColor: '#1E2C22',
         }}
       >
         {/* Overlay elegante de contraste */}
@@ -74,20 +71,10 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCotizar }) => {
           transition={{ duration: 0.6, delay: 0.45 }}
           className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center"
         >
-          <Button
-            variant="yellow"
-            size="lg"
-            onClick={onOpenCotizar}
-            className="w-full sm:w-auto font-bold border-2 border-acento-amarillo"
-          >
+          <Button variant="yellow" size="lg" onClick={onOpenCotizar} className="w-full sm:w-auto font-bold border-2 border-acento-amarillo">
             Cotizar mi evento
           </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleScrollToCatalogo}
-            className="w-full sm:w-auto font-bold border-2"
-          >
+          <Button variant="outline" size="lg" onClick={handleScrollToCatalogo} className="w-full sm:w-auto font-bold border-2">
             Ver catálogo
           </Button>
         </motion.div>
@@ -107,4 +94,5 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCotizar }) => {
       </motion.div>
     </section>
   );
-};
+}
+

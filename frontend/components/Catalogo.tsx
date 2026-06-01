@@ -13,7 +13,7 @@ interface CatalogoProps {
   onOpenCotizar: () => void;
 }
 
-export const Catalogo: React.FC<CatalogoProps> = ({
+const Catalogo: React.FC<CatalogoProps> = ({
   selectedProducts,
   onToggleProduct,
   onOpenCotizar,
@@ -235,4 +235,5 @@ export const Catalogo: React.FC<CatalogoProps> = ({
       </div>
     </section>
   );
-};
+}
+export default Catalogo;
