@@ -49,6 +49,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
       ...data,
       mobiliarioSolicitado: mobiliario,
     };
+    let whatsappUrl = '';
     try {
       const res = await fetch('/api/cotizacion', {
         method: 'POST',
@@ -57,8 +58,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
       });
       const result = await res.json();
       if (result.success && result.urlWhatsapp) {
-        if (onSuccess) onSuccess(result.urlWhatsapp);
-        else window.location.href = result.urlWhatsapp;
+        whatsappUrl = result.urlWhatsapp;
         reset();
         setMobiliario([]);
         onClose();
@@ -68,6 +68,16 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
     } catch (e) {
       console.error(e);
       alert('Error de red. Verifique su conexión.');
+    }
+
+    if (whatsappUrl) {
+      if (onSuccess) {
+        onSuccess(whatsappUrl);
+      } else {
+        setTimeout(() => {
+          window.location.href = whatsappUrl;
+        }, 100);
+      }
     }
   };
 
