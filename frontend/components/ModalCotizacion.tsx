@@ -58,7 +58,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
       const result = await res.json();
       if (result.success && result.urlWhatsapp) {
         if (onSuccess) onSuccess(result.urlWhatsapp);
-        else window.open(result.urlWhatsapp, '_blank');
+        else window.location.href = result.urlWhatsapp;
         reset();
         setMobiliario([]);
         onClose();
