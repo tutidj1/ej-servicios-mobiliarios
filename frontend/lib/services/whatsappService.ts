@@ -59,9 +59,10 @@ _Cotización #${idCorto}_`;
 }
 
 export function generarUrlWhatsapp(data: CotizacionData): string {
-  const NUMERO_MAMA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';  // Argentina + 9 + cod área + número
+  // Limpiar el número de teléfono ingresado (eliminar +, espacios, guiones, etc.)
+  const numeroDestino = data.whatsapp.replace(/[^0-9]/g, '');
   const mensaje = generarMensajeWhatsapp(data);
-  return `https://wa.me/${NUMERO_MAMA}?text=${encodeURIComponent(mensaje)}`;
+  return `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
 }
 
 export interface CotizacionDataForDb {
