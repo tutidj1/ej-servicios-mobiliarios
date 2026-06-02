@@ -45,6 +45,12 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({ isOpen, onClos
   };
 
   const onSubmit = async (data: CotizacionInput) => {
+    // Validación manual del mobiliario (manejado por estado local, fuera de Zod)
+    if (mobiliario.length === 0) {
+      alert('Por favor, seleccioná al menos un artículo de mobiliario.');
+      return;
+    }
+
     const payload = {
       ...data,
       mobiliarioSolicitado: mobiliario,

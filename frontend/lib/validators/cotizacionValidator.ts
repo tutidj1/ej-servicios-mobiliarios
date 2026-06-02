@@ -49,9 +49,8 @@ export const cotizacionSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  mobiliarioSolicitado: z
-    .array(z.string())
-    .min(1, 'Por favor, selecciona al menos un artículo que necesites para tu evento.'),
+  // mobiliarioSolicitado se maneja con estado local (useState) fuera de RHF
+  // y se valida manualmente en onSubmit antes de hacer el fetch
 
   mensaje: z
     .string()
