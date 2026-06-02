@@ -59,8 +59,9 @@ _Cotización #${idCorto}_`;
 }
 
 export function generarUrlWhatsapp(data: CotizacionData): string {
-  // Limpiar el número de teléfono ingresado (eliminar +, espacios, guiones, etc.)
-  const numeroDestino = data.whatsapp.replace(/[^0-9]/g, '');
+  // Siempre enviar al número fijo de la dueña de EJ (no al cliente)
+  // El número del cliente aparece DENTRO del mensaje para que ella lo vea
+  const numeroDestino = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';
   const mensaje = generarMensajeWhatsapp(data);
   return `https://api.whatsapp.com/send?phone=${numeroDestino}&text=${encodeURIComponent(mensaje)}`;
 }
