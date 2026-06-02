@@ -62,7 +62,7 @@ export function generarUrlWhatsapp(data: CotizacionData): string {
   // Limpiar el número de teléfono ingresado (eliminar +, espacios, guiones, etc.)
   const numeroDestino = data.whatsapp.replace(/[^0-9]/g, '');
   const mensaje = generarMensajeWhatsapp(data);
-  return `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
+  return `https://api.whatsapp.com/send?phone=${numeroDestino}&text=${encodeURIComponent(mensaje)}`;
 }
 
 export interface CotizacionDataForDb {
