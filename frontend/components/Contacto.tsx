@@ -6,6 +6,25 @@ import Button from './ui/Button';
 import { Input } from './ui/Input';
 
 const Contacto: React.FC = () => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const nombre = formData.get('nombre') as string;
+    const email = formData.get('email') as string;
+    const mensaje = formData.get('mensaje') as string;
+
+    if (!nombre.trim() || !mensaje.trim()) {
+      alert('Por favor, completa los campos requeridos (Nombre y Mensaje).');
+      return;
+    }
+
+    const texto = `✉️ *NUEVO MENSAJE DE CONTACTO — EJ*\n\n👤 *Nombre:* ${nombre}\n📧 *Correo:* ${email || '_No especificado_'}\n\n💬 *Mensaje:*\n"${mensaje}"\n\n—\n_Enviado desde ejserviciosmobiliarios.com_`;
+    
+    const NUMERO_MAMA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';
+    const url = `https://wa.me/${NUMERO_MAMA}?text=${encodeURIComponent(texto)}`;
+    window.location.href = url;
+  };
+
   return (
     <section id="contacto" className="bg-blanco-puro py-20 border-b border-gris-borde">
       <div className="max-w-5xl mx-auto px-6">
@@ -31,16 +50,17 @@ const Contacto: React.FC = () => {
             </div>
           </div>
           {/* Formulario rápido */}
-          <form className="space-y-4">
-            <Input label="Nombre" {...{ name: 'nombre' }} />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input label="Nombre *" required {...{ name: 'nombre' }} />
             <Input label="Correo" type="email" {...{ name: 'email' }} />
             <textarea
               name="mensaje"
-              placeholder="Mensaje"
+              placeholder="Mensaje *"
+              required
               className="w-full border border-gris-borde p-3 focus:outline-none resize-none h-32 font-manrope text-negro-carbon"
             />
             <Button type="submit" variant="primary" size="full">
-              Enviar mensaje
+              Enviar a WhatsApp
             </Button>
           </form>
         </div>
