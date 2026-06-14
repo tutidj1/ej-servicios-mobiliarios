@@ -1,3 +1,20 @@
-.env.local
 node_modules/
 .next/
+
+# Credenciales y variables de entorno corporativas
+.env
+.env.local
+.env.development.local
+.env.preview.local
+.env.production.local
+.env.*.local
+
+# Configuraciones locales de proveedores Cloud
+.vercel/
+.supabase/
+
+# Archivos de traza y logs del sistema
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cotizacionSchema } from '@/lib/validators/cotizacionValidator';
 import { generarUrlWhatsapp, CotizacionData } from '@/lib/services/whatsappService';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: NextRequest) {
   try {
