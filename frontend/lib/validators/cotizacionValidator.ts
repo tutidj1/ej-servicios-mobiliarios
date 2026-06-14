@@ -10,13 +10,6 @@ export const cotizacionSchema = z.object({
     .min(2, 'El nombre debe tener al menos 2 caracteres.')
     .max(120, 'El nombre es demasiado largo.'),
 
-  whatsapp: z
-    .string({
-      required_error: 'El WhatsApp es obligatorio.',
-    })
-    .min(8, 'El número de WhatsApp debe tener al menos 8 dígitos.')
-    .regex(/^[+]?[0-9\s-]{8,20}$/, 'Por favor, ingresa un número de teléfono válido.'),
-
   fechaEvento: z
     .string({
       required_error: 'La fecha del evento es obligatoria.',
@@ -43,9 +36,15 @@ export const cotizacionSchema = z.object({
     .min(1, 'El evento debe contar con al menos 1 invitado.')
     .max(200, 'Nuestra capacidad máxima de stock cubre hasta 200 invitados.'),
 
-  ubicacion: z
+  direccion: z
     .string()
-    .max(200, 'La ubicación no puede exceder los 200 caracteres.')
+    .max(150, 'La dirección no puede exceder los 150 caracteres.')
+    .optional()
+    .or(z.literal('')),
+
+  numero: z
+    .string()
+    .max(30, 'El número no puede exceder los 30 caracteres.')
     .optional()
     .or(z.literal('')),
 

@@ -22,13 +22,13 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
           {/* Promo Left Panel */}
           <div className="text-left max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-negro-carbon text-acento-amarillo text-xs font-bold uppercase tracking-widest px-4 py-1.5 mb-6">
-              <span>🎉 PROMO MAYO</span>
+              <span>🎉 Promo Junio — Mes del Padre</span>
             </div>
             <h2 className="font-playfair text-4xl sm:text-5xl md:text-6xl font-bold text-negro-carbon leading-tight mb-4">
-              Si señás en mayo...
+              Si señás en junio...
             </h2>
             <p className="font-manrope text-sm sm:text-base font-semibold leading-relaxed text-negro-carbon/80 max-w-xl">
-              ...para eventos a realizarse en los meses de **junio, julio y agosto**, obtenés un descuento exclusivo directo sobre el total presupuestado.
+              ...para eventos a realizarse en los meses de **julio, agosto y septiembre**, obtenés un descuento exclusivo directo sobre el total presupuestado.
             </p>
           </div>
 
@@ -40,7 +40,7 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
                 Beneficio Exclusivo
               </span>
               <span className="font-playfair text-5xl sm:text-6xl font-bold text-negro-carbon block leading-none">
-                25% OFF
+                30% OFF
               </span>
               <span className="font-manrope text-xs font-bold text-negro-carbon uppercase tracking-wide block mt-1">
                 En el total de tu alquiler
@@ -57,7 +57,7 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
               </Button>
               <span className="font-manrope text-[10px] text-gris-suave mt-3 block text-center">
-                *Válido para señas confirmadas en mayo de 2026.
+                *Válido para señas confirmadas en junio de 2026.
               </span>
             </div>
           </div>

@@ -1,9 +1,5 @@
-
-
-
 import React from 'react';
-import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
-import Button from './ui/Button';
+import { Facebook, Instagram } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
@@ -32,18 +28,24 @@ const Footer: React.FC = () => {
         <div className="space-y-4 flex flex-col items-start">
           <h4 className="font-manrope font-semibold uppercase text-sm">Síguenos</h4>
           <div className="flex space-x-4">
-            <Button variant="ghost" size="icon" aria-label="Facebook">
-              <Facebook className="h-5 w-5 text-crema-base hover:text-acento-amarillo" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="Instagram">
-              <Instagram className="h-5 w-5 text-crema-base hover:text-acento-amarillo" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="Twitter">
-              <Twitter className="h-5 w-5 text-crema-base hover:text-acento-amarillo" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="LinkedIn">
-              <Linkedin className="h-5 w-5 text-crema-base hover:text-acento-amarillo" />
-            </Button>
+            <a 
+              href="https://www.facebook.com/profile.php?id=61573364191460" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Facebook" 
+              className="text-crema-base hover:text-acento-amarillo transition-colors"
+            >
+              <Facebook className="h-5 w-5" />
+            </a>
+            <a 
+              href="https://www.instagram.com/ej.serviciomobiliarios/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="Instagram" 
+              className="text-crema-base hover:text-acento-amarillo transition-colors"
+            >
+              <Instagram className="h-5 w-5" />
+            </a>
           </div>
         </div>
       </div>

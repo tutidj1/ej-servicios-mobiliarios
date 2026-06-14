@@ -10,16 +10,23 @@ export async function POST(request: NextRequest) {
     // VALIDAR con Zod
     const parsed = cotizacionSchema.parse(body);
 
+    // Unificar dirección y número en ubicación
+    const ubicacion = parsed.direccion 
+      ? `${parsed.direccion} ${parsed.numero || ''}`.trim() 
+      : '';
+
     // Mapear a CotizacionData
     const cotizacionData: CotizacionData = {
       nombre: parsed.nombre,
-      whatsapp: parsed.whatsapp,
+      whatsapp: 'N/A',
       fechaEvento: parsed.fechaEvento,
       tipoEvento: parsed.tipoEvento,
       cantidadInvitados: parsed.cantidadInvitados,
-      ubicacion: parsed.ubicacion,
+      ubicacion: ubicacion,
       mobiliarioSolicitado: body.mobiliarioSolicitado || [],
       mensaje: parsed.mensaje,
+      vajillaItems: body.vajillaItems || [],
+      accesoriosItems: body.accesoriosItems || [],
     };
 
     // GUARDAR EN SUPABASE (si está configurado, si no continuar igual)
@@ -31,7 +38,7 @@ export async function POST(request: NextRequest) {
         .insert([
           {
             nombre: cotizacionData.nombre,
-            whatsapp: cotizacionData.whatsapp,
+            whatsapp: 'N/A',
             fecha_evento: cotizacionData.fechaEvento,
             tipo_evento: cotizacionData.tipoEvento,
             cantidad_invitados: cotizacionData.cantidadInvitados,

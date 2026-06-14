@@ -9,7 +9,7 @@ INSERT INTO productos (nombre, categoria, descripcion, imagen_url, stock_disponi
 -- MOBILIARIO
 ('Sillas de plástico reforzado', 'Mobiliario', 'Sillas apilables elegantes y cómodas, ideales para cualquier tipo de evento social. Capacidad hasta 100 personas.', '/productos/sillas.jpg', 100, 1),
 ('Tablones de madera', 'Mobiliario', 'Tablones de madera firmes y amplios para armar mesas largas de banquetes. Se combinan con caballetes.', '/productos/tablones.jpg', 10, 2),
-('Caballetes de madera', 'Mobiliario', 'Soportes de madera resistentes para armar los tablones de forma segura y firme.', '/productos/caballetes.jpg', 20, 3),
+('Caballetes de hierro', 'Mobiliario', 'Soportes de hierro resistentes para armar los tablones de forma segura y firme.', '/productos/caballetes.jpg', 20, 3),
 
 -- VAJILLA
 ('Plato principal', 'Vajilla', 'Plato playo principal de loza blanca clásica, elegante y minimalista para banquetes.', '/productos/plato-principal.jpg', 100, 4),
@@ -36,7 +36,7 @@ INSERT INTO productos (nombre, categoria, descripcion, imagen_url, stock_disponi
 -- ACCESORIOS
 ('Bandeja de mozo', 'Accesorios', 'Bandeja antideslizante profesional para el servicio de mesas.', '/productos/bandeja.jpg', 5, 18),
 ('Frapera de acero inoxidable', 'Accesorios', 'Frapera elegante para mantener botellas bien frías en la mesa.', '/productos/frapera.jpg', 10, 19),
-('Hielera con pinza', 'Accesorios', 'Hielera de mesa con pinza metálica para servir hielo.', '/productos/hielera.jpg', 10, 20);
+('Hielera de plástico', 'Accesorios', 'Hielera de plástico para mesa con pinza metálica para servir hielo.', '/productos/hielera.jpg', 10, 20);
 
 -- Corrección rápida de categorías si corresponde (Cuchillo a Cubiertos)
 UPDATE productos SET categoria = 'Cubiertos' WHERE nombre = 'Cuchillo de mesa';

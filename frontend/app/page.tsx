@@ -42,7 +42,7 @@ export default function HomePage() {
       />
       <Contacto />
       <Footer />
-      <ModalCotizacion isOpen={isModalOpen} onClose={handleCloseModal} />
+      <ModalCotizacion isOpen={isModalOpen} onClose={handleCloseModal} selectedProducts={selectedProducts} />
     </>
   );
 }

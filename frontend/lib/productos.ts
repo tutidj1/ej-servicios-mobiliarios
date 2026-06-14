@@ -36,9 +36,9 @@ export const productosEstaticos: Producto[] = [
   },
   {
     id: 'mob-3',
-    nombre: 'Caballetes de madera',
+    nombre: 'Caballetes de hierro',
     categoria: 'Mobiliario',
-    descripcion: 'Soportes de madera resistentes para armar los tablones de forma segura y firme.',
+    descripcion: 'Soportes de hierro resistentes para armar los tablones de forma segura y firme.',
     imagen_url: '/productos/caballetes.jpg',
     stock_disponible: 20,
     activo: true,
@@ -216,9 +216,9 @@ export const productosEstaticos: Producto[] = [
   },
   {
     id: 'acc-3',
-    nombre: 'Hielera con pinza',
+    nombre: 'Hielera de plástico',
     categoria: 'Accesorios',
-    descripcion: 'Hielera de mesa con pinza metálica para servir hielo.',
+    descripcion: 'Hielera de plástico para mesa con pinza metálica para servir hielo.',
     imagen_url: '/productos/hielera.jpg',
     stock_disponible: 10,
     activo: true,

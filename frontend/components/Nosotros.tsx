@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export const Nosotros: React.FC = () => {
   const stats = [
@@ -58,28 +59,15 @@ export const Nosotros: React.FC = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="lg:col-span-5 h-[480px] w-full relative border border-gris-borde bg-crema-base flex items-center justify-center overflow-hidden"
+            className="lg:col-span-5 h-[480px] w-full relative flex items-center justify-center"
           >
-            {/* Background Imagen real */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: "url('/galeria/mesa-mantel-blanco.jpg')",
-                backgroundColor: '#DCD4C4' // Fallback elegante
-              }}
+            <Image
+              src="/images/emprendimiento-familiar.jpg"
+              alt="Vajilla EJ Servicios Mobiliarios"
+              width={600}
+              height={800}
+              className="rounded-lg shadow-xl object-cover h-full w-full"
             />
-            {/* Overlay sutil y placeholder visual */}
-            <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-all duration-300" />
-            
-            {/* Marco interior elegante estilo Polaroid/Galería */}
-            <div className="absolute bottom-6 left-6 right-6 bg-blanco-puro/90 backdrop-blur-sm border border-gris-borde/50 p-4 text-left">
-              <span className="font-playfair font-bold text-sm text-negro-carbon block mb-1">
-                Servicio a domicilio
-              </span>
-              <span className="font-manrope text-[10px] text-gris-suave uppercase tracking-wider block">
-                Mesa lista · Santa Fe Capital
-              </span>
-            </div>
           </motion.div>
 
         </div>
