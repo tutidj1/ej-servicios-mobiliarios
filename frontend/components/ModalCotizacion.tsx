@@ -198,6 +198,9 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
     }
 
     if (whatsappUrl) {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Lead');
+      }
       if (onSuccess) {
         onSuccess(whatsappUrl);
       } else {
