@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Plus, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { productosEstaticos, Producto } from '@/lib/productos';
 import { Button } from './ui/Button';
@@ -12,6 +13,8 @@ interface CatalogoProps {
   onToggleProduct: (productName: string) => void;
   onOpenCotizar: () => void;
 }
+
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';
 
 const Catalogo: React.FC<CatalogoProps> = ({
   selectedProducts,
@@ -47,7 +50,6 @@ const Catalogo: React.FC<CatalogoProps> = ({
         }
 
         if (data && data.length > 0) {
-          // Adaptar nombres de campos si difieren (snake_case en Postgres vs camelCase en TS)
           const mapped: Producto[] = data.map((item: any) => ({
             id: item.id,
             nombre: item.nombre,
@@ -62,7 +64,6 @@ const Catalogo: React.FC<CatalogoProps> = ({
         }
       } catch (err) {
         console.warn('Omitiendo carga desde Supabase (usando datos estáticos locales):', err);
-        // Si hay error (ej: sin conexión o sin DB configurada), se mantienen los productos estáticos locales
         setProductos(productosEstaticos);
       } finally {
         setLoading(false);
@@ -75,6 +76,11 @@ const Catalogo: React.FC<CatalogoProps> = ({
   const filteredProducts = activeCategory === 'Todo'
     ? productos
     : productos.filter((p) => p.categoria.toLowerCase() === activeCategory.toLowerCase());
+
+  const handleWhatsAppConsulta = () => {
+    const msg = encodeURIComponent('Hola! Quería consultar sobre artículos que no encontré en el catálogo.');
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <section id="catalogo" className="bg-blanco-puro py-24 border-b border-gris-borde">
@@ -89,7 +95,7 @@ const Catalogo: React.FC<CatalogoProps> = ({
             Nuestro catálogo
           </h2>
           <p className="font-manrope text-sm leading-relaxed text-gris-suave">
-            Disponemos de todo lo necesario para vestir tus mesas. Añadí artículos directamente para incluirlos en tu cotización rápida.
+            Disponemos de todo lo necesario para vestir tus mesas. Tocá una tarjeta para seleccionarla e incluirla en tu cotización.
           </p>
         </div>
 
@@ -113,9 +119,9 @@ const Catalogo: React.FC<CatalogoProps> = ({
         {/* Floating Cart Indicator */}
         {selectedProducts.length > 0 ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="fixed bottom-6 right-6 z-30 bg-negro-carbon text-crema-base shadow-xl border border-gris-borde/10 px-5 py-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98] select-none"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed bottom-0 inset-x-0 mx-auto z-30 bg-negro-carbon text-crema-base shadow-xl border-t border-gris-borde/20 px-5 py-4 flex items-center justify-between gap-4 transition-all duration-300 active:scale-[0.98] select-none md:bottom-6 md:inset-x-auto md:right-6 md:w-auto md:border md:border-gris-borde/10"
           >
             <div className="w-8 h-8 bg-acento-amarillo text-negro-carbon flex items-center justify-center font-bold text-sm">
               {selectedProducts.length}
@@ -138,9 +144,6 @@ const Catalogo: React.FC<CatalogoProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <AnimatePresence mode="popLayout">
             {filteredProducts.map((producto, index) => {
-              // Mapeamos si la categoría solicitada coincide
-              // Para el checkout del modal, maparemos productos seleccionados a las categorías correspondientes:
-              // Sillas -> Sillas, Tablones/Caballetes -> Tablones / Caballetes, etc.
               const isSelected = selectedProducts.includes(producto.nombre);
               
               return (
@@ -151,34 +154,48 @@ const Catalogo: React.FC<CatalogoProps> = ({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.35 }}
-                  className="bg-crema-base/30 border border-gris-borde group flex flex-col justify-between"
+                  className={`bg-crema-base/30 border group flex flex-col justify-between cursor-pointer transition-all duration-200 ${
+                    isSelected
+                      ? 'border-negro-carbon shadow-md'
+                      : 'border-gris-borde hover:border-negro-carbon/40'
+                  }`}
+                  onClick={() => onToggleProduct(producto.nombre)}
+                  role="button"
+                  aria-pressed={isSelected}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleProduct(producto.nombre); }}
                 >
-                  {/* Imagen */}
+                  {/* Imagen — clickable area principal */}
                   <div className="relative aspect-square w-full bg-crema-base flex items-center justify-center overflow-hidden border-b border-gris-borde">
-                    {/* Placeholder elegante / Imagen SVG o Fallback */}
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                      style={{
-                        backgroundImage: `url('${producto.imagen_url}')`,
-                        backgroundColor: '#DFD8CC', // Fallback
-                      }}
-                    />
+                    {/* Imagen optimizada con lazy loading */}
+                    {producto.imagen_url ? (
+                      <Image
+                        src={producto.imagen_url}
+                        alt={producto.nombre}
+                        fill
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-[#DFD8CC] transition-transform duration-500 group-hover:scale-105" />
+                    )}
                     
                     {/* Badge Categoría */}
-                    <div className="absolute top-3 left-3 bg-blanco-puro/95 backdrop-blur-sm border border-gris-borde px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-negro-carbon">
+                    <div className="absolute top-3 left-3 bg-blanco-puro/95 backdrop-blur-sm border border-gris-borde px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-negro-carbon z-10">
                       {producto.categoria}
                     </div>
 
                     {/* Stock disponible info */}
                     {producto.stock_disponible > 0 && (
-                      <div className="absolute bottom-3 right-3 bg-negro-carbon/80 backdrop-blur-sm text-[8px] font-bold uppercase tracking-widest text-crema-base px-2 py-0.5">
+                      <div className="absolute bottom-3 right-3 bg-negro-carbon/80 backdrop-blur-sm text-[8px] font-bold uppercase tracking-widest text-crema-base px-2 py-0.5 z-10">
                         Stock: {producto.stock_disponible}
                       </div>
                     )}
 
                     {/* Selección overlay */}
                     {isSelected && (
-                      <div className="absolute inset-0 bg-negro-carbon/25 backdrop-blur-[1px] flex items-center justify-center">
+                      <div className="absolute inset-0 bg-negro-carbon/25 backdrop-blur-[1px] flex items-center justify-center z-10">
                         <div className="w-12 h-12 bg-blanco-puro text-negro-carbon flex items-center justify-center shadow-lg border border-negro-carbon">
                           <Check size={24} className="stroke-[2.5]" />
                         </div>
@@ -187,29 +204,27 @@ const Catalogo: React.FC<CatalogoProps> = ({
                   </div>
 
                   {/* Detalle */}
-                  <div className="p-5 text-left flex flex-col justify-between flex-grow">
+                  <div className="p-4 text-left flex flex-col justify-between flex-grow">
                     <div>
-                      <h3 className="font-playfair text-lg font-bold text-negro-carbon mb-2 line-clamp-1">
+                      {/* Nombre: wrap normal en mobile, sin truncado */}
+                      <h3 className="font-playfair text-base sm:text-lg font-bold text-negro-carbon mb-1 whitespace-normal break-words">
                         {producto.nombre}
                       </h3>
-                      <p className="font-manrope text-[11px] leading-relaxed text-gris-suave mb-4 line-clamp-2 h-8">
+                      <p className="font-manrope text-[11px] leading-relaxed text-gris-suave line-clamp-2">
                         {producto.descripcion}
                       </p>
                     </div>
                     
-                    {/* Selector */}
-                    <button
-                      onClick={() => onToggleProduct(producto.nombre)}
-                      className={`w-full mt-auto font-manrope text-[10px] font-bold uppercase tracking-wider border-t border-gris-borde pt-3 text-left flex items-center justify-between transition-colors duration-200 ${
+                    {/* Indicador visual de estado */}
+                    <div
+                      className={`mt-3 font-manrope text-[10px] font-bold uppercase tracking-wider border-t border-gris-borde pt-3 transition-colors duration-200 ${
                         isSelected 
-                          ? 'text-red-600 hover:text-red-700' 
-                          : 'text-negro-carbon hover:text-gris-suave'
+                          ? 'text-negro-carbon' 
+                          : 'text-gris-suave'
                       }`}
                     >
-                      <span>
-                        {isSelected ? '✓ Quitar de cotización' : '+ Sumar a cotización'}
-                      </span>
-                    </button>
+                      {isSelected ? '✓ Seleccionado' : 'Tocar para seleccionar'}
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -217,7 +232,7 @@ const Catalogo: React.FC<CatalogoProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Banner Inferior de Consulta */}
+        {/* Banner Inferior de Consulta — redirige a WhatsApp */}
         <div className="mt-16 bg-negro-carbon text-crema-base p-10 border border-negro-carbon flex flex-col md:flex-row items-center justify-between gap-8 text-left">
           <div>
             <h3 className="font-playfair text-2xl font-bold mb-2">
@@ -227,9 +242,14 @@ const Catalogo: React.FC<CatalogoProps> = ({
               Escribinos. Hacemos lo posible por conseguir la vajilla o accesorios adicionales necesarios para que tu evento sea tal como lo soñás.
             </p>
           </div>
-          <Button variant="outline" size="md" onClick={onOpenCotizar} className="border-2 font-bold w-full md:w-auto">
-            Consultar ahora
-          </Button>
+          <a
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hola! Quería consultar sobre artículos que no encontré en el catálogo.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-6 py-3 border-2 border-crema-base text-crema-base font-manrope text-xs font-bold uppercase tracking-wider hover:bg-crema-base hover:text-negro-carbon transition-all duration-300 w-full md:w-auto whitespace-nowrap"
+          >
+            Consultar por WhatsApp
+          </a>
         </div>
 
       </div>

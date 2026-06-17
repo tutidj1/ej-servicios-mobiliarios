@@ -117,17 +117,26 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
           initialVajilla.add('Servilleta de tela');
         }
 
-        // Accesorios mapping
+        // Accesorios mapping — nombres exactos del catálogo (lib/productos.ts)
         if (prod === 'Bandeja de mozo') {
           initialMobiliario.add('Accesorios');
           initialAccesorios.add('Bandeja de mozo');
         }
-        if (prod === 'Hielera de plástico' || prod === 'Hielera con pinza') {
+        if (prod === 'Hielera de plástico') {
           initialMobiliario.add('Accesorios');
           initialAccesorios.add('Hielera de plástico + pinza');
         }
-        if (prod === 'Frapera de acero inoxidable') {
+        if (prod === 'Frapera de plastico') {
           initialMobiliario.add('Accesorios');
+          initialAccesorios.add('Frapera de plastico');
+        }
+        if (prod === 'Azucarera') {
+          initialMobiliario.add('Accesorios');
+          initialAccesorios.add('Azucarera');
+        }
+        if (prod === 'Bandeja de mesa') {
+          initialMobiliario.add('Accesorios');
+          initialAccesorios.add('Bandeja de mesa');
         }
       });
 
@@ -221,7 +230,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-hidden" onClick={onClose}>
-      <div className="bg-blanco-puro rounded-none w-full max-w-lg mx-4 p-6 relative max-h-[90vh] overflow-y-auto shadow-2xl border border-gris-borde" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-blanco-puro rounded-none w-full max-w-lg max-w-full mx-4 p-6 relative max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-gris-borde" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <button
           onClick={onClose}
@@ -371,7 +380,13 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
             <div className="ml-4 mt-2 p-4 border-l-2 border-acento-amarillo bg-crema-base/20 space-y-3">
               <p className="font-manrope font-bold text-xs text-negro-carbon">¿Qué accesorios necesitás?</p>
               <div className="grid grid-cols-2 gap-2">
-                {['Bandeja de mozo', 'Hielera de plástico + pinza'].map((subItem) => (
+                {[
+                  'Azucarera',
+                  'Bandeja de mesa',
+                  'Frapera de plastico',
+                  'Hielera de plástico + pinza',
+                  'Bandeja de mozo',
+                ].map((subItem) => (
                   <label key={subItem} className="flex items-center space-x-2 cursor-pointer select-none">
                     <input
                       type="checkbox"

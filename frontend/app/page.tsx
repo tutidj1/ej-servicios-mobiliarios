@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import Diferenciales from '@/components/Diferenciales';
+
 import Servicios from '@/components/Servicios';
 import Nosotros from '@/components/Nosotros';
 import PromoBanner from '@/components/PromoBanner';
 import Catalogo from '@/components/Catalogo';
+import Resenas from '@/components/Resenas';
+import FAQ from '@/components/FAQ';
 import Contacto from '@/components/Contacto';
 import Footer from '@/components/Footer';
 import { ModalCotizacion } from '@/components/ModalCotizacion';
@@ -31,7 +33,7 @@ export default function HomePage() {
     <>
       <Navbar onOpenCotizar={handleOpenCotizar} />
       <Hero onOpenCotizar={handleOpenCotizar} />
-      <Diferenciales />
+
       <Servicios />
       <Nosotros />
       <PromoBanner onOpenCotizar={handleOpenCotizar} />
@@ -40,6 +42,8 @@ export default function HomePage() {
         onToggleProduct={handleToggleProduct}
         onOpenCotizar={handleOpenCotizar}
       />
+      <Resenas />
+      <FAQ />
       <Contacto />
       <Footer />
       <ModalCotizacion isOpen={isModalOpen} onClose={handleCloseModal} selectedProducts={selectedProducts} />

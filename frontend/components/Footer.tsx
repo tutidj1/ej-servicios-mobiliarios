@@ -10,8 +10,7 @@ const Footer: React.FC = () => {
           <h3 className="font-playfair text-xl font-bold">EJ Servicios Mobiliarios</h3>
           <p className="font-manrope text-sm">
             Santa Fe Capital, Argentina<br />
-            Tel: +54 342 506 8365<br />
-            Email: info@ejservicios.com
+            WhatsApp: +54 342 506 8365
           </p>
         </div>
         {/* Quick Links */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, MapPin } from 'lucide-react';
 import Button from './ui/Button';
 import { Input } from './ui/Input';
 
@@ -34,14 +34,15 @@ const Contacto: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Información */}
           <div className="space-y-6">
-            <div className="flex items-center space-x-3">
+            <a
+              href="https://wa.me/5493425068365"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-3 hover:opacity-70 transition-opacity"
+            >
               <Phone className="h-6 w-6 text-negro-carbon" />
-              <span className="font-manrope text-lg text-negro-carbon">+54 342 506 8365</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Mail className="h-6 w-6 text-negro-carbon" />
-              <span className="font-manrope text-lg text-negro-carbon">info@ejservicios.com</span>
-            </div>
+              <span className="font-manrope text-lg text-negro-carbon">+54 342 506 8365 (WhatsApp)</span>
+            </a>
             <div className="flex items-center space-x-3">
               <MapPin className="h-6 w-6 text-negro-carbon" />
               <span className="font-manrope text-lg text-negro-carbon">

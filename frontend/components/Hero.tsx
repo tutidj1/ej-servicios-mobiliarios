@@ -59,10 +59,23 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="font-manrope text-base sm:text-lg md:text-xl text-crema-base/90 max-w-2xl mb-12 leading-relaxed"
+          className="font-manrope text-base sm:text-lg md:text-xl text-crema-base/90 max-w-2xl mb-6 leading-relaxed"
         >
           Llevamos, traemos y lavamos la vajilla. Vos solo disfrutá tu evento.
         </motion.p>
+
+        {/* Social proof compact banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.38 }}
+          className="flex items-center gap-2 bg-blanco-puro/10 backdrop-blur-sm border border-blanco-puro/20 px-4 py-2.5 mb-8"
+        >
+          <span className="text-acento-amarillo text-base font-bold">✦</span>
+          <p className="font-manrope text-xs sm:text-sm text-crema-base/95 font-semibold">
+            + de 40 eventos equipados en Santa Fe y zona. Puntualidad e higiene garantizada.
+          </p>
+        </motion.div>
 
         {/* Botones de acción */}
         <motion.div

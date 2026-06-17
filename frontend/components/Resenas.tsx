@@ -2,24 +2,24 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { Star, Quote } from 'lucide-react';
 
 const Resenas: React.FC = () => {
   const reviews = [
     {
-      text: 'Re recomendable. Nos llevaron todo a la quinta, súper puntuales, y lo mejor: nos retiraron todo sucio. No tuvimos que lavar ni un plato. Mi mamá quedó fascinada.',
-      author: 'Lucía M.',
-      event: 'Cumpleaños 40',
+      text: 'Alquilamos platos y vasos, impecable, buen precio, súper amable en todo momento.',
+      author: 'Cliente EJ',
+      event: 'Evento en Santa Fe',
     },
     {
-      text: 'Buscaba algo para 70 personas y me resolvieron todo en un día. La vajilla impecable, las sillas en perfecto estado. Atención muy familiar y cálida.',
-      author: 'Martín G.',
-      event: 'Aniversario',
+      text: 'Excelente servicio, rápida respuesta y muy buena predisposición. Lo recomiendo a todos mis contactos, gracias.',
+      author: 'Cliente EJ',
+      event: 'Evento en Santa Fe',
     },
     {
-      text: 'Hicimos el cumple de 15 de mi hija con ellos. Todo coordinado, contrato claro, y se ocuparon de retirar todo al día siguiente. Volveríamos sin dudarlo.',
-      author: 'Carolina P.',
-      event: 'Cumpleaños de 15',
+      text: 'Excelente servicio. Muchas gracias.',
+      author: 'Cliente EJ',
+      event: 'Evento en Santa Fe',
     },
   ];
 
@@ -49,18 +49,20 @@ const Resenas: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-crema-base/20 border border-gris-borde p-8 flex flex-col justify-between items-start text-left hover:shadow-sm transition-all duration-300"
+              className="bg-crema-base/20 border border-gris-borde p-8 flex flex-col justify-between items-start text-left hover:shadow-sm transition-all duration-300 relative"
             >
               <div>
+                {/* Quote icon */}
+                <Quote size={28} className="text-acento-amarillo mb-4 fill-current" />
                 {/* 5 Stars */}
-                <div className="flex items-center gap-1 mb-6 text-negro-carbon">
+                <div className="flex items-center gap-1 mb-5 text-negro-carbon">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} fill="currentColor" className="stroke-none" />
+                    <Star key={i} size={14} fill="currentColor" className="stroke-none" />
                   ))}
                 </div>
                 {/* Text */}
-                <p className="font-playfair italic text-lg leading-relaxed text-negro-carbon mb-8">
-                  {review.text}
+                <p className="font-playfair italic text-base sm:text-lg leading-relaxed text-negro-carbon mb-8">
+                  "{review.text}"
                 </p>
               </div>
 

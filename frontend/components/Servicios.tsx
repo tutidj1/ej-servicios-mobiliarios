@@ -36,11 +36,8 @@ export default function Servicios() {
     <section id="servicios" className="bg-crema-base py-24 border-b border-gris-borde">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="font-manrope text-xs font-bold uppercase tracking-[0.2em] text-gris-suave mb-4 block">
-            Nuestros Servicios
-          </span>
           <h2 className="font-playfair text-4xl sm:text-5xl font-bold text-negro-carbon mb-6">
-            Todo resuelto en un solo lugar
+            Nuestros servicios: todo resuelto en un solo lugar
           </h2>
           <p className="font-manrope text-sm leading-relaxed text-gris-suave">
             Nos enfocamos en brindarte comodidad y seguridad. Olvidate del traslado pesado

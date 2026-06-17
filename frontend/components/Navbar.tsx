@@ -18,10 +18,9 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
 
   const navLinks = [
     { name: 'Inicio', href: '#inicio' },
-    { name: 'Nosotros', href: '#nosotros' },
     { name: 'Servicios', href: '#servicios' },
+    { name: 'Nosotros', href: '#nosotros' },
     { name: 'Catálogo', href: '#catalogo' },
-    { name: 'Galería', href: '#galeria' },
     { name: 'Contacto', href: '#contacto' },
   ];
 
@@ -34,17 +33,17 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-crema-base/80 backdrop-blur-md border-b border-gris-borde py-4' : 'bg-transparent py-6'}`}>
+      <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-crema-base/80 backdrop-blur-md border-b border-gris-borde py-4' : 'bg-transparent py-6'}`} data-scrolled={scrolled ? 'true' : 'false'}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <a href="#inicio" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-none bg-negro-carbon flex items-center justify-between text-crema-base font-playfair font-bold text-lg select-none px-2.5">
+            <div className="w-10 h-10 rounded-none bg-negro-carbon flex items-center justify-between text-crema-base font-playfair font-bold text-lg select-none px-2.5 shrink-0">
               <span>EJ</span>
             </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="font-playfair font-bold text-sm tracking-wide uppercase text-negro-carbon">
+            <div className="hidden sm:flex flex-col text-left gap-0.5">
+              <span className={`font-playfair font-bold text-sm tracking-wide uppercase transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'md:text-blanco-puro text-negro-carbon'}`}>
                 EJ Servicios Mobiliarios
               </span>
-              <span className="font-manrope text-[10px] text-gris-suave uppercase tracking-wider">
+              <span className={`font-manrope text-[10px] uppercase tracking-wider transition-colors duration-300 ${scrolled ? 'text-gris-suave' : 'md:text-crema-base/70 text-gris-suave'}`}>
                 Exclusivo para vos
               </span>
             </div>
@@ -56,7 +55,11 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
                 key={link.name}
                 href={link.href}
                 onClick={(e) => handleLinkClick(e, link.href)}
-                className="font-manrope text-xs font-semibold uppercase tracking-wider text-negro-carbon hover:text-gris-suave transition-colors duration-200"
+                className={`font-manrope text-xs font-semibold uppercase tracking-wider transition-colors duration-200 ${
+                  scrolled
+                    ? 'text-negro-carbon hover:text-gris-suave'
+                    : 'text-blanco-puro hover:text-crema-base/80'
+                }`}
               >
                 {link.name}
               </a>
@@ -70,7 +73,7 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
           </div>
 
           <button
-            className="md:hidden text-negro-carbon p-1 outline-none"
+            className={`md:hidden p-1 outline-none transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'text-blanco-puro'}`}
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle Menu"
           >
