@@ -32,6 +32,8 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
   const [mobiliario, setMobiliario] = useState<string[]>([]);
   const [vajillaItems, setVajillaItems] = useState<string[]>([]);
   const [accesoriosItems, setAccesoriosItems] = useState<string[]>([]);
+  // Marca el tiempo de entrada del usuario al abrir el modal
+  const tiempoEntrada = Date.now();
 
   // Prevenir scroll de la página cuando el modal está abierto
   useEffect(() => {
@@ -167,11 +169,15 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
       return;
     }
 
+    // Calcula el tiempo que el usuario pasó en el formulario
+    const tiempoPermanenciaSegundos = Math.round((Date.now() - tiempoEntrada) / 1000);
     const payload = {
       ...data,
       mobiliarioSolicitado: mobiliario,
       vajillaItems,
       accesoriosItems,
+      // Duración en segundos que el usuario estuvo en el formulario
+      tiempo_permanencia_segundos: tiempoPermanenciaSegundos,
     };
 
     let whatsappUrl = '';
