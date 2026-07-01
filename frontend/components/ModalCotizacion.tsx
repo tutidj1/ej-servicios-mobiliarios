@@ -251,8 +251,9 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
           <Input label="Fecha del evento *" type="date" error={errors.fechaEvento?.message} {...register('fechaEvento')} />
           
           <div className="space-y-2">
-            <label className="font-manrope text-xs font-semibold text-negro-carbon">Tipo de evento *</label>
+            <label htmlFor="tipo-evento-select" className="font-manrope text-xs font-semibold text-negro-carbon">Tipo de evento *</label>
             <select
+              id="tipo-evento-select"
               className={`w-full border ${errors.tipoEvento ? 'border-red-500' : 'border-gris-borde'} p-3 focus:outline-none bg-blanco-puro font-manrope text-sm text-negro-carbon`}
               {...register('tipoEvento')}
             >
@@ -402,8 +403,9 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
           )}
 
           <div className="space-y-2">
-            <label className="font-manrope text-xs font-semibold text-negro-carbon">Mensaje adicional</label>
+            <label htmlFor="mensaje-adicional" className="font-manrope text-xs font-semibold text-negro-carbon">Mensaje adicional</label>
             <textarea
+              id="mensaje-adicional"
               className="w-full border border-gris-borde p-3 focus:outline-none resize-none font-manrope text-sm text-negro-carbon"
               rows={3}
               maxLength={500}

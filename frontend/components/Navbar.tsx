@@ -101,7 +101,7 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
                 EJ Mobiliarios
               </span>
             </div>
-            <button className="text-negro-carbon" onClick={() => setIsOpen(false)}>
+            <button className="text-negro-carbon" onClick={() => setIsOpen(false)} aria-label="Cerrar menú">
               <X size={20} />
             </button>
           </div>

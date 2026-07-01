@@ -23,7 +23,7 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
       <div
         className="absolute inset-0 bg-cover bg-center transition-all duration-700 select-none pointer-events-none"
         style={{
-          backgroundImage: "url('/hero-banner.jpg')",
+          backgroundImage: "url('/hero-banner.png')",
           // Fallback en caso de que no exista la imagen aún
           backgroundColor: '#1E2C22',
         }}

@@ -57,6 +57,7 @@ const Contacto: React.FC = () => {
             <textarea
               name="mensaje"
               placeholder="Mensaje *"
+              aria-label="Mensaje *"
               required
               className="w-full border border-gris-borde p-3 focus:outline-none resize-none h-32 font-manrope text-negro-carbon"
             />

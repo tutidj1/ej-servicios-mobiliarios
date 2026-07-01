@@ -58,6 +58,8 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${playfair.variable} ${manrope.variable} scroll-smooth`}>
       <head>
+        <link rel="preconnect" href="https://zwojxvbckhhzxhdlblfr.supabase.co" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://connect.facebook.net" crossOrigin="anonymous" />
         <Script
           id="fb-pixel"
           strategy="afterInteractive"

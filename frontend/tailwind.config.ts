@@ -12,7 +12,7 @@ const config: Config = {
         'negro-carbon': '#1A1A1A',      // Texto principal, headers, footer
         'crema-base': '#F5F1EA',         // Fondo principal
         'blanco-puro': '#FFFFFF',        // Cards, secciones de contraste
-        'gris-suave': '#8A8A8A',         // Textos secundarios
+        'gris-suave': '#595959',         // Textos secundarios
         'gris-borde': '#E5E5E5',         // Bordes finos
         'acento-amarillo': '#FCD34D',    // Banner de promo 25% OFF
       },
