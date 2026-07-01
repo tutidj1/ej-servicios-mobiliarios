@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 import Button from './ui/Button';
 
 interface HeroProps {
@@ -20,14 +21,16 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
   return (
     <section id="inicio" className="relative h-screen min-h-[600px] w-full flex items-center justify-center overflow-hidden bg-negro-carbon text-crema-base">
       {/* Background Image with Fallback gradient */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700 select-none pointer-events-none"
-        style={{
-          backgroundImage: "url('/hero-banner.png')",
-          // Fallback en caso de que no exista la imagen aún
-          backgroundColor: '#1E2C22',
-        }}
-      >
+      <div className="absolute inset-0 select-none pointer-events-none bg-[#1E2C22]">
+        <Image
+          src="/hero-banner.png"
+          alt="EJ Servicios Mobiliarios Banner"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover transition-all duration-700"
+          quality={85}
+        />
         {/* Overlay elegante de contraste */}
         <div className="absolute inset-0 bg-black/45 backdrop-brightness-[0.8]" />
       </div>
