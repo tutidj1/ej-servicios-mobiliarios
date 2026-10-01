@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ClipboardList, ExternalLink, Image as IconoImagen, LogOut, Menu, Package, Percent, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useBloqueoScroll } from '@/lib/useMovil';
 import CotizacionesAdmin from './CotizacionesAdmin';
 import ProductosAdmin from './ProductosAdmin';
 import PromoAdmin from './PromoAdmin';
@@ -40,6 +41,7 @@ export default function AdminApp() {
   const [errorAdmin, setErrorAdmin] = useState('');
   const [seccion, setSeccion] = useState<Seccion>('cotizaciones');
   const [menuAbierto, setMenuAbierto] = useState(false);
+  useBloqueoScroll(menuAbierto);
 
   const [email, setEmail] = useState('');
   const [clave, setClave] = useState('');

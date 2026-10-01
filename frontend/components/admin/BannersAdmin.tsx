@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { BANNERS_POR_DEFECTO, Banner } from '@/lib/banners';
 import { AYUDA, Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from './estilos';
 import { Encabezado, Mensaje } from './ui';
+import { refrescarWeb } from '@/lib/refrescarWeb';
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGEN_BYTES = 5 * 1024 * 1024;
@@ -53,11 +54,12 @@ function TarjetaBanner({ inicial, tieneTextos }: { inicial: Banner; tieneTextos:
       imagen_url: banner.imagen_url.trim(),
       alt: banner.alt.trim(),
     });
+    if (!error) await refrescarWeb();
     setGuardando(false);
     setAviso(
       error
         ? { tipo: 'error', texto: 'No se pudo guardar. Intentá de nuevo.' }
-        : { tipo: 'ok', texto: 'Guardado. En la web se actualiza en menos de 1 minuto.' }
+        : { tipo: 'ok', texto: 'Guardado. Ya está publicado en la web.' }
     );
   };
 

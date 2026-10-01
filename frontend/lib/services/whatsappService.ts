@@ -1,3 +1,5 @@
+import { SITE_URL } from '@/lib/site';
+
 // Armado del mensaje de WhatsApp para una cotización.
 // Se genera siempre en el servidor a partir de datos ya validados.
 
@@ -89,7 +91,7 @@ export function generarMensajeWhatsapp(data: CotizacionData): string {
     limpiar(data.nombre),
     `📞 ${limpiar(data.telefono)}`,
     '',
-    `Cotización #${data.codigo || '------'} · ejserviciosmobiliarios.com`
+    `Cotización #${data.codigo || '------'} · ${SITE_URL.replace('https://', '').replace('http://', '')}`
   );
 
   return lineas.join('\n');

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { generarMensajeWhatsapp, formatearFecha } from './lib/services/whatsappService';
 import { cotizacionApiSchema, hoyArgentina } from './lib/validators/cotizacionValidator';
 import { calcularMesesPromo, listaEnEspanol } from './lib/promo';
-import { telefonoParaWhatsapp } from './lib/phone';
+import { telefonoParaWhatsapp, linkWhatsappCliente } from './lib/phone';
 
 let ok = 0;
 function test(nombre: string, fn: () => void) {
@@ -107,3 +107,15 @@ test('teléfono: arma el número internacional para wa.me', () => {
 });
 
 console.log(`\n${ok} tests OK`);
+
+test('teléfono: acepta 0, 15, +54 y paréntesis (WhatsApp al cliente)', () => {
+  for (const n of ['3425068365', '0342 506 8365', '342 15 506 8365', '(0342) 15-5068365', '+54 9 342 506 8365', '543425068365', '5493425068365']) {
+    assert.equal(telefonoParaWhatsapp(n), '5493425068365', n);
+  }
+});
+
+test('link al cliente: saluda por nombre y trae el código', () => {
+  const url = linkWhatsappCliente('342 506 8365', 'Ana Pérez', 'AB12CD');
+  assert.ok(url.startsWith('https://wa.me/5493425068365?text='));
+  assert.match(decodeURIComponent(url), /Hola Ana Pérez! .*#AB12CD/);
+});

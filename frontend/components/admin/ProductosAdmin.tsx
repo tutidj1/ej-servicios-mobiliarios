@@ -16,6 +16,8 @@ import {
   TARJETA,
 } from './estilos';
 import { Encabezado, Interruptor, Mensaje } from './ui';
+import { refrescarWeb } from '@/lib/refrescarWeb';
+import { useBloqueoScroll, useVisualViewport } from '@/lib/useMovil';
 
 interface FilaProducto {
   id?: string;
@@ -140,20 +142,24 @@ export default function ProductosAdmin() {
       ? await supabase.from('productos').update(datos).eq('id', id)
       : await supabase.from('productos').insert(datos);
 
+    if (!error) await refrescarWeb();
     setGuardando(false);
     if (error) {
       setAvisoForm({ tipo: 'error', texto: 'No se pudo guardar. Revisá los datos e intentá de nuevo.' });
       return;
     }
     setEdicion(null);
-    setAviso({ tipo: 'ok', texto: 'Producto guardado. En la web se ve en menos de 1 minuto.' });
+    setAviso({ tipo: 'ok', texto: 'Producto guardado. Ya está publicado en la web.' });
     cargar();
   };
 
   const alternarActivo = async (fila: FilaProducto) => {
     const { error } = await supabase.from('productos').update({ activo: !fila.activo }).eq('id', fila.id!);
     if (error) setAviso({ tipo: 'error', texto: 'No se pudo cambiar la visibilidad.' });
-    else setFilas((prev) => prev.map((f) => (f.id === fila.id ? { ...f, activo: !f.activo } : f)));
+    else {
+      refrescarWeb();
+      setFilas((prev) => prev.map((f) => (f.id === fila.id ? { ...f, activo: !f.activo } : f)));
+    }
   };
 
   const cambiarCategoria = async (fila: FilaProducto, categoria: string) => {
@@ -161,6 +167,7 @@ export default function ProductosAdmin() {
     const { error } = await supabase.from('productos').update({ categoria }).eq('id', fila.id!);
     if (error) setAviso({ tipo: 'error', texto: 'No se pudo cambiar la categoría.' });
     else {
+      refrescarWeb();
       setFilas((prev) => prev.map((f) => (f.id === fila.id ? { ...f, categoria } : f)));
       setAviso({ tipo: 'ok', texto: `“${fila.nombre}” ahora está en ${categoria}.` });
     }
@@ -171,6 +178,7 @@ export default function ProductosAdmin() {
     const { error } = await supabase.from('productos').delete().eq('id', fila.id!);
     if (error) setAviso({ tipo: 'error', texto: 'No se pudo eliminar.' });
     else {
+      refrescarWeb();
       setFilas((prev) => prev.filter((f) => f.id !== fila.id));
       setAviso({ tipo: 'ok', texto: `“${fila.nombre}” fue eliminado.` });
     }
@@ -194,6 +202,7 @@ export default function ProductosAdmin() {
         .filter((f, idx) => f.id !== filas[idx]?.id)
         .map((f) => supabase.from('productos').update({ orden: f.orden }).eq('id', f.id!))
     );
+    refrescarWeb();
   };
 
   const subirImagen = async (archivo: File) => {
@@ -235,6 +244,10 @@ export default function ProductosAdmin() {
 
   const set = <K extends keyof FilaProducto>(campo: K, valor: FilaProducto[K]) =>
     setEdicion((prev) => (prev ? { ...prev, [campo]: valor } : prev));
+
+  // El panel de edición ocupa toda la pantalla y la página de fondo no se mueve
+  useBloqueoScroll(edicion !== null);
+  const areaVisible = useVisualViewport(edicion !== null);
 
   const categoriaEnLista = edicion ? categorias.includes(edicion.categoria) : false;
   const valorSelectCategoria = categoriaNueva || (edicion && edicion.categoria && !categoriaEnLista) ? NUEVA_CATEGORIA : edicion?.categoria ?? '';
@@ -344,8 +357,8 @@ export default function ProductosAdmin() {
 
       {/* Panel lateral de edición (pantalla completa en celular) */}
       {edicion && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={(e) => e.target === e.currentTarget && setEdicion(null)}>
-          <form onSubmit={guardar} className="flex h-dvh w-full flex-col bg-white shadow-2xl sm:max-w-lg" aria-label={edicion.id ? 'Editar producto' : 'Nuevo producto'}>
+        <div className="fixed inset-x-0 top-0 bottom-0 z-50 flex justify-end overflow-hidden overscroll-none bg-black/50" style={areaVisible} onClick={(e) => e.target === e.currentTarget && setEdicion(null)}>
+          <form onSubmit={guardar} className="flex h-full w-full flex-col overflow-x-hidden bg-white shadow-2xl sm:max-w-lg" aria-label={edicion.id ? 'Editar producto' : 'Nuevo producto'}>
             <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
               <h2 className="font-playfair text-xl font-bold text-stone-900">{edicion.id ? 'Editar producto' : 'Nuevo producto'}</h2>
               <button type="button" onClick={() => setEdicion(null)} className="-mr-2 h-11 w-11 flex items-center justify-center text-stone-600" aria-label="Cerrar">
@@ -353,7 +366,7 @@ export default function ProductosAdmin() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            <div className="flex-1 space-y-5 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y px-5 py-5">
               <div>
                 <label htmlFor="p-nombre" className={ETIQUETA}>Nombre *</label>
                 <input id="p-nombre" required maxLength={120} className={CAMPO} value={edicion.nombre} onChange={(e) => set('nombre', e.target.value)} />

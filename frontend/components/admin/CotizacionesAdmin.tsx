@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { MapPin, MessageCircle, Phone, RefreshCw, Trash2, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { telefonoParaWhatsapp } from '@/lib/phone';
+import { linkWhatsappCliente } from '@/lib/phone';
 import { formatearFecha } from '@/lib/services/whatsappService';
 import { Aviso, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, TARJETA } from './estilos';
 import { Encabezado, Mensaje } from './ui';
@@ -40,20 +40,43 @@ export default function CotizacionesAdmin() {
   const [filtro, setFiltro] = useState('todas');
   const [aviso, setAviso] = useState<Aviso | null>(null);
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  const [actualizando, setActualizando] = useState(false);
+  const [ultima, setUltima] = useState<Date | null>(null);
+
+  const cargar = useCallback(async (primera = false) => {
+    if (primera) setCargando(true);
+    else setActualizando(true);
     const { data, error } = await supabase
       .from('cotizaciones')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) setAviso({ tipo: 'error', texto: 'No se pudieron cargar las cotizaciones.' });
-    else setFilas((data as FilaCotizacion[]) ?? []);
+    else {
+      setFilas((data as FilaCotizacion[]) ?? []);
+      setUltima(new Date());
+      setAviso(null);
+    }
     setCargando(false);
+    setActualizando(false);
   }, []);
 
+  // Carga inicial y actualización automática: cada 20 segundos y al volver a esta pantalla
   useEffect(() => {
-    cargar();
+    cargar(true);
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === 'visible') cargar();
+    }, 20000);
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') cargar();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
   }, [cargar]);
 
   const cambiarEstado = async (id: string, estado: string) => {
@@ -78,10 +101,10 @@ export default function CotizacionesAdmin() {
     <div>
       <Encabezado
         titulo="Cotizaciones"
-        descripcion="Las consultas que llegan desde la web. Cambiá el estado a medida que atendés a cada cliente."
+        descripcion={`Las consultas que llegan desde la web. Se actualiza solo cada pocos segundos${ultima ? ` · última vez: ${ultima.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}.`}
         accion={
-          <button type="button" onClick={cargar} className={BTN_SECUNDARIO}>
-            <RefreshCw size={16} /> Actualizar
+          <button type="button" onClick={() => cargar()} disabled={actualizando} className={BTN_SECUNDARIO}>
+            <RefreshCw size={16} className={actualizando ? 'animate-spin' : ''} /> {actualizando ? 'Actualizando…' : 'Actualizar'}
           </button>
         }
       />
@@ -154,17 +177,19 @@ export default function CotizacionesAdmin() {
                   aria-label="Estado de la cotización"
                   value={f.estado}
                   onChange={(e) => cambiarEstado(f.id, e.target.value)}
-                  className="min-h-[44px] rounded-lg border border-stone-300 bg-white px-3 font-manrope text-sm font-semibold capitalize text-stone-800 sm:w-44"
+                  className="min-h-[56px] rounded-lg border-2 border-stone-300 bg-white px-4 font-manrope text-base font-semibold capitalize text-stone-800 sm:min-h-[48px] sm:w-48"
                 >
                   {ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
                 </select>
                 {tel && (
                   <>
-                    <a href={`https://wa.me/${telefonoParaWhatsapp(tel)}`} target="_blank" rel="noopener noreferrer" className={BTN_PRIMARIO}>
-                      <MessageCircle size={16} /> WhatsApp
-                    </a>
-                    <a href={`tel:+${telefonoParaWhatsapp(tel)}`} className={BTN_SECUNDARIO}>
-                      <Phone size={16} /> Llamar
+                    <a
+                      href={linkWhatsappCliente(tel, f.nombre, f.codigo || f.id.slice(0, 6).toUpperCase())}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${BTN_PRIMARIO} min-h-[52px] sm:min-h-[44px]`}
+                    >
+                      <MessageCircle size={18} /> Escribirle por WhatsApp
                     </a>
                   </>
                 )}

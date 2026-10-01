@@ -11,6 +11,7 @@ import {
 } from '@/lib/promo';
 import { AYUDA, Aviso, BTN_PRIMARIO, CAMPO, ETIQUETA, TARJETA } from './estilos';
 import { Encabezado, Interruptor, Mensaje } from './ui';
+import { refrescarWeb } from '@/lib/refrescarWeb';
 
 export default function PromoAdmin() {
   const [promo, setPromo] = useState<PromoConfig>(PROMO_POR_DEFECTO);
@@ -44,11 +45,12 @@ export default function PromoAdmin() {
     setGuardando(true);
     setAviso(null);
     const { error } = await supabase.from('promo_config').upsert({ id: 1, ...promo });
+    if (!error) await refrescarWeb();
     setGuardando(false);
     setAviso(
       error
         ? { tipo: 'error', texto: 'No se pudo guardar. Intentá de nuevo.' }
-        : { tipo: 'ok', texto: 'Promo guardada. En la web se actualiza en menos de 1 minuto.' }
+        : { tipo: 'ok', texto: 'Promo guardada. Ya está publicada en la web.' }
     );
   };
 

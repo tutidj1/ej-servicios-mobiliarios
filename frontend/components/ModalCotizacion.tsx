@@ -10,6 +10,7 @@ import {
   hoyArgentina,
 } from '@/lib/validators/cotizacionValidator';
 import type { Producto } from '@/lib/productos';
+import { useBloqueoScroll, useVisualViewport } from '@/lib/useMovil';
 import Button from './ui/Button';
 import { Input } from './ui/Input';
 
@@ -72,6 +73,10 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
 
   const tipoEvento = watch('tipoEvento');
 
+  // Mantiene la página de fondo quieta y ajusta el panel al teclado del celular
+  useBloqueoScroll(isOpen);
+  const areaVisible = useVisualViewport(isOpen);
+
   // Categorías en el orden en que aparecen en el catálogo
   const categorias = useMemo(() => {
     const mapa = new Map<string, Producto[]>();
@@ -87,17 +92,13 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     tiempoEntrada.current = Date.now();
-    document.body.style.overflow = 'hidden';
-    dialogRef.current?.focus();
+    dialogRef.current?.focus({ preventScroll: true });
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
   // Cada cambio de paso vuelve al inicio del contenido
@@ -210,7 +211,8 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4"
+      className="fixed inset-x-0 top-0 bottom-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 overflow-hidden overscroll-none touch-pan-y"
+      style={areaVisible}
       onClick={(e) => {
         if (e.target === e.currentTarget) cerrar();
       }}
@@ -221,7 +223,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-cotizacion"
-        className="bg-blanco-puro w-full h-dvh sm:h-auto sm:max-h-[90vh] sm:max-w-lg flex flex-col sm:border sm:border-gris-borde shadow-2xl outline-none"
+        className="bg-blanco-puro w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-lg flex flex-col overflow-x-hidden sm:border sm:border-gris-borde shadow-2xl outline-none"
       >
         {/* Encabezado */}
         <div className="shrink-0 px-5 pt-5 pb-4 border-b border-gris-borde">
@@ -258,7 +260,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
         </div>
 
         {/* Contenido */}
-        <div ref={cuerpoRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+        <div ref={cuerpoRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y px-5 py-5">
           {exito ? (
             <div className="text-center py-8">
               <div className="mx-auto w-16 h-16 bg-negro-carbon text-acento-amarillo flex items-center justify-center mb-6">
@@ -294,7 +296,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
               <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
                 <label>
                   No completar
-                  <input ref={trampaRef} type="text" name="website" tabIndex={-1} autoComplete="off" />
+                  <input ref={trampaRef} type="text" name="ref_interna_x9" tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore="true" />
                 </label>
               </div>
 
@@ -438,7 +440,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
                 />
                 <Input
                   label="Dirección o zona del evento *"
-                  autoComplete="street-address"
+                  autoComplete="address-line1"
                   placeholder="Calle, número y barrio"
                   error={errors.direccion?.message}
                   {...register('direccion')}

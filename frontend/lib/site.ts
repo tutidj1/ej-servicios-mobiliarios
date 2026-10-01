@@ -1,4 +1,4 @@
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ejserviciosmobiliarios.com').replace(/\/$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ejserviciomobiliarios.com').replace(/\/$/, '');
 export const SITE_NAME = 'EJ Servicios Mobiliarios';
 export const TELEFONO_NEGOCIO = '+54 342 506 8365';
 export const REDES = [
