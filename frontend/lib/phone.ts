@@ -24,7 +24,7 @@ export function telefonoParaWhatsapp(crudo: string): string {
   return `549${n}`;
 }
 
-export function linkWhatsappCliente(telefono: string, nombre: string, codigo: string): string {
-  const texto = `Hola ${nombre.trim()}! Te escribimos de EJ Servicios Mobiliarios por tu consulta #${codigo}.`;
-  return `https://wa.me/${telefonoParaWhatsapp(telefono)}?text=${encodeURIComponent(texto)}`;
+/** Abre directamente el chat con el cliente, sin mensaje escrito. */
+export function linkWhatsappCliente(telefono: string): string {
+  return `https://wa.me/${telefonoParaWhatsapp(telefono)}`;
 }

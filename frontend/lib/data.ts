@@ -11,7 +11,11 @@ function clienteLectura() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!urlRaw || !key) return null;
   const url = urlRaw.replace(/\/rest\/v1\/?$/, '');
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    // Sin caché: lo que se guarda en el panel /admin se ve en la web en el momento
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
+  });
 }
 
 export async function getProductos(): Promise<Producto[]> {

@@ -184,12 +184,12 @@ export default function CotizacionesAdmin() {
                 {tel && (
                   <>
                     <a
-                      href={linkWhatsappCliente(tel, f.nombre, f.codigo || f.id.slice(0, 6).toUpperCase())}
+                      href={linkWhatsappCliente(tel)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`${BTN_PRIMARIO} min-h-[52px] sm:min-h-[44px]`}
                     >
-                      <MessageCircle size={18} /> Escribirle por WhatsApp
+                      <MessageCircle size={18} /> Abrir chat de WhatsApp
                     </a>
                   </>
                 )}

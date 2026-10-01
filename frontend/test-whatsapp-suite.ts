@@ -114,8 +114,6 @@ test('teléfono: acepta 0, 15, +54 y paréntesis (WhatsApp al cliente)', () => {
   }
 });
 
-test('link al cliente: saluda por nombre y trae el código', () => {
-  const url = linkWhatsappCliente('342 506 8365', 'Ana Pérez', 'AB12CD');
-  assert.ok(url.startsWith('https://wa.me/5493425068365?text='));
-  assert.match(decodeURIComponent(url), /Hola Ana Pérez! .*#AB12CD/);
+test('link al cliente: abre el chat directo, sin mensaje', () => {
+  assert.equal(linkWhatsappCliente('342 506 8365'), 'https://wa.me/5493425068365');
 });

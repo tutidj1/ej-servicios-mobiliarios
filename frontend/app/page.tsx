@@ -4,9 +4,9 @@ import { calcularMesesPromo } from '@/lib/promo';
 import { faqs } from '@/lib/faq';
 import { PALABRAS_CLAVE, REDES, SITE_NAME, SITE_URL, TELEFONO_NEGOCIO } from '@/lib/site';
 
-// La página se regenera cada 60 segundos: los cambios hechos en el panel /admin
-// (productos, promo) aparecen solos en poco tiempo, sin tocar código.
-export const revalidate = 60;
+// La página se arma en cada visita con los datos actuales de Supabase: lo que guardás en /admin
+// (productos, banners, promo) se ve en la web en el momento.
+export const dynamic = 'force-dynamic';
 
 // Los datos estructurados ayudan a Google a entender el negocio y mostrarlo en búsquedas locales
 function jsonLd(data: unknown) {
