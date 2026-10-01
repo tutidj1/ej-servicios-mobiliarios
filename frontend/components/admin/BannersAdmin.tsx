@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { ImageIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { BANNERS_POR_DEFECTO, Banner } from '@/lib/banners';
-import { Aviso, BTN_PRIMARIO, CAMPO, ETIQUETA, TARJETA } from './estilos';
+import { AYUDA, Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from './estilos';
+import { Encabezado, Mensaje } from './ui';
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGEN_BYTES = 5 * 1024 * 1024;
@@ -31,11 +33,11 @@ function TarjetaBanner({ inicial, tieneTextos }: { inicial: Banner; tieneTextos:
       .from('productos')
       .upload(ruta, archivo, { contentType: archivo.type, cacheControl: '31536000' });
     if (error) {
-      setAviso({ tipo: 'error', texto: 'No se pudo subir la imagen. ¿Ejecutaste las migraciones 0003 y 0004?' });
+      setAviso({ tipo: 'error', texto: 'No se pudo subir la imagen. Intentá de nuevo.' });
     } else {
       const { data } = supabase.storage.from('productos').getPublicUrl(ruta);
       setBanner((b) => ({ ...b, imagen_url: data.publicUrl }));
-      setAviso({ tipo: 'ok', texto: 'Imagen subida. Tocá "Guardar" para publicarla.' });
+      setAviso({ tipo: 'ok', texto: 'Imagen subida. Tocá "Guardar cambios" para publicarla.' });
     }
     setSubiendo(false);
   };
@@ -54,31 +56,36 @@ function TarjetaBanner({ inicial, tieneTextos }: { inicial: Banner; tieneTextos:
     setGuardando(false);
     setAviso(
       error
-        ? { tipo: 'error', texto: 'No se pudo guardar. Revisá que hayas ingresado con la cuenta administradora.' }
+        ? { tipo: 'error', texto: 'No se pudo guardar. Intentá de nuevo.' }
         : { tipo: 'ok', texto: 'Guardado. En la web se actualiza en menos de 1 minuto.' }
     );
   };
 
   return (
-    <section className={`${TARJETA} space-y-4`}>
-      <h2 className="font-playfair text-xl font-bold text-negro-carbon">{banner.etiqueta}</h2>
+    <section className={`${TARJETA} space-y-5`}>
+      <h2 className="font-playfair text-xl font-bold text-stone-900">{banner.etiqueta}</h2>
 
-      {banner.imagen_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={banner.imagen_url} alt="" className="w-full max-h-64 object-cover border border-gris-borde" />
-      )}
+      <div className="overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+        {banner.imagen_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={banner.imagen_url} alt="" className="h-56 w-full object-cover" />
+        ) : (
+          <div className="flex h-56 items-center justify-center text-stone-400"><ImageIcon size={40} /></div>
+        )}
+      </div>
 
       <div>
-        <label htmlFor={`img-${banner.clave}`} className={ETIQUETA}>Cambiar imagen</label>
-        <input
-          id={`img-${banner.clave}`}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          disabled={subiendo}
-          onChange={(e) => e.target.files?.[0] && subirImagen(e.target.files[0])}
-          className="block w-full font-manrope text-sm"
-        />
-        {subiendo && <p className="font-manrope text-xs text-gris-suave mt-1">Subiendo…</p>}
+        <label className={`${BTN_SECUNDARIO} w-full cursor-pointer sm:w-auto`}>
+          <ImageIcon size={18} /> {subiendo ? 'Subiendo…' : 'Cambiar imagen'}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={subiendo}
+            onChange={(e) => e.target.files?.[0] && subirImagen(e.target.files[0])}
+            className="sr-only"
+          />
+        </label>
+        <p className={AYUDA}>JPG, PNG o WEBP de hasta 5 MB. Mejor si es horizontal y de buena calidad.</p>
       </div>
 
       {tieneTextos && (
@@ -95,18 +102,15 @@ function TarjetaBanner({ inicial, tieneTextos }: { inicial: Banner; tieneTextos:
       )}
 
       <div>
-        <label htmlFor={`alt-${banner.clave}`} className={ETIQUETA}>Descripción de la imagen (para Google y lectores)</label>
+        <label htmlFor={`alt-${banner.clave}`} className={ETIQUETA}>Descripción de la imagen</label>
         <input id={`alt-${banner.clave}`} maxLength={200} className={CAMPO} value={banner.alt} onChange={(e) => setBanner({ ...banner, alt: e.target.value })} />
+        <p className={AYUDA}>Ayuda a Google y a personas con lectores de pantalla. Ej: “Mesa armada con vajilla blanca”.</p>
       </div>
 
-      {aviso && (
-        <p role="status" className={`p-3 border text-sm font-medium ${aviso.tipo === 'ok' ? 'border-negro-carbon text-negro-carbon' : 'border-red-600 text-red-700'}`}>
-          {aviso.texto}
-        </p>
-      )}
+      <Mensaje aviso={aviso} />
 
       <button type="button" onClick={guardar} disabled={guardando || subiendo} className={`${BTN_PRIMARIO} w-full sm:w-auto`}>
-        {guardando ? 'Guardando…' : 'Guardar'}
+        {guardando ? 'Guardando…' : 'Guardar cambios'}
       </button>
     </section>
   );
@@ -133,16 +137,21 @@ export default function BannersAdmin() {
       });
   }, []);
 
-  if (!banners) return <p className="font-manrope text-sm text-gris-suave">Cargando…</p>;
-
   return (
-    <div className="space-y-5">
-      <p className="font-manrope text-sm text-gris-suave leading-relaxed">
-        Cambiá las imágenes y textos grandes de la web. El banner de promoción se edita en la pestaña <strong>Promo</strong>.
-      </p>
-      {banners.map((b) => (
-        <TarjetaBanner key={b.clave} inicial={b} tieneTextos={b.clave === 'hero'} />
-      ))}
+    <div>
+      <Encabezado
+        titulo="Banners"
+        descripcion="Las imágenes y textos grandes de la web. El banner amarillo de promoción se edita en la sección Promo."
+      />
+      {!banners ? (
+        <p className="font-manrope text-sm text-stone-600">Cargando…</p>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {banners.map((b) => (
+            <TarjetaBanner key={b.clave} inicial={b} tieneTextos={b.clave === 'hero'} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
