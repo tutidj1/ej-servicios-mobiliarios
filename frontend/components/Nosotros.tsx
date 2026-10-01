@@ -34,7 +34,7 @@ export const Nosotros: React.FC<{ banner: Banner }> = ({ banner }) => {
             
             <p className="font-manrope text-sm leading-relaxed text-gris-suave mb-10 max-w-xl">
               <strong>EJ Servicios Mobiliarios</strong> es un proyecto familiar que nace en <strong>2026</strong> en Santa Fe Capital.
-              Detrás de cada alquiler hay una atención personal, cercana y honesta. Contamos con stock propio para equipar
+              Detrás de cada alquiler hay una atención personal, cercana y honesta. Contamos con mobiliario propio para equipar
               eventos de cualquier tamaño: sillas, tablones, vajilla completa y mantelería. Nuestro compromiso es simple:
               que vos solo te ocupes de disfrutar tu evento.
             </p>

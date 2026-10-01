@@ -28,7 +28,7 @@ export default function Servicios() {
       icon: <ShieldCheck className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Respaldo y seguridad',
       description:
-        'Firmamos un contrato formal de alquiler que detalla la entrega, el stock solicitado y las condiciones, garantizando la seriedad de nuestro servicio.',
+        'Firmamos un contrato formal de alquiler que detalla la entrega, los artículos solicitados y las condiciones, garantizando la seriedad de nuestro servicio.',
     },
   ];
 

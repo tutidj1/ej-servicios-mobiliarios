@@ -22,7 +22,7 @@ export default function Diferenciales() {
       icon: <Zap className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Sin antelación mínima',
       description:
-        '¿Surgió un imprevisto? Si tenemos disponibilidad de stock, te lo alquilamos en el día.',
+        '¿Surgió un imprevisto? Si tenemos disponibilidad, te lo alquilamos en el día.',
     },
     {
       icon: <FileText className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
