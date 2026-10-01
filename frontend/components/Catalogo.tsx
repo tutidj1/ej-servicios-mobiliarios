@@ -1,86 +1,52 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { productosEstaticos, Producto } from '@/lib/productos';
-import { Button } from './ui/Button';
+import type { Producto } from '@/lib/productos';
 
 interface CatalogoProps {
+  productos: Producto[];
   selectedProducts: string[];
   onToggleProduct: (productName: string) => void;
-  onOpenCotizar: () => void;
 }
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';
 
-const Catalogo: React.FC<CatalogoProps> = ({
-  selectedProducts,
-  onToggleProduct,
-  onOpenCotizar,
-}) => {
-  const [productos, setProductos] = useState<Producto[]>(productosEstaticos);
-  const [loading, setLoading] = useState(true);
+// Si la imagen no carga (o no existe), se muestra un fondo neutro en lugar de un ícono roto
+function ImagenProducto({ src, alt }: { src: string; alt: string }) {
+  const [fallo, setFallo] = useState(false);
+
+  if (!src || fallo) {
+    return <div className="absolute inset-0 bg-[#DFD8CC]" />;
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+      className="object-cover transition-transform duration-500 group-hover:scale-105"
+      loading="lazy"
+      onError={() => setFallo(true)}
+    />
+  );
+}
+
+const Catalogo: React.FC<CatalogoProps> = ({ productos, selectedProducts, onToggleProduct }) => {
   const [activeCategory, setActiveCategory] = useState('Todo');
 
-  const categories = [
-    'Todo',
-    'Mobiliario',
-    'Vajilla',
-    'Cubiertos',
-    'Cristalería',
-    'Mantelería',
-    'Accesorios',
-  ];
+  // Las categorías salen de los productos cargados en Supabase (se pueden crear nuevas desde el panel)
+  const categories = useMemo(
+    () => ['Todo', ...Array.from(new Set(productos.map((p) => p.categoria)))],
+    [productos]
+  );
 
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('productos')
-          .select('*')
-          .eq('activo', true)
-          .order('orden', { ascending: true });
-
-        if (error) {
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          const mapped: Producto[] = data.map((item: any) => ({
-            id: item.id,
-            nombre: item.nombre,
-            categoria: item.categoria,
-            descripcion: item.descripcion || '',
-            imagen_url: item.imagen_url || '',
-            stock_disponible: item.stock_disponible || 0,
-            activo: item.activo,
-            orden: item.orden,
-          }));
-          setProductos(mapped);
-        }
-      } catch (err) {
-        console.warn('Omitiendo carga desde Supabase (usando datos estáticos locales):', err);
-        setProductos(productosEstaticos);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchProducts();
-  }, []);
-
-  const filteredProducts = activeCategory === 'Todo'
-    ? productos
-    : productos.filter((p) => p.categoria.toLowerCase() === activeCategory.toLowerCase());
-
-  const handleWhatsAppConsulta = () => {
-    const msg = encodeURIComponent('Hola! Quería consultar sobre artículos que no encontré en el catálogo.');
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, '_blank', 'noopener,noreferrer');
-  };
+  const filteredProducts =
+    activeCategory === 'Todo'
+      ? productos
+      : productos.filter((p) => p.categoria.toLowerCase() === activeCategory.toLowerCase());
 
   return (
     <section id="catalogo" className="bg-blanco-puro py-24 border-b border-gris-borde">
@@ -116,34 +82,10 @@ const Catalogo: React.FC<CatalogoProps> = ({
           ))}
         </div>
 
-        {/* Floating Cart Indicator */}
-        {selectedProducts.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-0 inset-x-0 mx-auto z-30 bg-negro-carbon text-crema-base shadow-xl border-t border-gris-borde/20 px-5 py-4 flex items-center justify-between gap-4 transition-all duration-300 active:scale-[0.98] select-none md:bottom-6 md:inset-x-auto md:right-6 md:w-auto md:border md:border-gris-borde/10"
-          >
-            <div className="w-8 h-8 bg-acento-amarillo text-negro-carbon flex items-center justify-center font-bold text-sm">
-              {selectedProducts.length}
-            </div>
-            <div className="text-left">
-              <span className="font-manrope text-[10px] font-bold text-gris-suave uppercase tracking-wider block leading-none">
-                Items seleccionados
-              </span>
-              <span className="font-playfair font-bold text-xs text-blanco-puro block mt-1">
-                Tu cotización está lista
-              </span>
-            </div>
-            <Button variant="outline" size="sm" onClick={onOpenCotizar} className="py-2.5 px-4 text-[10px] border-crema-base/40">
-              Ver Presupuesto
-            </Button>
-          </motion.div>
-        ) : null}
-
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredProducts.map((producto, index) => {
+            {filteredProducts.map((producto) => {
               const isSelected = selectedProducts.includes(producto.nombre);
               
               return (
@@ -167,31 +109,12 @@ const Catalogo: React.FC<CatalogoProps> = ({
                 >
                   {/* Imagen — clickable area principal */}
                   <div className="relative aspect-square w-full bg-crema-base flex items-center justify-center overflow-hidden border-b border-gris-borde">
-                    {/* Imagen optimizada con lazy loading */}
-                    {producto.imagen_url ? (
-                      <Image
-                        src={producto.imagen_url}
-                        alt={producto.nombre}
-                        fill
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-[#DFD8CC] transition-transform duration-500 group-hover:scale-105" />
-                    )}
-                    
+                    <ImagenProducto src={producto.imagen_url} alt={producto.nombre} />
+
                     {/* Badge Categoría */}
                     <div className="absolute top-3 left-3 bg-blanco-puro/95 backdrop-blur-sm border border-gris-borde px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-negro-carbon z-10">
                       {producto.categoria}
                     </div>
-
-                    {/* Stock disponible info */}
-                    {producto.stock_disponible > 0 && (
-                      <div className="absolute bottom-3 right-3 bg-negro-carbon/80 backdrop-blur-sm text-[8px] font-bold uppercase tracking-widest text-crema-base px-2 py-0.5 z-10">
-                        Stock: {producto.stock_disponible}
-                      </div>
-                    )}
 
                     {/* Selección overlay */}
                     {isSelected && (

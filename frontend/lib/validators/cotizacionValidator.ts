@@ -1,61 +1,94 @@
 import { z } from 'zod';
 
-// Esquema de validación para una cotización de EJ Servicios Mobiliarios
+const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+
+/** Fecha de hoy en Argentina como YYYY-MM-DD (en-CA ya usa ese formato). */
+export function hoyArgentina(ahora: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_HORARIA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(ahora);
+}
+
+/** Deja solo los dígitos de un teléfono ("+54 342-506 8365" → "543425068365"). */
+export function soloDigitos(valor: string): string {
+  return valor.replace(/\D/g, '');
+}
+
+// Límite técnico solo para evitar valores absurdos; no hay tope "real" de invitados.
+export const MAX_INVITADOS = 1_000_000;
+
+// Esquema compartido por el formulario (cliente) y la API (servidor)
 export const cotizacionSchema = z.object({
   nombre: z
-    .string({
-      required_error: 'El nombre es obligatorio.',
-      invalid_type_error: 'El nombre debe ser una cadena de texto.',
-    })
-    .min(2, 'El nombre debe tener al menos 2 caracteres.')
+    .string({ required_error: 'Ingresá tu nombre.' })
+    .trim()
+    .min(2, 'El nombre debe tener al menos 2 letras.')
     .max(120, 'El nombre es demasiado largo.'),
 
   fechaEvento: z
-    .string({
-      required_error: 'La fecha del evento es obligatoria.',
-    })
+    .string({ required_error: 'Elegí la fecha del evento.' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Elegí la fecha del evento.')
+    .refine((val) => !isNaN(new Date(`${val}T12:00:00Z`).getTime()), 'La fecha no es válida.')
+    .refine((val) => val >= hoyArgentina(), 'La fecha no puede ser anterior a hoy.')
     .refine((val) => {
-      const date = new Date(val);
-      if (isNaN(date.getTime())) return false;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return date >= today;
-    }, 'La fecha del evento no puede ser anterior a hoy.'),
+      const limite = new Date();
+      limite.setFullYear(limite.getFullYear() + 5);
+      return val <= hoyArgentina(limite);
+    }, 'La fecha es demasiado lejana.'),
 
   tipoEvento: z
-    .string({
-      required_error: 'El tipo de evento es obligatorio.',
-    })
-    .min(3, 'Por favor, selecciona un tipo de evento.'),
+    .string({ required_error: 'Elegí el tipo de evento.' })
+    .trim()
+    .min(3, 'Elegí el tipo de evento.')
+    .max(60, 'El tipo de evento es demasiado largo.'),
 
   cantidadInvitados: z
     .number({
-      required_error: 'La cantidad de invitados es obligatoria.',
-      invalid_type_error: 'La cantidad debe ser un número.',
+      required_error: 'Ingresá la cantidad de invitados.',
+      invalid_type_error: 'Ingresá la cantidad de invitados.',
     })
-    .min(1, 'El evento debe contar con al menos 1 invitado.')
-    .max(200, 'Nuestra capacidad máxima de stock cubre hasta 200 invitados.'),
+    .int('Ingresá un número entero.')
+    .min(1, 'Tiene que haber al menos 1 invitado.')
+    .max(MAX_INVITADOS, 'La cantidad de invitados no es válida.'),
 
   direccion: z
-    .string()
-    .max(150, 'La dirección no puede exceder los 150 caracteres.')
-    .optional()
-    .or(z.literal('')),
+    .string({ required_error: 'Ingresá la dirección o zona del evento.' })
+    .trim()
+    .min(3, 'Ingresá la dirección o zona del evento.')
+    .max(150, 'La dirección no puede superar los 150 caracteres.'),
 
+  // Teléfono: se permite escribir espacios, guiones o "+"; se valida sobre los dígitos
   numero: z
-    .string()
-    .max(30, 'El número no puede exceder los 30 caracteres.')
-    .optional()
-    .or(z.literal('')),
-
-  // mobiliarioSolicitado se maneja con estado local (useState) fuera de RHF
-  // y se valida manualmente en onSubmit antes de hacer el fetch
+    .string({ required_error: 'Ingresá tu teléfono.' })
+    .trim()
+    .max(30, 'El teléfono es demasiado largo.')
+    .refine((val) => {
+      const digitos = soloDigitos(val);
+      return digitos.length >= 8 && digitos.length <= 15;
+    }, 'Ingresá un teléfono válido, con característica. Ej: 342 506 8365'),
 
   mensaje: z
     .string()
-    .max(500, 'El mensaje adicional no puede superar los 500 caracteres.')
+    .max(500, 'El mensaje no puede superar los 500 caracteres.')
     .optional()
     .or(z.literal('')),
 });
 
 export type CotizacionInput = z.infer<typeof cotizacionSchema>;
+
+// Campos extra que solo llegan a la API (no los ve el usuario)
+export const cotizacionApiSchema = cotizacionSchema.extend({
+  // Nombres de productos elegidos; el servidor los valida contra la tabla productos
+  items: z
+    .array(z.string().trim().min(1).max(120))
+    .min(1, 'Elegí al menos un artículo.')
+    .max(200, 'Demasiados artículos seleccionados.'),
+  // Anti-bots: campo trampa (debe venir vacío) y tiempo que tardó en completar el formulario
+  website: z.string().max(200).optional(),
+  tiempoMs: z.number().int().min(0).max(86_400_000).optional(),
+});
+
+export type CotizacionApiInput = z.infer<typeof cotizacionApiSchema>;

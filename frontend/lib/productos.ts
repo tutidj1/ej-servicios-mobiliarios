@@ -7,6 +7,10 @@ export interface Producto {
   stock_disponible: number;
   activo: boolean;
   orden: number;
+  // Nombre alternativo para el mensaje de WhatsApp (opcional)
+  etiqueta_whatsapp?: string | null;
+  // Si es true, en el WhatsApp se agrega la cantidad de invitados: "Sillas (80)"
+  cantidad_segun_invitados?: boolean;
 }
 
 // Catálogo estático de respaldo para EJ Servicios Mobiliarios
@@ -18,11 +22,12 @@ export const productosEstaticos: Producto[] = [
     id: 'mob-1',
     nombre: 'Sillas de plástico reforzado',
     categoria: 'Mobiliario',
-    descripcion: 'Sillas apilables elegantes y cómodas, ideales para cualquier tipo de evento social. Capacidad hasta 100 personas.',
+    descripcion: 'Sillas apilables elegantes y cómodas, ideales para cualquier tipo de evento social.',
     imagen_url: '/productos/sillas.jpg',
     stock_disponible: 100,
     activo: true,
     orden: 1,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'mob-2',

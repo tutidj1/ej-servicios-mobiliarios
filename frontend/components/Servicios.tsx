@@ -10,7 +10,7 @@ export default function Servicios() {
       icon: <Armchair className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Mobiliario completo',
       description:
-        'Disponemos de sillas reforzadas, tablones de madera, caballetes, vajilla completa, mantelería y cristalería para eventos de hasta 100 invitados.',
+        'Disponemos de sillas reforzadas, tablones de madera, caballetes, vajilla completa, mantelería y cristalería para casamientos, cumpleaños, cumpleaños de 15, bautismos y reuniones de cualquier tamaño, sin límite de invitados.',
     },
     {
       icon: <MapPin className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,

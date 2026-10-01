@@ -5,12 +5,14 @@ import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Button from './ui/Button';
+import type { Banner } from '@/lib/banners';
 
 interface HeroProps {
+  banner: Banner;
   onOpenCotizar: () => void;
 }
 
-export default function Hero({ onOpenCotizar }: HeroProps) {
+export default function Hero({ banner, onOpenCotizar }: HeroProps) {
   const handleScrollToCatalogo = () => {
     const target = document.querySelector('#catalogo');
     if (target) {
@@ -23,8 +25,8 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
       {/* Background Image with Fallback gradient */}
       <div className="absolute inset-0 select-none pointer-events-none bg-[#1E2C22]">
         <Image
-          src="/hero-banner.png"
-          alt="EJ Servicios Mobiliarios Banner"
+          src={banner.imagen_url}
+          alt={banner.alt}
           fill
           priority
           sizes="100vw"
@@ -54,7 +56,8 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
           transition={{ duration: 0.8, delay: 0.15 }}
           className="font-playfair text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-blanco-puro mb-6 leading-[1.1]"
         >
-          Exclusivo para vos
+          {banner.titulo}
+          <span className="sr-only"> — alquiler de sillas, tablones, vajilla y mantelería para eventos en Santa Fe</span>
         </motion.h1>
 
         {/* Subtítulo descriptivo */}
@@ -64,7 +67,7 @@ export default function Hero({ onOpenCotizar }: HeroProps) {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="font-manrope text-base sm:text-lg md:text-xl text-crema-base/90 max-w-2xl mb-6 leading-relaxed"
         >
-          Llevamos, traemos y lavamos la vajilla. Vos solo disfrutá tu evento.
+          {banner.subtitulo}
         </motion.p>
 
         {/* Social proof compact banner */}

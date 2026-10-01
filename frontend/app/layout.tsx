@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Manrope } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
+import { PALABRAS_CLAVE, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // Configuración de la fuente Playfair Display para títulos elegantes
 const playfair = Playfair_Display({
@@ -20,22 +21,44 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'EJ Servicios Mobiliarios — Alquiler de Mobiliario Exclusivo para Eventos',
-  description: 'Alquiler de sillas, tablones, caballetes, vajilla y mantelería en Santa Fe Capital y alrededores. Emprendimiento familiar. Llevamos, traemos y lavamos todo. ¡Reservá hoy!',
-  keywords: 'alquiler vajilla santa fe, alquiler de sillas santa fe, tablones de madera santa fe, vajilla para eventos santa fe, ej servicios mobiliarios, flete incluido santa fe, alquiler de caballetes argentina',
-  authors: [{ name: 'EJ Servicios Mobiliarios' }],
-  metadataBase: new URL('https://ejserviciosmobiliarios.com'),
+  title: {
+    default: 'EJ Servicios Mobiliarios — Alquiler de Sillas, Vajilla y Mobiliario para Eventos en Santa Fe',
+    template: '%s | EJ Servicios Mobiliarios',
+  },
+  description:
+    'Alquiler de sillas, tablones, caballetes, vajilla, cubiertos, copas y mantelería para casamientos, cumpleaños, 15 años y eventos en Santa Fe Capital. Sin límite de invitados. Llevamos, traemos y lavamos todo. ¡Cotizá por WhatsApp!',
+  keywords: PALABRAS_CLAVE,
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  applicationName: SITE_NAME,
+  category: 'Alquiler de mobiliario para eventos',
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'EJ Servicios Mobiliarios — Exclusivo para vos',
-    description: 'Alquiler de sillas, tablones y vajilla para eventos en Santa Fe Capital. Llevamos, traemos y lavamos todo.',
-    url: 'https://ejserviciosmobiliarios.com',
-    siteName: 'EJ Servicios Mobiliarios',
+    description:
+      'Alquiler de sillas, tablones y vajilla para eventos en Santa Fe Capital. Llevamos, traemos y lavamos todo.',
+    url: SITE_URL,
+    siteName: SITE_NAME,
     locale: 'es_AR',
     type: 'website',
+    images: [{ url: '/hero-banner.png', alt: 'EJ Servicios Mobiliarios — alquiler de mobiliario para eventos' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EJ Servicios Mobiliarios — Alquiler para eventos en Santa Fe',
+    description: 'Sillas, tablones, vajilla y mantelería para tu evento. Llevamos, traemos y lavamos todo.',
+    images: ['/hero-banner.png'],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  other: {
+    'geo.region': 'AR-S',
+    'geo.placename': 'Santa Fe',
   },
   verification: {
     google: 'CMsLwNqSSmUmIA3ociGTo_0Hwe17FYd7jbxsa1to9w0',
@@ -46,6 +69,7 @@ export const viewport: Viewport = {
   themeColor: '#F5F1EA',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -56,7 +80,7 @@ export default function RootLayout({
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1152161817444763';
 
   return (
-    <html lang="es" className={`${playfair.variable} ${manrope.variable} scroll-smooth`}>
+    <html lang="es-AR" className={`${playfair.variable} ${manrope.variable} scroll-smooth`}>
       <head>
         <link rel="preconnect" href="https://zwojxvbckhhzxhdlblfr.supabase.co" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://connect.facebook.net" crossOrigin="anonymous" />

@@ -19,7 +19,7 @@ INSERT INTO productos (nombre, categoria, descripcion, imagen_url, stock_disponi
 ('Tetera de loza', 'Vajilla', 'Tetera clásica para servicio de té en mesa dulce.', '/productos/tetera.jpg', 10, 8),
 
 -- CUBIERTOS
-('Cuchillo de mesa', 'Cuchillo', 'Cuchillo de mesa de acero inoxidable con excelente filo y diseño clásico.', '/productos/cuchillo.jpg', 100, 9),
+('Cuchillo de mesa', 'Cubiertos', 'Cuchillo de mesa de acero inoxidable con excelente filo y diseño clásico.', '/productos/cuchillo.jpg', 100, 9),
 ('Tenedor de mesa', 'Cubiertos', 'Tenedor de mesa de acero inoxidable a juego con la cuchillería.', '/productos/tenedor.jpg', 100, 10),
 ('Cuchara de postre', 'Cubiertos', 'Cuchara de postre de acero inoxidable para la mesa dulce.', '/productos/cuchara-postre.jpg', 100, 11),
 ('Cucharita de té', 'Cubiertos', 'Cucharita de té para infusión de acero inoxidable.', '/productos/cucharita-te.jpg', 100, 12),

@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
-
-// Helper para instanciar el cliente con privilegios de administrador en el servidor
+// Cliente con privilegios de administrador. SOLO para código de servidor (API routes).
+// Si falta la clave service_role se lanza un error: nunca se degrada a la clave pública.
 export function getSupabaseAdmin() {
+  const urlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminKey) {
-    console.warn('⚠️ ADVERTENCIA: SUPABASE_SERVICE_ROLE_KEY no está configurada en las variables de entorno.');
+
+  if (!urlRaw || !adminKey) {
+    throw new Error('Falta NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en las variables de entorno.');
   }
-  return createClient(supabaseUrl, adminKey || supabaseAnonKey);
+
+  const url = urlRaw.replace(/\/rest\/v1\/?$/, '');
+  return createClient(url, adminKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }

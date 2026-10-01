@@ -4,12 +4,22 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Percent, ArrowRight } from 'lucide-react';
 import Button from './ui/Button';
+import { PromoConfig, PromoMeses, capitalizar, listaEnEspanol } from '@/lib/promo';
 
 interface PromoBannerProps {
+  promo: PromoConfig;
+  meses: PromoMeses;
   onOpenCotizar: () => void;
 }
 
-export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
+// El mes y los meses de vigencia se calculan solos; el motivo, el descuento y el
+// texto del beneficio los edita el administrador desde el panel (/admin → Promo).
+export default function PromoBanner({ promo, meses, onOpenCotizar }: PromoBannerProps) {
+  if (!promo.activo) return null;
+
+  const mesActual = capitalizar(meses.mesActual);
+  const vigentes = listaEnEspanol(meses.mesesVigentes);
+
   return (
     <section className="bg-acento-amarillo py-16 text-negro-carbon border-b border-negro-carbon overflow-hidden relative">
       {/* Decorative large percentage icon background */}
@@ -22,13 +32,13 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
           {/* Promo Left Panel */}
           <div className="text-left max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-negro-carbon text-acento-amarillo text-xs font-bold uppercase tracking-widest px-4 py-1.5 mb-6">
-              <span>🎉 Promo Junio — Mes del Padre</span>
+              <span>🏆 Promo {mesActual} — {promo.motivo}</span>
             </div>
             <h2 className="font-playfair text-4xl sm:text-5xl md:text-6xl font-bold text-negro-carbon leading-tight mb-4">
-              Si señás en junio...
+              Si señás en {meses.mesActual}...
             </h2>
             <p className="font-manrope text-sm sm:text-base font-semibold leading-relaxed text-negro-carbon/80 max-w-xl">
-              ...para eventos a realizarse en los meses de **julio, agosto y septiembre**, obtenés un descuento exclusivo directo sobre el total presupuestado.
+              ...para eventos a realizarse en {meses.mesesVigentes.length > 1 ? 'los meses de ' : ''}<strong>{vigentes}</strong>, obtenés un descuento exclusivo directo sobre el total presupuestado.
             </p>
           </div>
 
@@ -40,10 +50,10 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
                 Beneficio Exclusivo
               </span>
               <span className="font-playfair text-5xl sm:text-6xl font-bold text-negro-carbon block leading-none">
-                30% OFF
+                {promo.descuento_texto}
               </span>
               <span className="font-manrope text-xs font-bold text-negro-carbon uppercase tracking-wide block mt-1">
-                En el total de tu alquiler
+                {promo.beneficio_texto}
               </span>
             </div>
             <div className="flex flex-col justify-center w-full sm:w-auto">
@@ -57,7 +67,7 @@ export default function PromoBanner({ onOpenCotizar }: PromoBannerProps) {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
               </Button>
               <span className="font-manrope text-[10px] text-gris-suave mt-3 block text-center">
-                *Válido para señas confirmadas en junio de 2026.
+                *Válido para señas confirmadas en {meses.mesActual} de {meses.anio}.
               </span>
             </div>
           </div>

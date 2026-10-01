@@ -1,4 +1,22 @@
-/** @type {import('next').Config} */
+const isDev = process.env.NODE_ENV !== 'production';
+const supabaseHost = 'https://zwojxvbckhhzxhdlblfr.supabase.co';
+
+// 'unsafe-eval' solo en desarrollo (Next lo necesita para recargar en caliente); en producción no se permite.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://connect.facebook.net https://vercel.live`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' blob: data: https://www.facebook.com ${supabaseHost}`,
+  "font-src 'self' data:",
+  `connect-src 'self' ${supabaseHost} https://connect.facebook.net https://www.facebook.com https://vitals.vercel-insights.com`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
+].join('; ');
+
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -37,8 +55,12 @@ const nextConfig = {
             value: 'same-origin',
           },
           {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+          },
+          {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://vercel.live; connect-src 'self' https://zwojxvbckhhzxhdlblfr.supabase.co https://connect.facebook.net https://www.facebook.com https://vitals.vercel-insights.com; img-src 'self' blob: data: https://www.facebook.com https://zwojxvbckhhzxhdlblfr.supabase.co; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none';",
+            value: csp,
           },
         ],
       },

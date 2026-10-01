@@ -1,432 +1,519 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { cotizacionSchema, CotizacionInput } from '@/lib/validators/cotizacionValidator';
+import { ArrowLeft, ArrowRight, Check, MessageCircle, X } from 'lucide-react';
+import {
+  cotizacionSchema,
+  CotizacionInput,
+  hoyArgentina,
+} from '@/lib/validators/cotizacionValidator';
+import type { Producto } from '@/lib/productos';
 import Button from './ui/Button';
 import { Input } from './ui/Input';
 
 interface ModalCotizacionProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (urlWhatsapp: string) => void;
-  selectedProducts?: string[];
+  productos: Producto[];
+  selectedProducts: string[];
+  onSelectionChange: (nombres: string[]) => void;
+}
+
+const TIPOS_EVENTO = [
+  'Casamiento',
+  'Cumpleaños',
+  'Cumpleaños de 15',
+  'Aniversario',
+  'Reunión familiar',
+  'Bautismo / Comunión',
+  'Otro',
+];
+
+const PASOS = ['Tu evento', 'Qué necesitás', 'Tus datos'];
+
+const CAMPOS_PASO_1: (keyof CotizacionInput)[] = ['tipoEvento', 'fechaEvento', 'cantidadInvitados'];
+
+interface Exito {
+  url: string;
 }
 
 export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
   isOpen,
   onClose,
-  onSuccess,
-  selectedProducts = [],
+  productos,
+  selectedProducts,
+  onSelectionChange,
 }) => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    trigger,
     reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
   } = useForm<CotizacionInput>({
     resolver: zodResolver(cotizacionSchema),
+    mode: 'onTouched',
+    defaultValues: { tipoEvento: '', mensaje: '' },
   });
 
-  const [mobiliario, setMobiliario] = useState<string[]>([]);
-  const [vajillaItems, setVajillaItems] = useState<string[]>([]);
-  const [accesoriosItems, setAccesoriosItems] = useState<string[]>([]);
-  // Marca el tiempo de entrada del usuario al abrir el modal
-  const tiempoEntrada = Date.now();
+  const [paso, setPaso] = useState(0);
+  const [errorEnvio, setErrorEnvio] = useState('');
+  const [errorItems, setErrorItems] = useState(false);
+  const [exito, setExito] = useState<Exito | null>(null);
 
-  // Prevenir scroll de la página cuando el modal está abierto
+  const tiempoEntrada = useRef(0);
+  const trampaRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cuerpoRef = useRef<HTMLDivElement>(null);
+
+  const tipoEvento = watch('tipoEvento');
+
+  // Categorías en el orden en que aparecen en el catálogo
+  const categorias = useMemo(() => {
+    const mapa = new Map<string, Producto[]>();
+    productos.forEach((p) => {
+      const lista = mapa.get(p.categoria) ?? [];
+      lista.push(p);
+      mapa.set(p.categoria, lista);
+    });
+    return Array.from(mapa.entries());
+  }, [productos]);
+
+  // Al abrir: bloquear scroll de fondo, marcar el inicio y darle foco al diálogo
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
+    if (!isOpen) return;
+    tiempoEntrada.current = Date.now();
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
-  // Sincronizar selección del catálogo
+  // Cada cambio de paso vuelve al inicio del contenido
   useEffect(() => {
-    if (isOpen && selectedProducts && selectedProducts.length > 0) {
-      const initialMobiliario = new Set<string>();
-      const initialVajilla = new Set<string>();
-      const initialAccesorios = new Set<string>();
+    cuerpoRef.current?.scrollTo({ top: 0 });
+  }, [paso, exito]);
 
-      selectedProducts.forEach((prod) => {
-        if (prod.toLowerCase().includes('silla')) {
-          initialMobiliario.add('Sillas');
-        }
-        if (prod.toLowerCase().includes('tablón') || prod.toLowerCase().includes('tablon')) {
-          initialMobiliario.add('Tablones');
-        }
-        if (prod.toLowerCase().includes('caballete')) {
-          initialMobiliario.add('Caballetes');
-        }
-        if (prod.toLowerCase().includes('mantelería') || prod.toLowerCase().includes('manteleria')) {
-          initialMobiliario.add('Mantelería');
-        }
-        
-        // Vajilla items mapping
-        if (prod === 'Plato principal') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Plato principal');
-        }
-        if (prod === 'Plato de postre') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Plato de postre');
-        }
-        if (prod === 'Taza de té') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Taza de té + platillo');
-        }
-        if (prod === 'Platillo para taza de té') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Taza de té + platillo');
-        }
-        if (prod === 'Tetera de loza') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Tetera de loza');
-        }
-        if (prod === 'Cuchillo de mesa') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Tenedor + cuchillo de mesa');
-        }
-        if (prod === 'Tenedor de mesa') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Tenedor + cuchillo de mesa');
-        }
-        if (prod === 'Cuchara de postre') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Cuchara de postre');
-        }
-        if (prod === 'Cucharita de té') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Cucharita de té');
-        }
-        if (prod === 'Copa de vino / agua') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Copa de vino');
-          initialVajilla.add('Copa de agua');
-        }
-        if (prod === 'Copa de champagne') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Copa de champán');
-        }
-        if (prod === 'Servilletas de tela') {
-          initialMobiliario.add('Vajilla Completa');
-          initialVajilla.add('Servilleta de tela');
-        }
+  useEffect(() => {
+    if (selectedProducts.length > 0) setErrorItems(false);
+  }, [selectedProducts]);
 
-        // Accesorios mapping — nombres exactos del catálogo (lib/productos.ts)
-        if (prod === 'Bandeja de mozo') {
-          initialMobiliario.add('Accesorios');
-          initialAccesorios.add('Bandeja de mozo');
-        }
-        if (prod === 'Hielera de plástico') {
-          initialMobiliario.add('Accesorios');
-          initialAccesorios.add('Hielera de plástico + pinza');
-        }
-        if (prod === 'Frapera de plastico') {
-          initialMobiliario.add('Accesorios');
-          initialAccesorios.add('Frapera de plastico');
-        }
-        if (prod === 'Azucarera') {
-          initialMobiliario.add('Accesorios');
-          initialAccesorios.add('Azucarera');
-        }
-        if (prod === 'Bandeja de mesa') {
-          initialMobiliario.add('Accesorios');
-          initialAccesorios.add('Bandeja de mesa');
-        }
-      });
+  const alternarProducto = (nombre: string) => {
+    onSelectionChange(
+      selectedProducts.includes(nombre)
+        ? selectedProducts.filter((n) => n !== nombre)
+        : [...selectedProducts, nombre]
+    );
+  };
 
-      setMobiliario(Array.from(initialMobiliario));
-      setVajillaItems(Array.from(initialVajilla));
-      setAccesoriosItems(Array.from(initialAccesorios));
+  const alternarCategoria = (lista: Producto[]) => {
+    const nombres = lista.map((p) => p.nombre);
+    const todos = nombres.every((n) => selectedProducts.includes(n));
+    onSelectionChange(
+      todos
+        ? selectedProducts.filter((n) => !nombres.includes(n))
+        : Array.from(new Set([...selectedProducts, ...nombres]))
+    );
+  };
+
+  const siguiente = async () => {
+    if (paso === 0) {
+      if (await trigger(CAMPOS_PASO_1)) setPaso(1);
+      return;
     }
-  }, [isOpen, selectedProducts]);
-
-  const toggleMobiliario = (item: string) => {
-    setMobiliario((prev) => {
-      const updated = prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item];
-      // Limpiar sub-apartados si se desmarca
-      if (item === 'Vajilla Completa' && prev.includes('Vajilla Completa')) {
-        setVajillaItems([]);
+    if (paso === 1) {
+      if (selectedProducts.length === 0) {
+        setErrorItems(true);
+        return;
       }
-      if (item === 'Accesorios' && prev.includes('Accesorios')) {
-        setAccesoriosItems([]);
-      }
-      return updated;
-    });
+      setPaso(2);
+    }
   };
 
-  const toggleVajillaItem = (item: string) => {
-    setVajillaItems((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-    );
-  };
-
-  const toggleAccesoriosItem = (item: string) => {
-    setAccesoriosItems((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-    );
+  const cerrar = () => {
+    // Si ya se envió, se limpia todo para una próxima cotización
+    if (exito) {
+      reset({ tipoEvento: '', mensaje: '' });
+      onSelectionChange([]);
+      setPaso(0);
+      setExito(null);
+    }
+    setErrorEnvio('');
+    onClose();
   };
 
   const onSubmit = async (data: CotizacionInput) => {
-    if (mobiliario.length === 0) {
-      alert('Por favor, seleccioná al menos un artículo.');
+    setErrorEnvio('');
+    if (selectedProducts.length === 0) {
+      setPaso(1);
+      setErrorItems(true);
       return;
     }
 
-    // Calcula el tiempo que el usuario pasó en el formulario
-    const tiempoPermanenciaSegundos = Math.round((Date.now() - tiempoEntrada) / 1000);
-    const payload = {
-      ...data,
-      mobiliarioSolicitado: mobiliario,
-      vajillaItems,
-      accesoriosItems,
-      // Duración en segundos que el usuario estuvo en el formulario
-      tiempo_permanencia_segundos: tiempoPermanenciaSegundos,
-    };
-
-    let whatsappUrl = '';
     try {
       const res = await fetch('/api/cotizacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...data,
+          items: selectedProducts,
+          website: trampaRef.current?.value ?? '',
+          tiempoMs: Date.now() - tiempoEntrada.current,
+        }),
       });
-      const result = await res.json();
-      if (result.success && result.urlWhatsapp) {
-        whatsappUrl = result.urlWhatsapp;
-        reset();
-        setMobiliario([]);
-        setVajillaItems([]);
-        setAccesoriosItems([]);
-        onClose();
-      } else {
-        alert('Error al enviar la cotización. Por favor, intente nuevamente.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error de red. Verifique su conexión.');
-    }
+      const resultado = await res.json().catch(() => null);
 
-    if (whatsappUrl) {
+      if (!res.ok || !resultado?.success || !resultado?.urlWhatsapp) {
+        setErrorEnvio(resultado?.error || 'No pudimos enviar tu consulta. Intentá de nuevo.');
+        return;
+      }
+
+      const url: string = resultado.urlWhatsapp;
+      setExito({ url });
+
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead');
       }
-      if (onSuccess) {
-        onSuccess(whatsappUrl);
-      } else {
-        setTimeout(() => {
-          window.location.href = whatsappUrl;
-        }, 100);
-      }
+
+      // En celular se abre la app directamente; en computadora, una pestaña nueva
+      const esCelular = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setTimeout(() => {
+        if (esCelular) {
+          window.location.assign(url);
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }, 700);
+    } catch (e) {
+      console.error(e);
+      setErrorEnvio('No hay conexión. Revisá tu internet e intentá de nuevo.');
     }
   };
 
   if (!isOpen) return null;
 
+  const claseCampo = (conError: boolean) =>
+    `w-full min-h-[48px] bg-crema-base text-negro-carbon border ${
+      conError ? 'border-red-600' : 'border-gris-borde focus:border-negro-carbon'
+    } px-4 py-3 outline-none text-base sm:text-sm`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-hidden" onClick={onClose}>
-      <div className="bg-blanco-puro rounded-none w-full max-w-lg max-w-full mx-4 p-6 relative max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-gris-borde" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-negro-carbon hover:text-gris-suave font-bold text-lg"
-          aria-label="Cerrar"
-        >
-          ✕
-        </button>
-        <h2 className="font-playfair text-2xl font-bold text-negro-carbon mb-2">
-          Contanos sobre tu evento
-        </h2>
-        <p className="font-manrope text-sm text-gris-suave mb-6">
-          Te respondemos por WhatsApp en minutos
-        </p>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input label="Nombre completo *" error={errors.nombre?.message} {...register('nombre')} />
-          <Input label="Fecha del evento *" type="date" error={errors.fechaEvento?.message} {...register('fechaEvento')} />
-          
-          <div className="space-y-2">
-            <label htmlFor="tipo-evento-select" className="font-manrope text-xs font-semibold text-negro-carbon">Tipo de evento *</label>
-            <select
-              id="tipo-evento-select"
-              className={`w-full border ${errors.tipoEvento ? 'border-red-500' : 'border-gris-borde'} p-3 focus:outline-none bg-blanco-puro font-manrope text-sm text-negro-carbon`}
-              {...register('tipoEvento')}
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) cerrar();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-cotizacion"
+        className="bg-blanco-puro w-full h-dvh sm:h-auto sm:max-h-[90vh] sm:max-w-lg flex flex-col sm:border sm:border-gris-borde shadow-2xl outline-none"
+      >
+        {/* Encabezado */}
+        <div className="shrink-0 px-5 pt-5 pb-4 border-b border-gris-borde">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="titulo-cotizacion" className="font-playfair text-2xl font-bold text-negro-carbon">
+                {exito ? '¡Consulta lista!' : 'Contanos sobre tu evento'}
+              </h2>
+              <p className="font-manrope text-sm text-gris-suave mt-1">
+                {exito
+                  ? 'Ya podés enviarla por WhatsApp'
+                  : `Paso ${paso + 1} de ${PASOS.length} · ${PASOS[paso]}`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={cerrar}
+              className="-mr-2 -mt-2 h-11 w-11 shrink-0 flex items-center justify-center text-negro-carbon hover:text-gris-suave"
+              aria-label="Cerrar"
             >
-              <option value="">Seleccioná una opción</option>
-              <option value="Casamiento">Casamiento</option>
-              <option value="Cumpleaños">Cumpleaños</option>
-              <option value="Cumpleaños de 15">Cumpleaños de 15</option>
-              <option value="Aniversario">Aniversario</option>
-              <option value="Reunión familiar">Reunión familiar</option>
-              <option value="Bautismo / Comunión">Bautismo / Comunión</option>
-              <option value="Otro">Otro</option>
-            </select>
-            {errors.tipoEvento && (
-              <p className="text-red-500 text-xs mt-1">{errors.tipoEvento.message}</p>
-            )}
+              <X size={22} />
+            </button>
           </div>
-          
-          <Input label="Cantidad de invitados *" type="number" error={errors.cantidadInvitados?.message} {...register('cantidadInvitados', { valueAsNumber: true })} />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Dirección" error={errors.direccion?.message} {...register('direccion')} />
-            <Input label="Número" error={errors.numero?.message} {...register('numero')} />
-          </div>
-
-          <div className="space-y-2">
-            <span className="font-manrope text-xs font-semibold text-negro-carbon block border-b border-gris-borde pb-1">Mobiliario que necesitás *</span>
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {[
-                'Sillas',
-                'Tablones',
-                'Caballetes',
-                'Vajilla Completa',
-                'Mantelería',
-                'Accesorios',
-              ].map((item) => (
-                <label key={item} className="flex items-center space-x-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={mobiliario.includes(item)}
-                    onChange={() => toggleMobiliario(item)}
-                    className="h-4 w-4 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                  />
-                  <span className="font-manrope text-sm text-negro-carbon">{item}</span>
-                </label>
+          {!exito && (
+            <div className="flex gap-1.5 mt-4" aria-hidden="true">
+              {PASOS.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 transition-colors duration-300 ${i <= paso ? 'bg-negro-carbon' : 'bg-gris-borde'}`}
+                />
               ))}
             </div>
-            {mobiliario.length === 0 && (
-              <p className="text-red-500 text-xs mt-1">Seleccioná al menos una opción.</p>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Sub-apartado Vajilla Completa */}
-          {mobiliario.includes('Vajilla Completa') && (
-            <div className="ml-4 mt-2 p-4 border-l-2 border-acento-amarillo bg-crema-base/20 space-y-4">
-              <p className="font-manrope font-bold text-xs text-negro-carbon">¿Qué vajilla completa necesitás?</p>
-              
-              <div>
-                <p className="font-manrope text-[10px] font-bold text-gris-suave uppercase tracking-wider mb-2">Loza</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Plato principal', 'Plato de postre', 'Taza de té + platillo', 'Tetera de loza'].map((subItem) => (
-                    <label key={subItem} className="flex items-center space-x-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={vajillaItems.includes(subItem)}
-                        onChange={() => toggleVajillaItem(subItem)}
-                        className="h-3.5 w-3.5 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                      />
-                      <span className="font-manrope text-xs text-negro-carbon">{subItem}</span>
-                    </label>
-                  ))}
-                </div>
+        {/* Contenido */}
+        <div ref={cuerpoRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+          {exito ? (
+            <div className="text-center py-8">
+              <div className="mx-auto w-16 h-16 bg-negro-carbon text-acento-amarillo flex items-center justify-center mb-6">
+                <Check size={32} />
               </div>
-
-              <div>
-                <p className="font-manrope text-[10px] font-bold text-gris-suave uppercase tracking-wider mb-2">Cubiertos</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Tenedor + cuchillo de mesa', 'Cuchara de postre', 'Cucharita de té'].map((subItem) => (
-                    <label key={subItem} className="flex items-center space-x-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={vajillaItems.includes(subItem)}
-                        onChange={() => toggleVajillaItem(subItem)}
-                        className="h-3.5 w-3.5 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                      />
-                      <span className="font-manrope text-xs text-negro-carbon">{subItem}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="font-manrope text-[10px] font-bold text-gris-suave uppercase tracking-wider mb-2">Cristalería</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Copa de vino', 'Copa de agua', 'Copa de champán'].map((subItem) => (
-                    <label key={subItem} className="flex items-center space-x-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={vajillaItems.includes(subItem)}
-                        onChange={() => toggleVajillaItem(subItem)}
-                        className="h-3.5 w-3.5 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                      />
-                      <span className="font-manrope text-xs text-negro-carbon">{subItem}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="font-manrope text-[10px] font-bold text-gris-suave uppercase tracking-wider mb-2">Otros</p>
-                <label className="flex items-center space-x-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={vajillaItems.includes('Servilleta de tela')}
-                    onChange={() => toggleVajillaItem('Servilleta de tela')}
-                    className="h-3.5 w-3.5 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                  />
-                  <span className="font-manrope text-xs text-negro-carbon">Servilleta de tela</span>
+              <p className="font-manrope text-sm text-gris-suave mb-8 max-w-xs mx-auto leading-relaxed">
+                Se abre WhatsApp con tu consulta ya escrita. Solo tenés que tocar <strong>Enviar</strong>.
+                Si no se abrió, usá el botón.
+              </p>
+              <a
+                href={exito.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full min-h-[52px] bg-negro-carbon text-crema-base border border-negro-carbon font-manrope text-sm font-semibold uppercase tracking-cta"
+              >
+                <MessageCircle size={18} /> Abrir WhatsApp
+              </a>
+            </div>
+          ) : (
+            <form
+              id="form-cotizacion"
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+              onKeyDown={(e) => {
+                // "Ir" del teclado del celular: avanza de paso en lugar de enviar a medias
+                if (e.key === 'Enter' && paso < PASOS.length - 1 && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                  siguiente();
+                }
+              }}
+            >
+              {/* Campo trampa anti-bots: invisible para personas */}
+              <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+                <label>
+                  No completar
+                  <input ref={trampaRef} type="text" name="website" tabIndex={-1} autoComplete="off" />
                 </label>
               </div>
-            </div>
-          )}
 
-          {/* Sub-apartado Accesorios */}
-          {mobiliario.includes('Accesorios') && (
-            <div className="ml-4 mt-2 p-4 border-l-2 border-acento-amarillo bg-crema-base/20 space-y-3">
-              <p className="font-manrope font-bold text-xs text-negro-carbon">¿Qué accesorios necesitás?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  'Azucarera',
-                  'Bandeja de mesa',
-                  'Frapera de plastico',
-                  'Hielera de plástico + pinza',
-                  'Bandeja de mozo',
-                ].map((subItem) => (
-                  <label key={subItem} className="flex items-center space-x-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={accesoriosItems.includes(subItem)}
-                      onChange={() => toggleAccesoriosItem(subItem)}
-                      className="h-3.5 w-3.5 text-negro-carbon border-gray-300 rounded-none accent-negro-carbon"
-                    />
-                    <span className="font-manrope text-xs text-negro-carbon">{subItem}</span>
-                  </label>
-                ))}
+              {/* PASO 1 — Evento */}
+              <div className={paso === 0 ? 'block' : 'hidden'}>
+                <fieldset className="mb-5">
+                  <legend className="block text-xs font-semibold uppercase tracking-wider text-negro-carbon mb-2">
+                    Tipo de evento *
+                  </legend>
+                  <input type="hidden" {...register('tipoEvento')} />
+                  <div className="grid grid-cols-2 gap-2">
+                    {TIPOS_EVENTO.map((tipo) => {
+                      const activo = tipoEvento === tipo;
+                      return (
+                        <button
+                          key={tipo}
+                          type="button"
+                          aria-pressed={activo}
+                          onClick={() => setValue('tipoEvento', tipo, { shouldValidate: true, shouldDirty: true })}
+                          className={`min-h-[48px] px-3 py-2 border font-manrope text-sm text-left transition-colors ${
+                            activo
+                              ? 'bg-negro-carbon text-crema-base border-negro-carbon font-semibold'
+                              : 'bg-blanco-puro text-negro-carbon border-gris-borde active:border-negro-carbon'
+                          }`}
+                        >
+                          {tipo}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.tipoEvento && (
+                    <p role="alert" className="mt-2 text-xs text-red-600 font-medium">{errors.tipoEvento.message}</p>
+                  )}
+                </fieldset>
+
+                <Input
+                  label="Fecha del evento *"
+                  type="date"
+                  min={hoyArgentina()}
+                  error={errors.fechaEvento?.message}
+                  {...register('fechaEvento')}
+                />
+
+                <Input
+                  label="Cantidad de invitados *"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="Ej: 80"
+                  error={errors.cantidadInvitados?.message}
+                  {...register('cantidadInvitados', {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 7);
+                    },
+                  })}
+                />
               </div>
-            </div>
-          )}
 
-          <div className="space-y-2">
-            <label htmlFor="mensaje-adicional" className="font-manrope text-xs font-semibold text-negro-carbon">Mensaje adicional</label>
-            <textarea
-              id="mensaje-adicional"
-              className="w-full border border-gris-borde p-3 focus:outline-none resize-none font-manrope text-sm text-negro-carbon"
-              rows={3}
-              maxLength={500}
-              {...register('mensaje')}
-            />
-            {errors.mensaje && (
-              <p className="text-red-500 text-xs mt-1">{errors.mensaje.message}</p>
+              {/* PASO 2 — Artículos */}
+              <div className={paso === 1 ? 'block' : 'hidden'}>
+                <p className="font-manrope text-sm text-gris-suave mb-5 leading-relaxed">
+                  Tocá lo que necesitás. Podés elegir una categoría completa con <strong>Elegir todo</strong>.
+                </p>
+                <div className="space-y-6">
+                  {categorias.map(([categoria, lista]) => {
+                    const elegidos = lista.filter((p) => selectedProducts.includes(p.nombre)).length;
+                    const todos = elegidos === lista.length;
+                    return (
+                      <section key={categoria} aria-label={categoria}>
+                        <div className="flex items-center justify-between mb-2 border-b border-gris-borde pb-1">
+                          <h3 className="font-manrope text-xs font-bold uppercase tracking-wider text-negro-carbon">
+                            {categoria}
+                            {elegidos > 0 && <span className="ml-2 text-gris-suave font-semibold">({elegidos})</span>}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => alternarCategoria(lista)}
+                            className="min-h-[44px] pl-3 font-manrope text-xs font-semibold underline underline-offset-2 text-negro-carbon"
+                          >
+                            {todos ? 'Quitar todo' : 'Elegir todo'}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+                          {lista.map((p) => {
+                            const activo = selectedProducts.includes(p.nombre);
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                aria-pressed={activo}
+                                onClick={() => alternarProducto(p.nombre)}
+                                className={`min-h-[48px] px-3 py-2 border flex items-center gap-2 text-left font-manrope text-sm transition-colors ${
+                                  activo
+                                    ? 'bg-negro-carbon text-crema-base border-negro-carbon font-semibold'
+                                    : 'bg-blanco-puro text-negro-carbon border-gris-borde active:border-negro-carbon'
+                                }`}
+                              >
+                                <span
+                                  className={`h-5 w-5 shrink-0 flex items-center justify-center border ${
+                                    activo ? 'bg-acento-amarillo border-acento-amarillo text-negro-carbon' : 'border-gris-borde'
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  {activo && <Check size={14} strokeWidth={3} />}
+                                </span>
+                                <span className="leading-tight">{p.nombre}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+                {errorItems && (
+                  <p role="alert" className="mt-4 text-sm text-red-600 font-medium">
+                    Elegí al menos un artículo para continuar.
+                  </p>
+                )}
+              </div>
+
+              {/* PASO 3 — Datos */}
+              <div className={paso === 2 ? 'block' : 'hidden'}>
+                <Input
+                  label="Nombre y apellido *"
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  error={errors.nombre?.message}
+                  {...register('nombre')}
+                />
+                <Input
+                  label="Tu teléfono *"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="Ej: 342 506 8365"
+                  error={errors.numero?.message}
+                  {...register('numero')}
+                />
+                <Input
+                  label="Dirección o zona del evento *"
+                  autoComplete="street-address"
+                  placeholder="Calle, número y barrio"
+                  error={errors.direccion?.message}
+                  {...register('direccion')}
+                />
+                <div className="mb-2">
+                  <label
+                    htmlFor="mensaje-adicional"
+                    className="block text-xs font-semibold uppercase tracking-wider text-negro-carbon mb-2"
+                  >
+                    Algo más que quieras contarnos
+                  </label>
+                  <textarea
+                    id="mensaje-adicional"
+                    rows={3}
+                    maxLength={500}
+                    className={`${claseCampo(Boolean(errors.mensaje))} resize-none`}
+                    {...register('mensaje')}
+                  />
+                  {errors.mensaje && (
+                    <p role="alert" className="mt-1 text-xs text-red-600 font-medium">{errors.mensaje.message}</p>
+                  )}
+                </div>
+                <p className="font-manrope text-xs text-gris-suave leading-relaxed">
+                  Al enviar, se abre WhatsApp con tu consulta lista para mandar.
+                </p>
+                {errorEnvio && (
+                  <p role="alert" className="mt-4 p-3 border border-red-600 text-sm text-red-700 font-medium">
+                    {errorEnvio}
+                  </p>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Pie fijo con los botones */}
+        {!exito && (
+          <div className="shrink-0 border-t border-gris-borde px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-blanco-puro">
+            {paso === 1 && (
+              <p className="font-manrope text-xs text-gris-suave mb-2 text-center">
+                {selectedProducts.length === 0
+                  ? 'Todavía no elegiste artículos'
+                  : `${selectedProducts.length} ${selectedProducts.length === 1 ? 'artículo elegido' : 'artículos elegidos'}`}
+              </p>
             )}
+            <div className="flex gap-3">
+              {paso > 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setPaso(paso - 1)}
+                  className="min-h-[52px] px-4"
+                  aria-label="Volver al paso anterior"
+                >
+                  <ArrowLeft size={18} />
+                </Button>
+              )}
+              {paso < PASOS.length - 1 ? (
+                <Button type="button" variant="primary" onClick={siguiente} className="flex-1 min-h-[52px] gap-2">
+                  Siguiente <ArrowRight size={16} />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  form="form-cotizacion"
+                  variant="primary"
+                  loading={isSubmitting}
+                  className="flex-1 min-h-[52px] gap-2"
+                >
+                  <MessageCircle size={18} /> Enviar por WhatsApp
+                </Button>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-gris-suave mt-2 font-manrope">
-            Al enviar, abriremos WhatsApp con tu consulta lista para mandar.
-          </p>
-          <Button
-            type="submit"
-            variant="primary"
-            size="full"
-            disabled={isSubmitting || mobiliario.length === 0}
-          >
-            Enviar por WhatsApp
-          </Button>
-        </form>
+        )}
       </div>
     </div>
   );

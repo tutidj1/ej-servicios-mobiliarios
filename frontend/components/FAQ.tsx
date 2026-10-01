@@ -3,29 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-
-const faqs = [
-  {
-    question: '¿Con cuánta anticipación debo hacer la reserva?',
-    answer:
-      'Puede ser hasta un día antes la reserva; si tenemos disponibilidad, se puede hacer el alquiler.',
-  },
-  {
-    question: '¿Hay cantidad mínima o máxima para alquilar?',
-    answer:
-      'No, podés contratar desde pocas piezas hasta montajes grandes según tu necesidad.',
-  },
-  {
-    question: '¿Qué ocurre si se rompe o se pierde una pieza?',
-    answer:
-      'Al finalizar el evento se hace un conteo de todo lo que se alquiló y en caso de rotura o pérdida se cobra el precio del material o el producto del mismo día de la compra.',
-  },
-  {
-    question: '¿Pueden entregarme y retirar el pedido a domicilio?',
-    answer:
-      'Sí, podés retirar por tu cuenta o solicitar despacho y retiro a domicilio. El costo varía según la distancia al lugar del evento.',
-  },
-];
+import { faqs } from '@/lib/faq';
 
 const FAQ: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);

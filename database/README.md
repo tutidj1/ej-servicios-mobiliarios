@@ -23,3 +23,20 @@ Este directorio contiene los archivos necesarios para configurar tu base de dato
    - Copia la **Project URL** (ejemplo: `https://xxxx.supabase.co`) y la **anon public API key** (ejemplo: `eyJxxx`).
    - Ve a la sección **Project Settings** > **API** o **Database** para obtener la clave secreta `service_role` (usada de forma segura únicamente del lado del servidor de Next.js).
    - Completa el archivo `.env.local` en la carpeta `frontend/` con estos valores reales.
+
+## Actualización 0003 — Panel admin, promo automática y cotizaciones completas
+
+Ejecutar **una sola vez** en **SQL Editor**: [`migrations/0003_admin_promo_cotizaciones.sql`](./migrations/0003_admin_promo_cotizaciones.sql) (es idempotente).
+
+Qué hace:
+- Crea la tabla `promo_config` (un único registro) que controla el banner de promoción.
+- Agrega a `productos`: `etiqueta_whatsapp` y `cantidad_segun_invitados`. Las categorías son libres: escribís una nueva y aparece sola en la web.
+- Agrega a `cotizaciones`: teléfono, código, items por categoría, estado, notas.
+- Crea el bucket público `productos` para subir fotos desde el panel.
+- Deja las políticas RLS: lectura pública de productos/promo y escritura **solo** para la cuenta administradora.
+
+### Panel de administración
+Entrá a `https://tusitio.com/admin` con la cuenta administradora (email y contraseña de Supabase Auth).
+Desde ahí podés: ver y gestionar cotizaciones (estado, WhatsApp/llamar al cliente), agregar/editar/ocultar/ordenar productos (con foto) y editar la promo.
+El ingreso es con email y contraseña de Supabase Auth (nunca van escritos en el código).
+Los cambios se reflejan en la web en menos de 1 minuto.

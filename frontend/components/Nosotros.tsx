@@ -3,10 +3,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import type { Banner } from '@/lib/banners';
 
-export const Nosotros: React.FC = () => {
+export const Nosotros: React.FC<{ banner: Banner }> = ({ banner }) => {
   const stats = [
-    { value: '100', label: 'Personas de capacidad' },
+    { value: '+40', label: 'Eventos equipados' },
     { value: '100%', label: 'Flete incluido' },
     { value: '0', label: 'Lavado a tu cargo' },
   ];
@@ -33,8 +34,8 @@ export const Nosotros: React.FC = () => {
             
             <p className="font-manrope text-sm leading-relaxed text-gris-suave mb-10 max-w-xl">
               <strong>EJ Servicios Mobiliarios</strong> es un proyecto familiar que nace en <strong>2026</strong> en Santa Fe Capital.
-              Detrás de cada alquiler hay una atención personal, cercana y honesta. Contamos con stock propio para eventos
-              de hasta 100 personas: sillas, tablones, vajilla completa y mantelería. Nuestro compromiso es simple:
+              Detrás de cada alquiler hay una atención personal, cercana y honesta. Contamos con stock propio para equipar
+              eventos de cualquier tamaño: sillas, tablones, vajilla completa y mantelería. Nuestro compromiso es simple:
               que vos solo te ocupes de disfrutar tu evento.
             </p>
 
@@ -62,8 +63,8 @@ export const Nosotros: React.FC = () => {
             className="lg:col-span-5 h-[480px] w-full relative flex items-center justify-center"
           >
             <Image
-              src="/images/emprendimiento-familiar.jpg"
-              alt="Vajilla EJ Servicios Mobiliarios"
+              src={banner.imagen_url}
+              alt={banner.alt}
               width={600}
               height={800}
               className="rounded-lg shadow-xl object-cover h-full w-full"
