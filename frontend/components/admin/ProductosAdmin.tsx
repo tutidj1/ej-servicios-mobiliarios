@@ -39,7 +39,7 @@ const VACIO: FilaProducto = {
   activo: true,
   orden: 0,
   etiqueta_whatsapp: '',
-  cantidad_segun_invitados: false,
+  cantidad_segun_invitados: true,
 };
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];

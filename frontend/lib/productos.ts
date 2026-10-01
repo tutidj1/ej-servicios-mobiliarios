@@ -38,6 +38,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 2,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'mob-3',
@@ -48,6 +49,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 20,
     activo: true,
     orden: 3,
+    cantidad_segun_invitados: true,
   },
 
   // VAJILLA
@@ -60,6 +62,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 4,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'vaj-2',
@@ -70,6 +73,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 5,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'vaj-3',
@@ -80,6 +84,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 6,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'vaj-4',
@@ -90,6 +95,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 7,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'vaj-5',
@@ -100,6 +106,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 8,
+    cantidad_segun_invitados: true,
   },
 
   // CUBIERTOS
@@ -112,6 +119,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 9,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'cub-2',
@@ -122,6 +130,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 10,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'cub-3',
@@ -132,6 +141,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 11,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'cub-4',
@@ -142,6 +152,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 12,
+    cantidad_segun_invitados: true,
   },
 
   // CRISTALERÍA
@@ -154,6 +165,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 13,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'cri-2',
@@ -164,6 +176,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 14,
+    cantidad_segun_invitados: true,
   },
 
   // MANTELERÍA
@@ -176,6 +189,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 15,
     activo: true,
     orden: 15,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'man-2',
@@ -186,6 +200,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 15,
     activo: true,
     orden: 16,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'man-3',
@@ -196,6 +211,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 100,
     activo: true,
     orden: 17,
+    cantidad_segun_invitados: true,
   },
 
   // ACCESORIOS
@@ -208,6 +224,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 5,
     activo: true,
     orden: 18,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'acc-2',
@@ -218,6 +235,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 19,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'acc-3',
@@ -228,6 +246,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 20,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'acc-4',
@@ -238,6 +257,7 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 21,
+    cantidad_segun_invitados: true,
   },
   {
     id: 'acc-5',
@@ -248,5 +268,6 @@ export const productosEstaticos: Producto[] = [
     stock_disponible: 10,
     activo: true,
     orden: 22,
+    cantidad_segun_invitados: true,
   },
 ];
