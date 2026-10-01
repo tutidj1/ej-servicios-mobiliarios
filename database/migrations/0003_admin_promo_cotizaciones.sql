@@ -38,6 +38,17 @@ WHERE descripcion LIKE '%Capacidad hasta 100 personas.%';
 -- =========================================================================
 -- 2. COTIZACIONES: guardar todo lo que pide el cliente
 -- =========================================================================
+-- Tu tabla real usaba "creado_en"; se unifica a created_at/updated_at (el resto del código usa esos nombres)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cotizaciones' AND column_name='creado_en')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='cotizaciones' AND column_name='created_at') THEN
+    ALTER TABLE cotizaciones RENAME COLUMN creado_en TO created_at;
+  END IF;
+END $$;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS telefono VARCHAR(30);
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS codigo VARCHAR(8);
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS items JSONB;          -- { "Vajilla": ["Plato principal", ...], ... }
