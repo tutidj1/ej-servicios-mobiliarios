@@ -42,7 +42,7 @@ import { Mensaje } from '../ui';
 import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import { CampoFecha } from './Calendarios';
 import { type Locador, cargarLogo, generarContratoPdf, nombreArchivoContrato } from '@/lib/gestion/contratoPdf';
-import { compartirArchivo, descargarArchivo, nombreArchivoPresupuesto, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
+import { compartirArchivo, descargarArchivo, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -427,65 +427,6 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   });
   const sinAgregar = items.filter((i) => i.activo && !lineas.some((l) => l.item_id === i.id));
 
-  // ---- Presupuesto en PDF (solo lo que se cobra: nada de subalquiler ni costos)
-  const armarPresupuesto = async () => {
-    if (cambios && !(await guardar())) return null;
-    if (faltantes.length) {
-      setAviso({ tipo: 'error', texto: `Todavía no se puede armar el presupuesto. ${faltantes.join(' ')}` });
-      return null;
-    }
-    const filas = lineas
-      .filter((l) => l.cantidad_total > 0)
-      .map((l) => ({ nombre: itemPorId[l.item_id]?.nombre ?? 'Artículo', cantidad: l.cantidad_total, precio: leerMonto(l.precioTexto) ?? 0 }));
-    if (!filas.length) {
-      setAviso({ tipo: 'error', texto: 'Agregá al menos un artículo con cantidad para armar el presupuesto.' });
-      return null;
-    }
-    const datos = {
-      cliente: { nombre: cliente.nombre_apellido, telefono: cliente.telefono },
-      evento: { fecha: evento.fecha_evento, lugar: evento.lugar, personas: evento.cantidad_personas, tipo: evento.tipo_evento },
-      lineas: filas,
-      fleteCobrado: leerMonto(fleteTexto) ?? 0,
-      emitido: hoyArgentina(),
-    };
-    const { generarPresupuestoPdf } = await import('@/lib/gestion/presupuestoPdf');
-    return { blob: await generarPresupuestoPdf(datos), datos, archivo: nombreArchivoPresupuesto(cliente.nombre_apellido, evento.fecha_evento) };
-  };
-
-  const descargarPresupuesto = async () => {
-    setGenerando(true);
-    try {
-      const r = await armarPresupuesto();
-      if (r) {
-        descargarArchivo(r.blob, r.archivo);
-        setAviso({ tipo: 'ok', texto: 'Presupuesto descargado.' });
-      }
-    } catch {
-      setAviso({ tipo: 'error', texto: 'No se pudo armar el PDF. Probá de nuevo.' });
-    }
-    setGenerando(false);
-  };
-
-  const enviarPresupuesto = async () => {
-    setGenerando(true);
-    try {
-      const r = await armarPresupuesto();
-      if (r) {
-        const texto = `Hola ${cliente.nombre_apellido.split(' ')[0]}, te paso el presupuesto para tu evento del ${fechaLarga(evento.fecha_evento).toLowerCase()}. Total: ${pesos(Math.round(totalPresupuesto(r.datos) * 100))}.`;
-        // En el celular se abre el menú de compartir con el PDF adjunto
-        if (!(await compartirArchivo(r.blob, r.archivo, texto))) {
-          // En la compu: se descarga el PDF y se abre el chat del cliente para adjuntarlo
-          descargarArchivo(r.blob, r.archivo);
-          if (cliente.telefono) window.open(`${linkWhatsappCliente(cliente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
-          setAviso({ tipo: 'ok', texto: cliente.telefono ? 'Se descargó el PDF y se abrió el chat del cliente: adjuntalo ahí.' : 'Se descargó el PDF. El cliente no tiene teléfono cargado.' });
-        }
-      }
-    } catch {
-      setAviso({ tipo: 'error', texto: 'No se pudo enviar el presupuesto. Probá de nuevo.' });
-    }
-    setGenerando(false);
-  };
-
   // ---- Contrato en PDF (réplica de la plantilla del Drive). Pide la seña acordada y el DNI antes de armarlo.
   const abrirContrato = (accion: 'descargar' | 'enviar') => {
     let sena = pagos.filter((x) => x.tipo === 'seña').reduce((t, x) => t + Number(x.monto), 0);
@@ -499,7 +440,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const armarContrato = async (sena: number | null, dni: string, datosLocador: Locador) => {
     if (cambios && !(await guardar())) return null;
     if (faltantes.length) {
-      setAviso({ tipo: 'error', texto: `Todavía no se puede armar el contrato. ${faltantes.join(' ')}` });
+      setAviso({ tipo: 'error', texto: `Todavía no se puede armar el documento. ${faltantes.join(' ')}` });
       return null;
     }
     const dniLimpio = dni.trim() || null;
@@ -555,18 +496,18 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         setContratoPanel(null);
         if (accion === 'descargar') {
           descargarArchivo(r.blob, r.archivo);
-          setAviso({ tipo: 'ok', texto: 'Contrato descargado.' });
+          setAviso({ tipo: 'ok', texto: 'Documento descargado.' });
         } else {
-          const texto = `Hola ${cliente.nombre_apellido.split(' ')[0]}, te paso el contrato de alquiler para tu evento del ${fechaLarga(evento.fecha_evento).toLowerCase()}.`;
+          const texto = `Hola ${cliente.nombre_apellido.split(' ')[0]}, te paso el presupuesto y contrato de alquiler para tu evento del ${fechaLarga(evento.fecha_evento).toLowerCase()}.`;
           if (!(await compartirArchivo(r.blob, r.archivo, texto))) {
             descargarArchivo(r.blob, r.archivo);
             if (cliente.telefono) window.open(`${linkWhatsappCliente(cliente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
-            setAviso({ tipo: 'ok', texto: cliente.telefono ? 'Se descargó el contrato y se abrió el chat del cliente: adjuntalo ahí.' : 'Se descargó el contrato. El cliente no tiene teléfono cargado.' });
+            setAviso({ tipo: 'ok', texto: cliente.telefono ? 'Se descargó el PDF y se abrió el chat del cliente: adjuntalo ahí.' : 'Se descargó el PDF. El cliente no tiene teléfono cargado.' });
           }
         }
       }
     } catch {
-      setAviso({ tipo: 'error', texto: 'No se pudo armar el contrato. Probá de nuevo.' });
+      setAviso({ tipo: 'error', texto: 'No se pudo armar el PDF. Probá de nuevo.' });
     }
     setGenerando(false);
   };
@@ -576,7 +517,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       {contratoPanel && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setContratoPanel(null)}>
           <div className="w-full max-w-md space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Datos del contrato">
-            <h2 className="font-playfair text-xl font-bold">Antes de armar el contrato</h2>
+            <h2 className="font-playfair text-xl font-bold">Antes de armar el documento</h2>
             <div>
               <label className={ETIQUETA} htmlFor="ct-sena">Seña acordada ($)</label>
               <input id="ct-sena" className={CAMPO} inputMode="decimal" placeholder="Dejalo vacío si todavía no hay" value={contratoPanel.sena} onChange={(e) => setContratoPanel({ ...contratoPanel, sena: e.target.value })} />
@@ -613,7 +554,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
               </div>
             </details>
             <div className="flex gap-2">
-              <button type="button" disabled={generando} onClick={confirmarContrato} className={`${BTN_PRIMARIO} min-h-[52px] flex-1`}>{generando ? 'Armando…' : contratoPanel.accion === 'enviar' ? 'Armar y enviar' : 'Armar contrato'}</button>
+              <button type="button" disabled={generando} onClick={confirmarContrato} className={`${BTN_PRIMARIO} min-h-[52px] flex-1`}>{generando ? 'Armando…' : contratoPanel.accion === 'enviar' ? 'Armar y enviar' : 'Armar PDF'}</button>
               <button type="button" onClick={() => setContratoPanel(null)} className={BTN_SECUNDARIO}>Cancelar</button>
             </div>
           </div>
@@ -648,10 +589,9 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         )}
         {evento.estado !== 'cancelado' && (
           <div className="space-y-2">
-            <p className="font-manrope text-[11px] font-semibold uppercase tracking-wide text-stone-500">Documentos para el cliente</p>
+            <p className="font-manrope text-[11px] font-semibold uppercase tracking-wide text-stone-500">Documento para el cliente</p>
             {[
-              { nombre: 'Presupuesto', descargar: descargarPresupuesto, enviar: enviarPresupuesto },
-              { nombre: 'Contrato', descargar: () => abrirContrato('descargar'), enviar: () => abrirContrato('enviar') },
+              { nombre: 'Presupuesto y contrato', descargar: () => abrirContrato('descargar'), enviar: () => abrirContrato('enviar') },
             ].map((doc) => (
               <div key={doc.nombre} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
                 <span className="font-manrope text-sm font-semibold text-stone-800">{doc.nombre}</span>
