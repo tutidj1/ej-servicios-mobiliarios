@@ -57,3 +57,23 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--negro-carbon);
 }
+
+/* Fluidez: las secciones largas de más abajo se dibujan recién cuando se acercan a la pantalla */
+main > section:not(#inicio) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
+/* Aparición suave de las tarjetas del catálogo (solo opacidad: no traba) */
+@keyframes ej-aparece {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.ej-aparece {
+  animation: ej-aparece 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ej-aparece { animation: none; }
+  body { scroll-behavior: auto; }
+}

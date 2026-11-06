@@ -30,8 +30,8 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
           fill
           priority
           sizes="100vw"
-          className="object-cover transition-all duration-700"
-          quality={85}
+          className="object-cover"
+          quality={75}
         />
         {/* Overlay elegante de contraste */}
         <div className="absolute inset-0 bg-black/45 backdrop-brightness-[0.8]" />

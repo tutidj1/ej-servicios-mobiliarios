@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import type { Producto } from '@/lib/productos';
 
@@ -29,6 +28,7 @@ function ImagenProducto({ src, alt }: { src: string; alt: string }) {
       sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
       className="object-cover transition-transform duration-500 group-hover:scale-105"
       loading="lazy"
+      quality={70}
       onError={() => setFallo(true)}
     />
   );
@@ -84,19 +84,13 @@ const Catalogo: React.FC<CatalogoProps> = ({ productos, selectedProducts, onTogg
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <AnimatePresence mode="popLayout">
             {filteredProducts.map((producto) => {
               const isSelected = selectedProducts.includes(producto.nombre);
               
               return (
-                <motion.div
+                <div
                   key={producto.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.35 }}
-                  className={`bg-crema-base/30 border group flex flex-col justify-between cursor-pointer transition-all duration-200 ${
+                  className={`ej-aparece bg-crema-base/30 border group flex flex-col justify-between cursor-pointer transition-all duration-200 ${
                     isSelected
                       ? 'border-negro-carbon shadow-md'
                       : 'border-gris-borde hover:border-negro-carbon/40'
@@ -149,10 +143,9 @@ const Catalogo: React.FC<CatalogoProps> = ({ productos, selectedProducts, onTogg
                       {isSelected ? '✓ Seleccionado' : 'Tocar para seleccionar'}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
-          </AnimatePresence>
         </div>
 
         {/* Banner Inferior de Consulta — redirige a WhatsApp */}
