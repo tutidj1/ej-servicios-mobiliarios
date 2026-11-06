@@ -50,10 +50,11 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
         </motion.span>
 
         {/* Título Principal */}
+        {/* Visible desde el HTML inicial (initial={false}): es el elemento más grande de la pantalla en celular
+            y si arranca invisible hasta que carga el JavaScript el LCP se va a varios segundos. */}
         <motion.h1
-          initial={{ opacity: 0, y: 25 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.15 }}
           className="font-playfair text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-blanco-puro mb-6 leading-[1.1]"
         >
           {banner.titulo}
