@@ -9,6 +9,7 @@ import {
   ESTADOS_QUE_RESERVAN,
   type EstadoEvento,
   faltantesParaDocumento,
+  fechaLarga,
   hoyArgentina,
   pesos,
   repartirCantidad,
@@ -39,6 +40,7 @@ import {
 import { AYUDA, type Aviso, BTN_OSCURO, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Mensaje } from '../ui';
 import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
+import { CampoFecha } from './Calendarios';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -52,6 +54,12 @@ interface Disponible {
   /** Máximo pedido por otros presupuestos (no confirmados) en algún día del rango. */
   tentativo: number;
 }
+
+const SIGUIENTE: Partial<Record<EstadoEvento, { estado: EstadoEvento; texto: string }>> = {
+  presupuesto: { estado: 'confirmado', texto: 'Confirmar evento' },
+  confirmado: { estado: 'entregado', texto: 'Marcar como entregado' },
+  entregado: { estado: 'devuelto', texto: 'Marcar como devuelto' },
+};
 
 const CELDA = 'w-full min-h-[44px] rounded-lg border border-stone-300 bg-white px-3 text-base font-manrope tabular-nums outline-none focus:border-emerald-600';
 
@@ -75,6 +83,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [editandoCliente, setEditandoCliente] = useState<BorradorCliente | null>(null);
+  const [pestana, setPestana] = useState<'datos' | 'articulos' | 'dinero'>('datos');
   const [asistente, setAsistente] = useState<{ item: Item; cantidad: number; marcado: boolean }[] | null>(null);
 
   const cerrado = !!evento?.cerrado_en;
@@ -397,10 +406,41 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const sinAgregar = items.filter((i) => i.activo && !lineas.some((l) => l.item_id === i.id));
 
   return (
-    <div className="space-y-5 pb-28">
-      <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={volver} className={BTN_SECUNDARIO}><ArrowLeft size={18} /> Eventos</button>
-        <span className={`rounded-full px-3 py-1 text-sm font-bold capitalize ${COLOR_ESTADO_EVENTO[evento.estado]}`}>{evento.estado}</span>
+    <div className="space-y-5 pb-44 md:pb-28">
+      <button type="button" onClick={volver} className={BTN_SECUNDARIO}><ArrowLeft size={18} /> Volver a eventos</button>
+
+      {/* Resumen siempre a la vista: quién, cuándo, cuánto y qué sigue */}
+      <section className={`${TARJETA} space-y-4`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-playfair text-2xl font-bold text-stone-900 break-words">{cliente.nombre_apellido}</h1>
+            <p className="font-manrope text-sm text-stone-600">
+              {fechaLarga(evento.fecha_evento)}{evento.lugar ? ` · ${evento.lugar}` : ''}{evento.cantidad_personas ? ` · ${evento.cantidad_personas} personas` : ''}
+            </p>
+          </div>
+          <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold capitalize ${COLOR_ESTADO_EVENTO[evento.estado]}`}>{evento.estado}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center font-manrope">
+          {[['Total', resultado.ingresos], ['Cobrado', resultado.pagado], ['Falta cobrar', Math.max(0, resultado.saldo)]].map(([t, v]) => (
+            <div key={t as string} className="rounded-xl bg-stone-50 p-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">{t}</p>
+              <p className="text-base font-bold tabular-nums text-stone-900">{pesos(v as number)}</p>
+            </div>
+          ))}
+        </div>
+        {SIGUIENTE[evento.estado] && !cerrado && (
+          <button type="button" disabled={guardando} onClick={() => cambiarEstado(SIGUIENTE[evento.estado]!.estado)} className={`${BTN_PRIMARIO} min-h-[56px] w-full text-base`}>
+            {SIGUIENTE[evento.estado]!.texto}
+          </button>
+        )}
+      </section>
+
+      <div role="tablist" className="grid grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-stone-200">
+        {([['datos', 'Datos'], ['articulos', `Artículos${lineas.length ? ` (${lineas.length})` : ''}`], ['dinero', 'Dinero']] as const).map(([k, texto]) => (
+          <button key={k} type="button" role="tab" aria-selected={pestana === k} onClick={() => setPestana(k)} className={`min-h-[48px] rounded-lg font-manrope text-sm font-semibold ${pestana === k ? 'bg-stone-900 text-white' : 'text-stone-700'}`}>
+            {texto}
+          </button>
+        ))}
       </div>
 
       {cerrado && (
@@ -410,6 +450,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         </p>
       )}
 
+      <div hidden={pestana !== 'datos'} className="space-y-5">
       {/* ------------------------------------------------ Cliente */}
       <section className={TARJETA}>
         {editandoCliente ? (
@@ -434,7 +475,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         ) : (
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1 font-manrope">
-              <h1 className="font-playfair text-2xl font-bold text-stone-900 break-words">{cliente.nombre_apellido}</h1>
+              <p className="font-manrope text-base font-bold text-stone-900 break-words">{cliente.nombre_apellido}</p>
               <p className="text-sm text-stone-600">
                 {cliente.telefono || 'sin teléfono'}{cliente.dni ? ` · DNI ${cliente.dni}` : ' · sin DNI'} · <span className="capitalize">{cliente.canal_origen}</span>
               </p>
@@ -455,15 +496,15 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         <fieldset disabled={bloqueado} className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className={ETIQUETA} htmlFor="ed-fecha">Fecha del evento</label>
-            <input id="ed-fecha" type="date" className={CAMPO} value={evento.fecha_evento} onChange={(e) => cambiarEvento({ fecha_evento: e.target.value })} />
+            <CampoFecha id="ed-fecha" valor={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_evento: d })} />
           </div>
           <div>
             <label className={ETIQUETA} htmlFor="ed-entrega">Entrega</label>
-            <input id="ed-entrega" type="date" className={CAMPO} value={evento.fecha_entrega} max={evento.fecha_evento} onChange={(e) => cambiarEvento({ fecha_entrega: e.target.value })} />
+            <CampoFecha id="ed-entrega" valor={evento.fecha_entrega} max={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_entrega: d })} />
           </div>
           <div>
             <label className={ETIQUETA} htmlFor="ed-devolucion">Devolución</label>
-            <input id="ed-devolucion" type="date" className={CAMPO} value={evento.fecha_devolucion} min={evento.fecha_evento} onChange={(e) => cambiarEvento({ fecha_devolucion: e.target.value })} />
+            <CampoFecha id="ed-devolucion" valor={evento.fecha_devolucion} min={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_devolucion: d })} />
           </div>
           <div className="sm:col-span-2">
             <label className={ETIQUETA} htmlFor="ed-lugar">Lugar</label>
@@ -500,6 +541,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         </p>
       </section>
 
+      </div>
+      <div hidden={pestana !== 'articulos'} className="space-y-5">
       {/* ------------------------------------------------ Artículos */}
       <section className={`${TARJETA} space-y-4`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -628,6 +671,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         )}
       </section>
 
+      </div>
+      <div hidden={pestana !== 'dinero'} className="space-y-5">
       {/* ------------------------------------------------ Costos y pagos */}
       <Movimientos
         eventoId={id}
@@ -667,7 +712,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         )}
       </section>
 
-      <div className="flex flex-wrap gap-2">
+      </div>
+      <div hidden={pestana !== 'datos'} className="flex flex-wrap gap-2">
         {(evento.estado === 'devuelto' || evento.estado === 'cancelado') && !cerrado && (
           <button type="button" className={BTN_OSCURO} onClick={() => cerrarEvento(true)}><Lock size={16} /> Cerrar evento</button>
         )}
@@ -681,7 +727,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
 
       {/* Barra fija para guardar, siempre a mano en el celular */}
       {!bloqueado && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:left-72">
+        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:left-72">
           <div className="mx-auto flex max-w-5xl items-center gap-3">
             <span className="flex-1 font-manrope text-sm text-stone-600">{cambios ? 'Hay cambios sin guardar' : 'Todo guardado'}</span>
             <button type="button" disabled={guardando || !cambios} onClick={guardar} className={`${BTN_PRIMARIO} min-h-[52px] px-8`}>
@@ -782,7 +828,7 @@ function Movimientos({
               <input className={CAMPO} inputMode="decimal" placeholder="$ monto" value={costo.monto} onChange={(e) => setCosto({ ...costo, monto: e.target.value })} aria-label="Monto" />
             </div>
             <input className={CAMPO} placeholder="Detalle (opcional): ida y vuelta, 2 copas rotas…" value={costo.descripcion} onChange={(e) => setCosto({ ...costo, descripcion: e.target.value })} aria-label="Detalle" />
-            <input type="date" className={CAMPO} value={costo.fecha} onChange={(e) => setCosto({ ...costo, fecha: e.target.value })} aria-label="Fecha" />
+            <CampoFecha valor={costo.fecha} onChange={(d) => setCosto({ ...costo, fecha: d })} etiquetaAccesible="Fecha" />
             <div className="flex gap-2">
               <button type="submit" disabled={enviando} className={BTN_PRIMARIO}>Agregar</button>
               <button type="button" className={BTN_SECUNDARIO} onClick={() => setCosto(null)}>Cancelar</button>
@@ -821,7 +867,7 @@ function Movimientos({
               <select className={`${CAMPO} capitalize`} value={pago.medio} onChange={(e) => setPago({ ...pago, medio: e.target.value as MedioPago })} aria-label="Medio de pago">
                 {MEDIOS_PAGO.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-              <input type="date" className={CAMPO} value={pago.fecha} onChange={(e) => setPago({ ...pago, fecha: e.target.value })} aria-label="Fecha" />
+              <CampoFecha valor={pago.fecha} onChange={(d) => setPago({ ...pago, fecha: d })} etiquetaAccesible="Fecha" />
             </div>
             <div className="flex gap-2">
               <button type="submit" disabled={enviando} className={BTN_PRIMARIO}>Agregar</button>

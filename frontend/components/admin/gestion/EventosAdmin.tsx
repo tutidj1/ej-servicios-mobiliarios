@@ -7,6 +7,7 @@ import { ESTADOS_EVENTO, type EstadoEvento, fechaCorta, hoyArgentina, nombreMes 
 import { CANALES, COLOR_ESTADO_EVENTO, type Cliente, type EventoConCliente, mensajeError } from '@/lib/gestion/tipos';
 import { AYUDA, type Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
+import { CampoFecha } from './Calendarios';
 import { CLIENTE_VACIO, type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import EventoEditor from './EventoEditor';
 
@@ -155,15 +156,15 @@ function AltaRapida({ onCreado, onCancelar }: { onCreado: (id: string) => void; 
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label className={ETIQUETA} htmlFor="ev-fecha">Fecha del evento</label>
-          <input id="ev-fecha" type="date" className={CAMPO} value={fechaEvento} onChange={(e) => cambiarFechaEvento(e.target.value)} required />
+          <CampoFecha id="ev-fecha" valor={fechaEvento} onChange={cambiarFechaEvento} />
         </div>
         <div>
           <label className={ETIQUETA} htmlFor="ev-entrega">Entrega</label>
-          <input id="ev-entrega" type="date" className={CAMPO} value={fechaEntrega} max={fechaEvento || undefined} onChange={(e) => setFechaEntrega(e.target.value)} required />
+          <CampoFecha id="ev-entrega" valor={fechaEntrega} max={fechaEvento || undefined} onChange={setFechaEntrega} />
         </div>
         <div>
           <label className={ETIQUETA} htmlFor="ev-devolucion">Devolución</label>
-          <input id="ev-devolucion" type="date" className={CAMPO} value={fechaDevolucion} min={fechaEvento || undefined} onChange={(e) => setFechaDevolucion(e.target.value)} required />
+          <CampoFecha id="ev-devolucion" valor={fechaDevolucion} min={fechaEvento || undefined} onChange={setFechaDevolucion} />
         </div>
       </div>
       <p className={AYUDA}>El stock queda ocupado desde la entrega hasta la devolución, ambos días incluidos.</p>
@@ -194,15 +195,17 @@ export default function EventosAdmin({
   abierto,
   onAbrir,
   esAdmin,
+  altaInicial = false,
 }: {
   abierto: string | null;
   onAbrir: (id: string | null) => void;
   esAdmin: boolean;
+  altaInicial?: boolean;
 }) {
   const [eventos, setEventos] = useState<EventoConCliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [aviso, setAviso] = useState<Aviso | null>(null);
-  const [alta, setAlta] = useState(false);
+  const [alta, setAlta] = useState(altaInicial);
   const [mes, setMes] = useState(PROXIMOS);
   const [estado, setEstado] = useState<'todos' | EstadoEvento>('todos');
   const [canal, setCanal] = useState('todos');

@@ -4,13 +4,14 @@ import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   Boxes,
-  CalendarCheck,
   CalendarDays,
   ClipboardList,
   ExternalLink,
+  House,
   Image as IconoImagen,
   LogOut,
   Menu,
+  Mic,
   Package,
   PartyPopper,
   Percent,
@@ -25,15 +26,16 @@ import PromoAdmin from './PromoAdmin';
 import BannersAdmin from './BannersAdmin';
 import EventosAdmin from './gestion/EventosAdmin';
 import CalendarioAdmin from './gestion/CalendarioAdmin';
-import DisponibilidadAdmin from './gestion/DisponibilidadAdmin';
 import ClientesAdmin from './gestion/ClientesAdmin';
 import InventarioAdmin from './gestion/InventarioAdmin';
+import InicioAdmin from './gestion/InicioAdmin';
+import AsistenteVoz from './gestion/AsistenteVoz';
 import { BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from './estilos';
 
 type Seccion =
+  | 'inicio'
   | 'eventos'
   | 'calendario'
-  | 'disponibilidad'
   | 'clientes'
   | 'inventario'
   | 'cotizaciones'
@@ -45,11 +47,11 @@ type Rol = 'admin' | 'operadora' | 'ninguno';
 
 // "soloAdmin": lo que se publica en la web pública. La operadora no lo ve.
 const SECCIONES: { id: Seccion; nombre: string; icono: React.ReactNode; soloAdmin?: boolean; grupo: 'gestion' | 'web' }[] = [
+  { id: 'inicio', nombre: 'Inicio', icono: <House size={20} />, grupo: 'gestion' },
   { id: 'eventos', nombre: 'Eventos', icono: <PartyPopper size={20} />, grupo: 'gestion' },
   { id: 'calendario', nombre: 'Calendario', icono: <CalendarDays size={20} />, grupo: 'gestion' },
-  { id: 'disponibilidad', nombre: 'Disponibilidad', icono: <CalendarCheck size={20} />, grupo: 'gestion' },
   { id: 'clientes', nombre: 'Clientes', icono: <Users size={20} />, grupo: 'gestion' },
-  { id: 'inventario', nombre: 'Inventario', icono: <Boxes size={20} />, grupo: 'gestion' },
+  { id: 'inventario', nombre: 'Stock', icono: <Boxes size={20} />, grupo: 'gestion' },
   { id: 'cotizaciones', nombre: 'Cotizaciones web', icono: <ClipboardList size={20} />, grupo: 'web' },
   { id: 'productos', nombre: 'Productos', icono: <Package size={20} />, soloAdmin: true, grupo: 'web' },
   { id: 'banners', nombre: 'Banners', icono: <IconoImagen size={20} />, soloAdmin: true, grupo: 'web' },
@@ -91,8 +93,11 @@ export default function AdminApp() {
   const [rol, setRol] = useState<Rol | null>(null);
   const [gestionDisponible, setGestionDisponible] = useState(false);
   const [errorAdmin, setErrorAdmin] = useState('');
-  const [seccion, setSeccion] = useState<Seccion>('eventos');
+  const [seccion, setSeccion] = useState<Seccion>('inicio');
   const [eventoAbierto, setEventoAbierto] = useState<string | null>(null);
+  const [vozAbierta, setVozAbierta] = useState(false);
+  // Cambia cada vez que se toca "Nuevo evento", para abrir el formulario de alta
+  const [altaClave, setAltaClave] = useState(0);
   const [menuAbierto, setMenuAbierto] = useState(false);
   useBloqueoScroll(menuAbierto);
 
@@ -136,6 +141,20 @@ export default function AdminApp() {
     setEventoAbierto(id);
     if (id) setSeccion('eventos');
     window.scrollTo({ top: 0 });
+  };
+
+  const irA = (s: Seccion) => {
+    setSeccion(s);
+    if (s === 'eventos') setEventoAbierto(null);
+    setMenuAbierto(false);
+    window.scrollTo({ top: 0 });
+  };
+
+  const nuevoEvento = () => {
+    setEventoAbierto(null);
+    setSeccion('eventos');
+    setAltaClave((k) => k + 1);
+    setMenuAbierto(false);
   };
 
   const iniciarSesion = async (e: React.FormEvent) => {
@@ -252,6 +271,18 @@ export default function AdminApp() {
           </button>
         </div>
 
+        {gestionDisponible && (
+          <div className="px-3 pt-4">
+            <button
+              type="button"
+              onClick={() => { setVozAbierta(true); setMenuAbierto(false); }}
+              className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-xl bg-emerald-600 font-manrope text-sm font-bold text-white hover:bg-emerald-700"
+            >
+              <Mic size={20} /> Hablar
+            </button>
+          </div>
+        )}
+
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Secciones">
           {visibles.map((s, i) => {
             const activa = s.id === actual.id;
@@ -265,11 +296,7 @@ export default function AdminApp() {
               )}
               <button
                 type="button"
-                onClick={() => {
-                  setSeccion(s.id);
-                  if (s.id === 'eventos') setEventoAbierto(null);
-                  setMenuAbierto(false);
-                }}
+                onClick={() => irA(s.id)}
                 aria-current={activa ? 'page' : undefined}
                 className={`flex w-full items-center gap-3 min-h-[48px] rounded-xl px-4 font-manrope text-sm font-semibold transition-colors ${
                   activa ? 'bg-acento-amarillo text-stone-900' : 'text-stone-300 hover:bg-white/10'
@@ -305,23 +332,22 @@ export default function AdminApp() {
       <div className="min-w-0 flex-1">
         {/* Barra superior (solo celular) */}
         <header className="sticky top-0 z-20 flex items-center gap-3 bg-stone-900 px-4 py-2 text-white md:hidden">
-          <button
-            type="button"
-            onClick={() => setMenuAbierto(true)}
-            className="-ml-2 h-11 w-11 flex items-center justify-center"
-            aria-label="Abrir menú"
-          >
-            <Menu size={24} />
-          </button>
           <span className="flex items-center gap-2 font-manrope text-sm font-semibold">
             {actual.icono} {actual.nombre}
           </span>
         </header>
 
-        <main className="mx-auto max-w-5xl px-4 py-6 sm:px-8 md:py-10">
-          {actual.id === 'eventos' && <EventosAdmin abierto={eventoAbierto} onAbrir={abrirEvento} esAdmin={esAdmin} />}
+        <main className={`mx-auto max-w-5xl px-4 py-6 sm:px-8 md:py-10 ${gestionDisponible ? 'pb-28 md:pb-10' : ''}`}>
+          {actual.id === 'inicio' && (
+            <InicioAdmin
+              onNuevoEvento={nuevoEvento}
+              onHablar={() => setVozAbierta(true)}
+              onIrA={irA}
+              onAbrirEvento={abrirEvento}
+            />
+          )}
+          {actual.id === 'eventos' && <EventosAdmin key={altaClave} altaInicial={altaClave > 0} abierto={eventoAbierto} onAbrir={abrirEvento} esAdmin={esAdmin} />}
           {actual.id === 'calendario' && <CalendarioAdmin onAbrirEvento={abrirEvento} />}
-          {actual.id === 'disponibilidad' && <DisponibilidadAdmin onAbrirEvento={abrirEvento} />}
           {actual.id === 'clientes' && <ClientesAdmin />}
           {actual.id === 'inventario' && <InventarioAdmin />}
           {actual.id === 'cotizaciones' && (
@@ -332,6 +358,43 @@ export default function AdminApp() {
           {esAdmin && actual.id === 'promo' && <PromoAdmin />}
         </main>
       </div>
+
+      {gestionDisponible && (
+        <>
+          {/* Barra de abajo (celular): lo más usado, con el micrófono en el centro */}
+          <nav className="fixed inset-x-0 bottom-0 z-20 grid h-16 grid-cols-5 items-end border-t border-stone-300 bg-white md:hidden" aria-label="Atajos">
+            {([
+              ['inicio', 'Inicio', <House key="i" size={22} />],
+              ['eventos', 'Eventos', <PartyPopper key="e" size={22} />],
+            ] as const).map(([id, texto, icono]) => (
+              <button key={id} type="button" onClick={() => irA(id)} aria-current={actual.id === id ? 'page' : undefined} className={`flex h-16 flex-col items-center justify-center gap-0.5 font-manrope text-[11px] font-semibold ${actual.id === id ? 'text-emerald-700' : 'text-stone-500'}`}>
+                {icono}
+                {texto}
+              </button>
+            ))}
+            <div className="flex justify-center">
+              <button type="button" onClick={() => setVozAbierta(true)} className="-mt-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg ring-4 ring-white active:scale-95" aria-label="Hablar">
+                <Mic size={28} />
+              </button>
+            </div>
+            <button type="button" onClick={() => irA('calendario')} aria-current={actual.id === 'calendario' ? 'page' : undefined} className={`flex h-16 flex-col items-center justify-center gap-0.5 font-manrope text-[11px] font-semibold ${actual.id === 'calendario' ? 'text-emerald-700' : 'text-stone-500'}`}>
+              <CalendarDays size={22} />
+              Calendario
+            </button>
+            <button type="button" onClick={() => setMenuAbierto(true)} className="flex h-16 flex-col items-center justify-center gap-0.5 font-manrope text-[11px] font-semibold text-stone-500">
+              <Menu size={22} />
+              Más
+            </button>
+          </nav>
+
+          <AsistenteVoz
+            abierto={vozAbierta}
+            onCerrar={() => setVozAbierta(false)}
+            eventoActual={actual.id === 'eventos' ? eventoAbierto : null}
+            onAbrirEvento={abrirEvento}
+          />
+        </>
+      )}
     </div>
   );
 }

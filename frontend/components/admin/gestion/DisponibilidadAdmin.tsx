@@ -6,6 +6,7 @@ import { fechaLarga, hoyArgentina, sumarDias } from '@/lib/gestion/calculos';
 import { type FilaDisponibilidad, type Item, mensajeError, mostrarStock } from '@/lib/gestion/tipos';
 import { type Aviso, BTN_PRIMARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
+import { CampoFecha } from './Calendarios';
 
 interface Ocupante {
   item_id: string;
@@ -14,7 +15,7 @@ interface Ocupante {
   eventos: { id: string; estado: string; fecha_entrega: string; fecha_devolucion: string; clientes: { nombre_apellido: string } | null } | null;
 }
 
-export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: (id: string) => void }) {
+export default function DisponibilidadAdmin({ onAbrirEvento, sinEncabezado = false }: { onAbrirEvento: (id: string) => void; sinEncabezado?: boolean }) {
   const hoy = hoyArgentina();
   const [items, setItems] = useState<Item[]>([]);
   const [elegidos, setElegidos] = useState<string[]>([]);
@@ -71,7 +72,7 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
 
   return (
     <div>
-      <Encabezado titulo="Disponibilidad" descripcion="¿Tengo 150 sillas para el 21? Te muestra cuántas propias quedan libres día por día. No hay límite: lo que falte se subalquila." />
+      {!sinEncabezado && <Encabezado titulo="Disponibilidad" descripcion="¿Tengo 150 sillas para el 21? Te muestra cuántas propias quedan libres día por día. No hay límite: lo que falte se subalquila." />}
       <form onSubmit={consultar} className={`${TARJETA} mb-5 space-y-4`}>
         <div>
           <p className={ETIQUETA}>Artículos</p>
@@ -95,11 +96,11 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className={ETIQUETA} htmlFor="di-desde">Desde</label>
-            <input id="di-desde" type="date" className={CAMPO} value={desde} onChange={(e) => { setDesde(e.target.value); if (hasta < e.target.value) setHasta(e.target.value); }} />
+            <CampoFecha id="di-desde" valor={desde} onChange={(d) => { setDesde(d); if (hasta < d) setHasta(d); }} />
           </div>
           <div>
             <label className={ETIQUETA} htmlFor="di-hasta">Hasta</label>
-            <input id="di-hasta" type="date" className={CAMPO} value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} />
+            <CampoFecha id="di-hasta" valor={hasta} min={desde} onChange={setHasta} />
           </div>
           <div>
             <label className={ETIQUETA} htmlFor="di-necesito">Necesito (opcional)</label>
