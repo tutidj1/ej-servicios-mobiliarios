@@ -57,7 +57,7 @@ const SECCIONES: { id: Seccion; nombre: string; icono: React.ReactNode; soloAdmi
 ];
 
 /**
- * Rol de la cuenta. Si todavía no se aplicó la migración 0006 (no existe mi_rol),
+ * Rol de la cuenta. Si todavía no se aplicó la migración 0007 (no existe mi_rol),
  * se usa la verificación anterior (es_admin) y el panel sigue funcionando como antes.
  */
 async function consultarRol(): Promise<{ rol: Rol; gestionDisponible: boolean } | { error: true }> {

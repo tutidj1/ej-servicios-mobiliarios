@@ -1,6 +1,6 @@
--- Vuelta atrás de 0006_roles.sql
+-- Vuelta atrás de 0007_roles.sql
 -- Restaura es_admin() como estaba en la 0003 (UUID fijo) y borra perfiles / mi_rol / es_staff.
--- Correr ANTES las vueltas atrás de 0009, 0008 y 0007 si se aplicaron (usan es_staff()).
+-- Correr ANTES las vueltas atrás de 0010, 0009 y 0008 si se aplicaron (usan es_staff()).
 
 DROP POLICY IF EXISTS "Cotizaciones lectura staff" ON cotizaciones;
 DROP POLICY IF EXISTS "Cotizaciones actualizar staff" ON cotizaciones;

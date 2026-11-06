@@ -1,4 +1,4 @@
--- Vuelta atrás de 0008_disponibilidad.sql (solo borra funciones; no toca datos)
+-- Vuelta atrás de 0009_disponibilidad.sql (solo borra funciones; no toca datos)
 DROP FUNCTION IF EXISTS public.cambiar_estado_evento(UUID, TEXT);
 DROP FUNCTION IF EXISTS public.reservar_stock(UUID);
 DROP FUNCTION IF EXISTS public.disponibilidad(UUID[], DATE, DATE, UUID);

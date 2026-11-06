@@ -1,7 +1,7 @@
--- Vuelta atrás de 0007_gestion_nucleo.sql
+-- Vuelta atrás de 0008_gestion_nucleo.sql
 -- ATENCIÓN: borra las tablas de gestión y TODO lo que se haya cargado en ellas
 -- (eventos, clientes, pagos, costos, inventario). Exportá antes un CSV si ya hay datos reales.
--- Correr antes la vuelta atrás de 0009 y 0008 si se aplicaron.
+-- Correr antes la vuelta atrás de 0010 y 0009 si se aplicaron.
 -- No toca "productos" ni "cotizaciones".
 
 DROP TABLE IF EXISTS pagos;

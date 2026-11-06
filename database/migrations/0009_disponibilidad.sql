@@ -1,7 +1,7 @@
 -- =========================================================================
--- 0008 — Disponibilidad de stock por día y confirmación segura de eventos
--- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0007.
--- Solo crea funciones; no toca datos. Vuelta atrás: rollback/0008_disponibilidad_down.sql
+-- 0009 — Disponibilidad de stock por día y confirmación segura de eventos
+-- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0008.
+-- Solo crea funciones; no toca datos. Vuelta atrás: rollback/0009_disponibilidad_down.sql
 --
 -- Reservan stock los eventos 'confirmado' y 'entregado', todos los días
 -- de fecha_entrega a fecha_devolucion (inclusive). Los 'presupuesto' no reservan:

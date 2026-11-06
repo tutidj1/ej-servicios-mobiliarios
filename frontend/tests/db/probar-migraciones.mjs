@@ -1,4 +1,4 @@
-// Prueba las migraciones 0006-0009 y sus vueltas atrás en un Postgres local (PGlite), con datos ficticios.
+// Prueba las migraciones 0007-0010 y sus vueltas atrás en un Postgres local (PGlite), con datos ficticios.
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 
@@ -46,12 +46,12 @@ await db.exec(`
   INSERT INTO cotizaciones (nombre) VALUES ('Lead de prueba');
 `);
 
-for (const f of ['0006_roles.sql', '0007_gestion_nucleo.sql', '0008_disponibilidad.sql', '0009_auditoria.sql']) {
+for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql']) {
   await db.exec(leer(f));
   ok(true, `aplica ${f}`);
 }
 // Idempotencia: se pueden volver a correr
-for (const f of ['0006_roles.sql', '0007_gestion_nucleo.sql', '0008_disponibilidad.sql', '0009_auditoria.sql']) {
+for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql']) {
   await db.exec(leer(f));
 }
 ok(true, 'las cuatro se pueden re-ejecutar sin error');
@@ -152,7 +152,7 @@ ok(r.n > 5 && r.u === 2, `la auditoría registró ${r.n} cambios de 2 personas`)
 
 // ---------- Vueltas atrás (en orden inverso)
 await db.exec('RESET ROLE');
-for (const f of ['0009_auditoria_down.sql', '0008_disponibilidad_down.sql', '0007_gestion_nucleo_down.sql', '0006_roles_down.sql']) {
+for (const f of ['0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
   await db.exec(leer(`rollback/${f}`));
   ok(true, `vuelta atrás ${f}`);
 }

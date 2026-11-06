@@ -1,5 +1,5 @@
 -- =========================================================================
--- 0006 — Roles: administrador (Tomás) y operadora (María Eugenia)
+-- 0007 — Roles: administrador (Tomás) y operadora (María Eugenia)
 -- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0003.
 --
 -- Antes, es_admin() comparaba contra un UUID fijo. Ahora lee la tabla "perfiles".

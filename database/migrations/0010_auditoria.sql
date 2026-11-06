@@ -1,7 +1,7 @@
 -- =========================================================================
--- 0009 — Auditoría: quién cambió qué y cuándo (eventos, líneas, costos, pagos, clientes)
--- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0007.
--- Solo agrega una tabla y triggers; no toca datos. Vuelta atrás: rollback/0009_auditoria_down.sql
+-- 0010 — Auditoría: quién cambió qué y cuándo (eventos, líneas, costos, pagos, clientes)
+-- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0008.
+-- Solo agrega una tabla y triggers; no toca datos. Vuelta atrás: rollback/0010_auditoria_down.sql
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS audit_log (

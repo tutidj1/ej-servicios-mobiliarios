@@ -1,4 +1,4 @@
--- Vuelta atrás de 0009_auditoria.sql (borra el historial de cambios; no toca eventos ni clientes)
+-- Vuelta atrás de 0010_auditoria.sql (borra el historial de cambios; no toca eventos ni clientes)
 DO $$
 DECLARE t TEXT;
 BEGIN

@@ -1,9 +1,9 @@
 -- =========================================================================
--- 0007 — Gestión de alquileres: núcleo (inventario, clientes, eventos, líneas, costos, pagos)
--- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0006.
+-- 0008 — Gestión de alquileres: núcleo (inventario, clientes, eventos, líneas, costos, pagos)
+-- Ejecutar en Supabase > SQL Editor (idempotente). Requiere la 0007.
 --
 -- Solo CREA tablas nuevas. No modifica "productos", "cotizaciones" ni ningún dato existente.
--- Vuelta atrás: rollback/0007_gestion_nucleo_down.sql
+-- Vuelta atrás: rollback/0008_gestion_nucleo_down.sql
 -- =========================================================================
 
 -- -------------------------------------------------------------------------

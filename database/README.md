@@ -41,19 +41,19 @@ Desde ahí podés: ver y gestionar cotizaciones (estado, WhatsApp/llamar al clie
 El ingreso es con email y contraseña de Supabase Auth (nunca van escritos en el código).
 Los cambios se reflejan en la web en menos de 1 minuto.
 
-## Actualización 0006–0009 — Gestión de alquileres (Fase 1)
+## Actualización 0007–0010 — Gestión de alquileres (Fase 1)
 
 **No aplicar hasta que Tomás lo apruebe.** Ejecutar en orden en **SQL Editor** (son idempotentes):
 
 | Archivo | Qué hace | ¿Toca datos existentes? |
 |---|---|---|
-| [`0006_roles.sql`](./migrations/0006_roles.sql) | Tabla `perfiles` (admin / operadora). `es_admin()` pasa a leer esa tabla. La operadora puede ver y cambiar el estado de cotizaciones (no borrarlas). | Solo redefine `es_admin()`; Tomás queda cargado como admin, así que todo sigue igual. |
-| [`0007_gestion_nucleo.sql`](./migrations/0007_gestion_nucleo.sql) | Tablas nuevas: `items`, `clientes`, `eventos`, `evento_lineas`, `evento_costos`, `pagos`, `configuracion`. Reglas (precio obligatorio al confirmar, evento cerrado congelado) y RLS solo para el equipo. Precarga los 25 artículos del contrato: sillas 100 y tablones 16; el resto **sin límite** (nunca se limita un alquiler: lo que falta se marca como subalquilado). | No. Solo crea. |
-| [`0008_disponibilidad.sql`](./migrations/0008_disponibilidad.sql) | Funciones de stock por día y confirmación con bloqueo (evita reservar dos veces lo mismo). | No. Solo funciones. |
-| [`0009_auditoria.sql`](./migrations/0009_auditoria.sql) | Registro de quién cambió qué (eventos, líneas, costos, pagos, clientes). Solo el admin lo lee. | No. |
+| [`0007_roles.sql`](./migrations/0007_roles.sql) | Tabla `perfiles` (admin / operadora). `es_admin()` pasa a leer esa tabla. La operadora puede ver y cambiar el estado de cotizaciones (no borrarlas). | Solo redefine `es_admin()`; Tomás queda cargado como admin, así que todo sigue igual. |
+| [`0008_gestion_nucleo.sql`](./migrations/0008_gestion_nucleo.sql) | Tablas nuevas: `items`, `clientes`, `eventos`, `evento_lineas`, `evento_costos`, `pagos`, `configuracion`. Reglas (precio obligatorio al confirmar, evento cerrado congelado) y RLS solo para el equipo. Precarga los 25 artículos del contrato: sillas 100 y tablones 16; el resto **sin límite** (nunca se limita un alquiler: lo que falta se marca como subalquilado). | No. Solo crea. |
+| [`0009_disponibilidad.sql`](./migrations/0009_disponibilidad.sql) | Funciones de stock por día y confirmación con bloqueo (evita reservar dos veces lo mismo). | No. Solo funciones. |
+| [`0010_auditoria.sql`](./migrations/0010_auditoria.sql) | Registro de quién cambió qué (eventos, líneas, costos, pagos, clientes). Solo el admin lo lee. | No. |
 
-**Vuelta atrás:** [`migrations/rollback/`](./migrations/rollback/), en orden inverso (0009 → 0006). La de 0007 borra todo lo cargado en gestión; exportar antes si ya hay datos reales.
+**Vuelta atrás:** [`migrations/rollback/`](./migrations/rollback/), en orden inverso (0010 → 0007). La de 0008 borra todo lo cargado en gestión; exportar antes si ya hay datos reales.
 
-**Dar acceso a María Eugenia:** crear su usuario en Authentication > Users y correr el `INSERT INTO perfiles …` que está comentado al final de `0006_roles.sql`.
+**María Eugenia:** por ahora usa la cuenta de Tomás (admin); no hace falta crearle otra. Si más adelante se quiere una cuenta propia de operadora, está el `INSERT INTO perfiles …` comentado al final de `0007_roles.sql`.
 
 **Prueba automática** (en un Postgres local de prueba, sin tocar Supabase): desde `frontend/`, `npm run test:db`.
