@@ -9,6 +9,7 @@ import { type Intencion, eventoPorNombre, interpretar } from '@/lib/gestion/voz'
 import { useBloqueoScroll } from '@/lib/useMovil';
 import { AYUDA, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from '../estilos';
 import { CampoFecha } from './Calendarios';
+import EventoPorMensaje from './EventoPorMensaje';
 
 interface ItemOpcion { id: string; nombre: string; alias: string[]; stock_total: number | null }
 interface EventoOpcion { id: string; cliente: string; fecha: string; estado: string }
@@ -40,8 +41,8 @@ interface Reconocedor {
   onend: (() => void) | null;
 }
 
-const EJEMPLOS = ['“Me dejó 50 mil de seña”', '“Pagué 30 mil de flete”', '“Subalquilé 50 sillas a mil”', '“¿Tengo 150 sillas para el 21?”'];
-const NOMBRE_INTENCION: Record<Exclude<Intencion, 'desconocido'>, string> = { pago: 'Me pagaron', costo: 'Gasto', subalquiler: 'Subalquilé', disponibilidad: '¿Hay stock?' };
+const EJEMPLOS = ['“Quiero cargar un evento de Ana López: 100 sillas a 800, flete 100 mil, seña del 50%”', '“Me dejó 50 mil de seña”', '“Pagué 30 mil de flete”', '“Subalquilé 50 sillas a mil”', '“¿Tengo 150 sillas para el 21?”'];
+const NOMBRE_INTENCION: Record<Exclude<Intencion, 'desconocido'>, string> = { evento: 'Nuevo evento', pago: 'Me pagaron', costo: 'Gasto', subalquiler: 'Subalquilé', disponibilidad: '¿Hay stock?' };
 
 function Opciones<T extends string>({ valor, opciones, onChange }: { valor: T | ''; opciones: readonly T[]; onChange: (v: T) => void }) {
   return (
@@ -278,7 +279,7 @@ export default function AsistenteVoz({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" role="dialog" aria-modal="true" aria-label="Asistente de voz">
-      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-[#F4F1EA] shadow-2xl sm:rounded-3xl">
+      <div className={`flex max-h-[92dvh] w-full ${form?.intencion === 'evento' && paso === 'confirmar' ? 'max-w-2xl' : 'max-w-lg'} flex-col rounded-t-3xl bg-[#F4F1EA] shadow-2xl sm:rounded-3xl`}>
         <div className="flex items-center justify-between px-5 pt-4">
           <h2 className="font-playfair text-2xl font-bold text-stone-900">{paso === 'hablar' ? 'Hablame' : paso === 'confirmar' ? 'Esto entendí' : 'Listo'}</h2>
           <button type="button" onClick={onCerrar} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-200" aria-label="Cerrar">
@@ -318,7 +319,7 @@ export default function AsistenteVoz({
 
           {paso === 'confirmar' && form && (
             <div className="space-y-4">
-              <p className="rounded-xl bg-white p-3 text-sm italic text-stone-700">“{texto}”</p>
+              {form.intencion !== 'evento' && <p className="rounded-xl bg-white p-3 text-sm italic text-stone-700">“{texto}”</p>}
 
               <div>
                 <p className={ETIQUETA}>¿Qué es?{form.intencion === 'desconocido' && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-800">No lo entendí: elegí</span>}</p>
@@ -331,7 +332,7 @@ export default function AsistenteVoz({
                 </div>
               </div>
 
-              {form.intencion !== 'desconocido' && form.intencion !== 'disponibilidad' && (
+              {form.intencion !== 'desconocido' && form.intencion !== 'disponibilidad' && form.intencion !== 'evento' && (
                 <div>
                   <label className={ETIQUETA} htmlFor="voz-evento">¿De qué evento?<Falta mostrar={faltantes.evento} /></label>
                   <select id="voz-evento" className={`${CAMPO} ${faltantes.evento ? 'border-red-400' : ''}`} value={form.eventoId} onChange={(e) => { cambiar({ eventoId: e.target.value }); setEventoSugerido(false); }}>
@@ -399,8 +400,19 @@ export default function AsistenteVoz({
                 </div>
               )}
 
-              {aviso && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-medium text-red-800">{aviso}</p>}
-              {form.intencion !== 'desconocido' && (
+              {form.intencion === 'evento' && (
+                <EventoPorMensaje
+                  texto={texto}
+                  items={items}
+                  onCreado={(id, resumen) => {
+                    setResultado({ ok: true, eventoId: id, texto: resumen });
+                    setPaso('listo');
+                  }}
+                />
+              )}
+
+              {aviso && form.intencion !== 'evento' && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-medium text-red-800">{aviso}</p>}
+              {form.intencion !== 'desconocido' && form.intencion !== 'evento' && (
                 <button type="button" onClick={guardar} disabled={guardando} className={`${BTN_PRIMARIO} min-h-[56px] w-full text-base`}>
                   {guardando ? 'Un momento…' : form.intencion === 'disponibilidad' ? 'Consultar' : 'Confirmar y guardar'}
                 </button>
