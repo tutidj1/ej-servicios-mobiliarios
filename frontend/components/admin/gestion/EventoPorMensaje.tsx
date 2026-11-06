@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Plus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { hoyArgentina, pesos, repartirCantidad, resultadoEvento } from '@/lib/gestion/calculos';
-import { type Cliente, type FilaDisponibilidad, leerMonto, mensajeError, mostrarMonto } from '@/lib/gestion/tipos';
+import { CANALES, type Canal, type Cliente, type FilaDisponibilidad, leerMonto, mensajeError, mostrarMonto } from '@/lib/gestion/tipos';
 import { interpretarEvento } from '@/lib/gestion/vozEvento';
 import { AYUDA, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from '../estilos';
 import { CampoFecha } from './Calendarios';
@@ -46,7 +46,8 @@ export default function EventoPorMensaje({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [parecidos, setParecidos] = useState<Cliente[]>([]);
   const [fecha, setFecha] = useState(borrador.fecha ?? '');
-  const [lugar, setLugar] = useState('');
+  const [lugar, setLugar] = useState(borrador.lugar);
+  const [canal, setCanal] = useState<Canal | ''>(borrador.canal ?? '');
   const [personas, setPersonas] = useState(borrador.personas ? String(borrador.personas) : '');
   const [lineas, setLineas] = useState<LineaForm[]>(() =>
     borrador.lineas.map((l, i) => ({
@@ -65,6 +66,7 @@ export default function EventoPorMensaje({
   const [disp, setDisp] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [fleteDecidido, setFleteDecidido] = useState(false);
 
   // ¿Ya existe este cliente? Se ofrecen los parecidos para no duplicarlo.
   useEffect(() => {
@@ -117,6 +119,8 @@ export default function EventoPorMensaje({
   }, [lineas, fleteCobrado, fletePagado, senaPct, senaMonto, disp]);
 
   const cambiarLinea = (key: string, c: Partial<LineaForm>) => setLineas((ls) => ls.map((l) => (l.key === key ? { ...l, ...c } : l)));
+  const fleteAPagar = leerMonto(fletePagado) ?? 0;
+  const preguntarFlete = fleteAPagar > 0 && !leerMonto(fleteCobrado) && !borrador.fleteIncluido && !fleteDecidido;
   const sinPrecio = calculo.filas.filter((f) => f.cantidad > 0 && f.precio === null);
   const aSubalquilar = calculo.filas.filter((f) => f.rep.subalquilada > 0);
 
@@ -145,7 +149,7 @@ export default function EventoPorMensaje({
       // 2) cliente
       let cId = clienteId;
       if (!cId) {
-        const { data, error: e } = await supabase.from('clientes').insert({ nombre_apellido: cliente.trim(), canal_origen: 'whatsapp' }).select('id').single();
+        const { data, error: e } = await supabase.from('clientes').insert({ nombre_apellido: cliente.trim(), canal_origen: canal || 'otro' }).select('id').single();
         if (e || !data) throw e ?? { message: 'No se pudo crear el cliente.' };
         cId = data.id;
       }
@@ -252,7 +256,7 @@ export default function EventoPorMensaje({
           <CampoFecha valor={fecha} onChange={setFecha} />
         </div>
         <div>
-          <label className={ETIQUETA} htmlFor="em-lugar">Lugar (opcional)</label>
+          <label className={ETIQUETA} htmlFor="em-lugar">Dirección / lugar (opcional)</label>
           <input id="em-lugar" className={CAMPO} value={lugar} onChange={(e) => setLugar(e.target.value)} />
         </div>
         <div>
@@ -260,6 +264,19 @@ export default function EventoPorMensaje({
           <input id="em-personas" className={CAMPO} inputMode="numeric" value={personas} onChange={(e) => setPersonas(e.target.value.replace(/\D/g, ''))} />
         </div>
       </div>
+
+      {!clienteId && (
+        <div>
+          <p className={ETIQUETA}>¿Cómo te contactó? {!canal && <span className="ml-1 text-xs font-normal text-stone-500">(opcional)</span>}</p>
+          <div className="flex flex-wrap gap-2">
+            {CANALES.map((c) => (
+              <button key={c} type="button" aria-pressed={canal === c} onClick={() => setCanal(canal === c ? '' : c)} className={`min-h-[44px] rounded-xl px-4 text-sm font-semibold capitalize ${canal === c ? 'bg-stone-900 text-white' : 'border border-stone-300 bg-white text-stone-800'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Artículos */}
       <div className="space-y-3">
@@ -308,6 +325,16 @@ export default function EventoPorMensaje({
           {items.filter((i) => !lineas.some((l) => l.itemId === i.id)).map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
         </select>
       </div>
+
+      {preguntarFlete && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <p className="mb-2 text-sm font-semibold text-amber-900">El flete te cuesta {pesos(Math.round(fleteAPagar * 100))}. ¿Se lo cobrás al cliente?</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={BTN_PRIMARIO} onClick={() => { setFleteCobrado(mostrarMonto(fleteAPagar)); setFleteDecidido(true); }}>Sí, el mismo monto</button>
+            <button type="button" className={BTN_SECUNDARIO} onClick={() => setFleteDecidido(true)}>No, está incluido en el precio</button>
+          </div>
+        </div>
+      )}
 
       {/* Flete y seña */}
       <div className="grid gap-4 sm:grid-cols-2">

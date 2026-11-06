@@ -1,8 +1,10 @@
 // Arma un evento completo a partir de un mensaje hablado o escrito, como lo diría una persona:
-// "Quiero subir un evento de Javier: 100 sillas, 10 tablones... las sillas las cobro 800... el flete
-// me sale 100 mil... me va a señar con el 50%". No inventa nada: lo que no se dice queda vacío.
+// "El cliente se llama Javier, la dirección es Sarmiento, me contactó por WhatsApp, alquiló para 100
+// personas 100 sillas a un costo de 800 pesos... el flete me sale 50 ida y 50 de vuelta, son 100000".
+// No inventa nada: lo que no se dice queda vacío y se completa en la pantalla de revisión.
 
 import { extraerNumeros, interpretarFecha, mismo, normalizar, type ItemVoz } from './voz';
+import type { Canal } from './tipos';
 
 export interface LineaBorrador {
   /** null = el artículo no existe todavía en el inventario (se propone crearlo). */
@@ -14,27 +16,38 @@ export interface LineaBorrador {
 
 export interface BorradorEvento {
   cliente: string;
+  lugar: string;
+  canal: Canal | null;
   lineas: LineaBorrador[];
   personas: number | null;
   fecha: string | null;
   /** "flete incluido": el flete va dentro del precio, no se cobra aparte. */
   fleteIncluido: boolean;
   fleteCobrado: number | null;
-  /** Lo que le cuesta a ella el flete (ida y vuelta). */
+  /** Lo que le cuesta a ella el flete (ida y vuelta, total). */
   fletePagado: number | null;
   senaPorcentaje: number | null;
   senaMonto: number | null;
 }
 
+// Palabras que cortan un nombre de artículo ("100 sillas a un costo de 800")
 const PARAR = new Set([
   'y', 'la', 'el', 'los', 'las', 'lo', 'que', 'quiero', 'quiere', 'me', 'es', 'son', 'flete', 'cada', 'mas', 'por',
   'a', 'con', 'cobro', 'cobre', 'cobra', 'cobran', 'cobrar', 'cuesta', 'sale', 'tiene', 'va', 'hola', 'pero', 'porciento',
+  'pesos', 'peso', 'costo', 'precio', 'valor', 'para', 'o',
 ]);
+// Palabras que cortan el nombre del cliente
 const PARAR_NOMBRE = new Set([
-  'lo', 'que', 'tiene', 'tienen', 'son', 'quiere', 'quieren', 'necesita', 'necesitan', 'pidio', 'pide', 'alquila', 'alquilar',
-  'con', 'y', 'el', 'la', 'los', 'las', 'para', 'es', 'fecha', 'tengo', 'hace', 'va', 'pagar', 'a', 'se', 'le', 'quiero', 'hola',
+  'lo', 'que', 'tiene', 'tienen', 'son', 'quiere', 'quieren', 'necesita', 'necesitan', 'pidio', 'pide', 'alquila', 'alquilo',
+  'alquilar', 'con', 'y', 'el', 'para', 'es', 'fecha', 'tengo', 'hace', 'va', 'pagar', 'a', 'se', 'le', 'quiero', 'hola',
+  'direccion', 'domicilio', 'vive', 'celular', 'telefono', 'me', 'contacto', 'llamo', 'en',
+]);
+const PARAR_LUGAR = new Set([
+  'me', 'el', 'alquilo', 'alquilar', 'para', 'que', 'con', 'flete', 'cliente', 'se', 'contacto', 'y', 'es', 'son', 'tiene', 'quiere',
 ]);
 const PERSONAS = new Set(['personas', 'invitados', 'gente', 'comensales', 'pax']);
+// Palabras que no identifican a un artículo por sí solas
+const GENERICAS = new Set(['de', 'del', 'la', 'el', 'con', 'para', 'principal', 'postre', 'madera', 'blanca', 'redonda', 'celeste', 'pastel', 'cuadrados', 'cuadrado']);
 
 function tokensDe(texto: string): string[] {
   const t = normalizar(texto.replace(/%/g, ' porciento ')).replace(/\bpor ciento\b/g, 'porciento');
@@ -60,19 +73,33 @@ interface Mencion {
   hasta: number;
 }
 
-/** Todas las veces que se nombra un artículo del inventario (gana el nombre más largo, sin solaparse). */
+/** Todas las veces que se nombra un artículo (nombre completo, alias o una parte clara del nombre). */
 function menciones(p: string[], items: ItemVoz[]): Mencion[] {
-  const todas: (Mencion & { largo: number })[] = [];
+  const todas: (Mencion & { puntaje: number })[] = [];
+  const probar = (itemId: string, f: string[], puntaje: number) => {
+    if (!f.length) return;
+    for (let i = 0; i + f.length <= p.length; i++) {
+      if (f.every((w, j) => mismo(w, p[i + j]))) todas.push({ itemId, desde: i, hasta: i + f.length - 1, puntaje });
+    }
+  };
   for (const it of items) {
-    for (const forma of [it.nombre, ...it.alias]) {
-      const f = normalizar(forma).split(' ').filter(Boolean);
-      if (!f.length) continue;
-      for (let i = 0; i + f.length <= p.length; i++) {
-        if (f.every((w, j) => mismo(w, p[i + j]))) todas.push({ itemId: it.id, desde: i, hasta: i + f.length - 1, largo: f.length });
+    const nombre = normalizar(it.nombre).split(' ').filter(Boolean);
+    probar(it.id, nombre, nombre.length);
+    for (const a of it.alias) {
+      const f = normalizar(a).split(' ').filter(Boolean);
+      probar(it.id, f, f.length);
+    }
+    // "vajillas completo" alcanza para "Set de vajilla completo"
+    for (let largo = nombre.length - 1; largo >= 1; largo--) {
+      for (let d = 0; d + largo <= nombre.length; d++) {
+        const ventana = nombre.slice(d, d + largo);
+        if (ventana.every((w) => GENERICAS.has(w))) continue;
+        if (largo === 1 && !(nombre.length >= 3 && ventana[0].length >= 6)) continue;
+        probar(it.id, ventana, largo - 0.5);
       }
     }
   }
-  todas.sort((a, b) => b.largo - a.largo || a.desde - b.desde);
+  todas.sort((a, b) => b.puntaje - a.puntaje || a.desde - b.desde);
   const ocupado = new Set<number>();
   const res: Mencion[] = [];
   for (const m of todas) {
@@ -85,11 +112,49 @@ function menciones(p: string[], items: ItemVoz[]): Mencion[] {
   return res.sort((a, b) => a.desde - b.desde);
 }
 
-const mayuscula = (w: string, i: number) => (i > 0 && ['de', 'del', 'la', 'los', 'y'].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+const mayuscula = (w: string, i: number) => (i > 0 && ['de', 'del', 'la', 'los', 'las', 'y'].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1));
+
+/** Dónde empieza el nombre del cliente: "se llama X", "el cliente es X", "evento de X", "a nombre de X". */
+function inicioCliente(p: string[]): number {
+  for (let k = 0; k < p.length; k++) {
+    if (p[k] === 'cliente') {
+      let j = k + 1;
+      if (p[j] === 'es' || p[j] === 'se') j++;
+      if (p[j] === 'llama') j++;
+      if (p[j] === 'de') j++;
+      return j;
+    }
+    if (p[k] === 'llama' && p[k - 1] === 'se') return k + 1;
+    if (p[k] === 'evento') {
+      let j = k + 1;
+      if (p[j] === 'es') j++;
+      if (['de', 'para', 'del'].includes(p[j])) return j + 1;
+    }
+    if (p[k] === 'nombre' && p[k + 1] === 'de') return k + 2;
+  }
+  return -1;
+}
+
+function detectarCanal(p: string[]): Canal | null {
+  const CUE = ['contacto', 'conocio', 'escribio', 'llego', 'vino', 'hablo', 'llamo', 'encontro', 'por', 'desde'];
+  for (let i = 0; i < p.length; i++) {
+    if (!CUE.includes(p[i])) continue;
+    for (const w of p.slice(i + 1, i + 7)) {
+      if (/^(whats|wasap|guasap)/.test(w)) return 'whatsapp';
+      if (/^insta/.test(w)) return 'instagram';
+      if (/^(facebook|face|fb)$/.test(w)) return 'facebook';
+      if (/^(pagina|web|sitio)$/.test(w)) return 'web';
+      if (/^(recomend|referid|amig|conocid)/.test(w)) return 'recomendación';
+    }
+  }
+  return null;
+}
 
 export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string): BorradorEvento {
   const p = tokensDe(texto);
   const conTildes = tokensConTildes(texto);
+  const alineado = conTildes.length === p.length;
+  const original = (desde: number, n: number) => (alineado ? conTildes.slice(desde, desde + n) : p.slice(desde, desde + n));
   const runs = extraerNumeros(p);
   const usado = new Set<number>(); // índices de runs ya explicados
   const enRun = new Set<number>();
@@ -98,38 +163,99 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
   const mens = menciones(p, items);
 
   const res: BorradorEvento = {
-    cliente: '', lineas: [], personas: null, fecha: null, fleteIncluido: false, fleteCobrado: null, fletePagado: null,
-    senaPorcentaje: null, senaMonto: null,
+    cliente: '', lugar: '', canal: detectarCanal(p), lineas: [], personas: null, fecha: null, fleteIncluido: false,
+    fleteCobrado: null, fletePagado: null, senaPorcentaje: null, senaMonto: null,
   };
 
-  // ---- Cliente: "este evento es de Javier de Yacosta lo que tiene es..."
-  for (let k = 0; k < p.length - 1; k++) {
+  // ---- Cliente
+  const ini = inicioCliente(p);
+  if (ini >= 0) {
+    const nombre: string[] = [];
+    for (let i = ini; i < p.length && nombre.length < 6; i++) {
+      if (enRun.has(i) || PARAR_NOMBRE.has(p[i])) break;
+      if (['la', 'los', 'las'].includes(p[i]) && p[i - 1] !== 'de') break;
+      nombre.push(p[i]);
+    }
+    while (nombre.length && ['de', 'del', 'la', 'los', 'las'].includes(nombre[nombre.length - 1])) nombre.pop();
+    if (nombre.length) res.cliente = original(ini, nombre.length).map(mayuscula).join(' ');
+  }
+
+  // ---- Dirección: "la dirección es Sarmiento", "el evento es en la calle X"
+  for (let i = 0; i < p.length; i++) {
     let j = -1;
-    if (p[k] === 'evento') j = p[k + 1] === 'es' ? k + 2 : k + 1;
-    else if (p[k] === 'nombre' && p[k + 1] === 'de') j = k + 2;
-    else if (p[k] === 'cliente') j = k + 1;
+    if (['direccion', 'domicilio', 'lugar'].includes(p[i])) j = i + 1;
+    else if (p[i] === 'en' && ['calle', 'salon', 'quinta', 'club', 'casa', 'barrio'].includes(p[i + 1])) j = i;
     if (j < 0) continue;
-    if (['de', 'para', 'del'].includes(p[j]) || p[k] !== 'evento') {
-      const inicio = p[k] === 'evento' ? j + 1 : j;
-      const nombre: string[] = [];
-      for (let i = inicio; i < p.length && nombre.length < 5; i++) {
-        if (enRun.has(i) || PARAR_NOMBRE.has(p[i])) break;
-        nombre.push(p[i]);
-      }
-      if (nombre.length && !['de', 'del'].includes(nombre[nombre.length - 1])) {
-        const desdeIdx = inicio;
-        const original = conTildes.length === p.length ? conTildes.slice(desdeIdx, desdeIdx + nombre.length) : nombre;
-        res.cliente = original.map(mayuscula).join(' ');
-        break;
-      }
+    while (['es', 'en', 'de'].includes(p[j]) && j < i + 3) j++;
+    const partes: string[] = [];
+    for (let k = j; k < p.length && partes.length < 6; k++) {
+      if (PARAR_LUGAR.has(p[k])) break;
+      partes.push(p[k]);
+    }
+    if (partes.length) {
+      res.lugar = original(j, partes.length).map(mayuscula).join(' ');
+      break;
     }
   }
 
-  // ---- Cantidades: "100 sillas", "10 talones", "100 set de vajilla completo" (y precio si dice "a 800")
+  // ---- Flete: "flete incluido", "el flete me sale 50 ida y 50 de vuelta, o sea que son 100000"
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] !== 'flete') continue;
+    if (['incluido', 'incluida', 'incluye'].includes(p[i + 1]) || ['incluye', 'incluido'].includes(p[i - 1])) {
+      res.fleteIncluido = true;
+      continue;
+    }
+    // La ventana termina donde empieza otro tema (la seña, otra mención del flete)
+    let fin = Math.min(p.length, i + 21);
+    for (let k = i + 1; k < fin; k++) if (/^(en)?sen(a|ar|ia|iar)/.test(p[k]) || p[k] === 'flete') { fin = k; break; }
+    const ventana = p.slice(i + 1, fin);
+    const enVentana = runs.map((r, k) => ({ r, k })).filter(({ r, k }) => !usado.has(k) && r.desde > i && r.desde < fin && p[r.hasta + 1] !== 'porciento');
+    if (!enVentana.length) continue;
+    const costo = ventana.some((w) => ['sale', 'cuesta', 'pago', 'pague', 'cobran', 'costo', 'total', 'ida', 'vuelta', 'sea'].includes(w));
+    const cobrado = p.slice(Math.max(0, i - 3), i).some((w) => ['cobro', 'cobre', 'cobra', 'cobrar'].includes(w));
+    // "o sea que son 100000", "en total 100000": el total manda sobre las partes
+    const cue = ventana.findIndex((w) => ['sea', 'total', 'son', 'entre'].includes(w));
+    const total = cue >= 0 ? enVentana.find(({ r }) => r.desde > i + 1 + cue) : undefined;
+    const tieneIdaVuelta = ventana.includes('ida') && ventana.includes('vuelta');
+    let monto: number;
+    if (total) monto = total.r.valor;
+    else if (tieneIdaVuelta && enVentana.length >= 2) monto = enVentana[0].r.valor + enVentana[1].r.valor;
+    else monto = enVentana[0].r.valor;
+    if (cobrado && !costo) res.fleteCobrado = monto;
+    else if (costo || !cobrado) res.fletePagado = monto;
+    enVentana.forEach(({ k }) => usado.add(k));
+  }
+
+  // ---- Artículos: "100 sillas a un costo de 800 pesos", "10 talones y 100 set de vajilla completo"
   interface Cand { itemId: string | null; nombre: string; cantidad: number; precio: number | null; fin: number }
   const cands: Cand[] = [];
+
+  /** "a 800", "a un costo de 800 pesos", "cada uno a 2000": devuelve el precio dicho justo después del artículo. */
+  const precioDespues = (i: number): { valor: number; hasta: number } | null => {
+    let j = i;
+    if (p[j] === 'cada') j += 2; // "cada uno"
+    if (p[j] !== 'a' && p[j] !== 'por') return null;
+    j++;
+    const saltar = new Set(['un', 'una', 'uno', 'costo', 'precio', 'valor', 'de', 'cada', 'el', 'la']);
+    const marcar: number[] = [];
+    for (let n = 0; n < 6 && j < p.length; n++, j++) {
+      const ri = runEn(j);
+      if (saltar.has(p[j])) {
+        if (ri >= 0) marcar.push(ri);
+        continue;
+      }
+      if (ri >= 0 && !usado.has(ri)) {
+        marcar.forEach((m) => usado.add(m));
+        usado.add(ri);
+        return { valor: runs[ri].valor, hasta: runs[ri].hasta };
+      }
+      return null;
+    }
+    return null;
+  };
+
   runs.forEach((r, ri) => {
-    if (p[r.hasta + 1] === 'porciento') return;
+    if (usado.has(ri) || p[r.hasta + 1] === 'porciento') return;
     const noun: string[] = [];
     let i = r.hasta + 1;
     while (i < p.length && noun.length < 5 && !enRun.has(i) && !PARAR.has(p[i])) noun.push(p[i++]);
@@ -140,21 +266,12 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
       return;
     }
     const m = mens.find((x) => x.desde === r.hasta + 1);
-    let precio: number | null = null;
-    let fin = i - 1;
-    if (p[i] === 'a' || (p[i] === 'cada' && p[i + 2] === 'a')) {
-      const rj = runEn(p[i] === 'a' ? i + 1 : i + 3);
-      if (rj >= 0) {
-        precio = runs[rj].valor;
-        usado.add(rj);
-        fin = runs[rj].hasta;
-      }
-    }
     usado.add(ri);
-    cands.push({ itemId: m?.itemId ?? null, nombre: m ? '' : noun.join(' '), cantidad: r.valor, precio, fin });
+    const pr = precioDespues(i);
+    cands.push({ itemId: m?.itemId ?? null, nombre: m ? '' : noun.join(' '), cantidad: r.valor, precio: pr?.valor ?? null, fin: pr?.hasta ?? i - 1 });
   });
 
-  // ---- Precios: "la silla las cobro 800", "el set de vajilla completo los cobró 2000 cada uno"
+  // ---- Precios dichos aparte: "la silla las cobro 800", "el set de vajilla completo los cobró 2000 cada uno"
   for (const c of cands) {
     if (c.precio !== null) continue;
     let posiciones: { desde: number; hasta: number }[];
@@ -182,24 +299,6 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     res.lineas.push({ itemId: c.itemId, nombreDicho: c.nombre, cantidad: c.cantidad, precio: c.precio });
-  }
-
-  // ---- Flete: "flete incluido", "el flete me sale 100 mil la ida y la vuelta"
-  for (let i = 0; i < p.length; i++) {
-    if (p[i] !== 'flete') continue;
-    if (['incluido', 'incluida', 'incluye'].includes(p[i + 1]) || ['incluye', 'incluido'].includes(p[i - 1])) {
-      res.fleteIncluido = true;
-      continue;
-    }
-    const ventana = p.slice(i + 1, i + 13);
-    const ri = runs.findIndex((r, k) => !usado.has(k) && r.desde > i && r.desde <= i + 12);
-    if (ri < 0) continue;
-    const cobrado = p.slice(Math.max(0, i - 3), i).some((w) => ['cobro', 'cobre', 'cobra', 'cobrar'].includes(w));
-    const costo = ventana.some((w) => ['sale', 'cuesta', 'pago', 'pague', 'cobran', 'costo', 'total'].includes(w));
-    if (cobrado && !costo) res.fleteCobrado = runs[ri].valor;
-    else if (costo) res.fletePagado = runs[ri].valor;
-    else continue;
-    usado.add(ri);
   }
 
   // ---- Seña: "me va a señar con el 50%", "seña de 100 mil"

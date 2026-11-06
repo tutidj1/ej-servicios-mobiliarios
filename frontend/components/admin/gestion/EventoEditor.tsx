@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Lock, MessageCircle, Plus, Sparkles, Trash2, Unlock, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, FileDown, Lock, MessageCircle, Plus, Send, Sparkles, Trash2, Unlock, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { linkWhatsappCliente } from '@/lib/phone';
 import {
@@ -41,6 +41,7 @@ import { AYUDA, type Aviso, BTN_OSCURO, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SEC
 import { Mensaje } from '../ui';
 import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import { CampoFecha } from './Calendarios';
+import { compartirArchivo, descargarArchivo, nombreArchivoPresupuesto, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -84,6 +85,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const [cargando, setCargando] = useState(true);
   const [editandoCliente, setEditandoCliente] = useState<BorradorCliente | null>(null);
   const [pestana, setPestana] = useState<'datos' | 'articulos' | 'dinero'>('datos');
+  const [generando, setGenerando] = useState(false);
   const [asistente, setAsistente] = useState<{ item: Item; cantidad: number; marcado: boolean }[] | null>(null);
 
   const cerrado = !!evento?.cerrado_en;
@@ -405,6 +407,65 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   });
   const sinAgregar = items.filter((i) => i.activo && !lineas.some((l) => l.item_id === i.id));
 
+  // ---- Presupuesto en PDF (solo lo que se cobra: nada de subalquiler ni costos)
+  const armarPresupuesto = async () => {
+    if (cambios && !(await guardar())) return null;
+    if (faltantes.length) {
+      setAviso({ tipo: 'error', texto: `Todavía no se puede armar el presupuesto. ${faltantes.join(' ')}` });
+      return null;
+    }
+    const filas = lineas
+      .filter((l) => l.cantidad_total > 0)
+      .map((l) => ({ nombre: itemPorId[l.item_id]?.nombre ?? 'Artículo', cantidad: l.cantidad_total, precio: leerMonto(l.precioTexto) ?? 0 }));
+    if (!filas.length) {
+      setAviso({ tipo: 'error', texto: 'Agregá al menos un artículo con cantidad para armar el presupuesto.' });
+      return null;
+    }
+    const datos = {
+      cliente: { nombre: cliente.nombre_apellido, telefono: cliente.telefono },
+      evento: { fecha: evento.fecha_evento, lugar: evento.lugar, personas: evento.cantidad_personas, tipo: evento.tipo_evento },
+      lineas: filas,
+      fleteCobrado: leerMonto(fleteTexto) ?? 0,
+      emitido: hoyArgentina(),
+    };
+    const { generarPresupuestoPdf } = await import('@/lib/gestion/presupuestoPdf');
+    return { blob: await generarPresupuestoPdf(datos), datos, archivo: nombreArchivoPresupuesto(cliente.nombre_apellido, evento.fecha_evento) };
+  };
+
+  const descargarPresupuesto = async () => {
+    setGenerando(true);
+    try {
+      const r = await armarPresupuesto();
+      if (r) {
+        descargarArchivo(r.blob, r.archivo);
+        setAviso({ tipo: 'ok', texto: 'Presupuesto descargado.' });
+      }
+    } catch {
+      setAviso({ tipo: 'error', texto: 'No se pudo armar el PDF. Probá de nuevo.' });
+    }
+    setGenerando(false);
+  };
+
+  const enviarPresupuesto = async () => {
+    setGenerando(true);
+    try {
+      const r = await armarPresupuesto();
+      if (r) {
+        const texto = `Hola ${cliente.nombre_apellido.split(' ')[0]}, te paso el presupuesto para tu evento del ${fechaLarga(evento.fecha_evento).toLowerCase()}. Total: ${pesos(Math.round(totalPresupuesto(r.datos) * 100))}.`;
+        // En el celular se abre el menú de compartir con el PDF adjunto
+        if (!(await compartirArchivo(r.blob, r.archivo, texto))) {
+          // En la compu: se descarga el PDF y se abre el chat del cliente para adjuntarlo
+          descargarArchivo(r.blob, r.archivo);
+          if (cliente.telefono) window.open(`${linkWhatsappCliente(cliente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+          setAviso({ tipo: 'ok', texto: cliente.telefono ? 'Se descargó el PDF y se abrió el chat del cliente: adjuntalo ahí.' : 'Se descargó el PDF. El cliente no tiene teléfono cargado.' });
+        }
+      }
+    } catch {
+      setAviso({ tipo: 'error', texto: 'No se pudo enviar el presupuesto. Probá de nuevo.' });
+    }
+    setGenerando(false);
+  };
+
   return (
     <div className="space-y-5 pb-44 md:pb-28">
       <button type="button" onClick={volver} className={BTN_SECUNDARIO}><ArrowLeft size={18} /> Volver a eventos</button>
@@ -432,6 +493,16 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
           <button type="button" disabled={guardando} onClick={() => cambiarEstado(SIGUIENTE[evento.estado]!.estado)} className={`${BTN_PRIMARIO} min-h-[56px] w-full text-base`}>
             {SIGUIENTE[evento.estado]!.texto}
           </button>
+        )}
+        {evento.estado !== 'cancelado' && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={generando} onClick={descargarPresupuesto} className={`${BTN_SECUNDARIO} min-h-[52px]`}>
+              <FileDown size={18} /> {generando ? 'Armando…' : 'Presupuesto PDF'}
+            </button>
+            <button type="button" disabled={generando} onClick={enviarPresupuesto} className={`${BTN_SECUNDARIO} min-h-[52px]`}>
+              <Send size={18} /> Enviar al cliente
+            </button>
+          </div>
         )}
       </section>
 
