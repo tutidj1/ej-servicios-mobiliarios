@@ -2,23 +2,74 @@
 
 import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { ClipboardList, ExternalLink, Image as IconoImagen, LogOut, Menu, Package, Percent, X } from 'lucide-react';
+import {
+  Boxes,
+  CalendarCheck,
+  CalendarDays,
+  ClipboardList,
+  ExternalLink,
+  Image as IconoImagen,
+  LogOut,
+  Menu,
+  Package,
+  PartyPopper,
+  Percent,
+  Users,
+  X,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useBloqueoScroll } from '@/lib/useMovil';
 import CotizacionesAdmin from './CotizacionesAdmin';
 import ProductosAdmin from './ProductosAdmin';
 import PromoAdmin from './PromoAdmin';
 import BannersAdmin from './BannersAdmin';
+import EventosAdmin from './gestion/EventosAdmin';
+import CalendarioAdmin from './gestion/CalendarioAdmin';
+import DisponibilidadAdmin from './gestion/DisponibilidadAdmin';
+import ClientesAdmin from './gestion/ClientesAdmin';
+import InventarioAdmin from './gestion/InventarioAdmin';
 import { BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from './estilos';
 
-type Seccion = 'cotizaciones' | 'productos' | 'banners' | 'promo';
+type Seccion =
+  | 'eventos'
+  | 'calendario'
+  | 'disponibilidad'
+  | 'clientes'
+  | 'inventario'
+  | 'cotizaciones'
+  | 'productos'
+  | 'banners'
+  | 'promo';
 
-const SECCIONES: { id: Seccion; nombre: string; icono: React.ReactNode }[] = [
-  { id: 'cotizaciones', nombre: 'Cotizaciones', icono: <ClipboardList size={20} /> },
-  { id: 'productos', nombre: 'Productos', icono: <Package size={20} /> },
-  { id: 'banners', nombre: 'Banners', icono: <IconoImagen size={20} /> },
-  { id: 'promo', nombre: 'Promo', icono: <Percent size={20} /> },
+type Rol = 'admin' | 'operadora' | 'ninguno';
+
+// "soloAdmin": lo que se publica en la web pública. La operadora no lo ve.
+const SECCIONES: { id: Seccion; nombre: string; icono: React.ReactNode; soloAdmin?: boolean; grupo: 'gestion' | 'web' }[] = [
+  { id: 'eventos', nombre: 'Eventos', icono: <PartyPopper size={20} />, grupo: 'gestion' },
+  { id: 'calendario', nombre: 'Calendario', icono: <CalendarDays size={20} />, grupo: 'gestion' },
+  { id: 'disponibilidad', nombre: 'Disponibilidad', icono: <CalendarCheck size={20} />, grupo: 'gestion' },
+  { id: 'clientes', nombre: 'Clientes', icono: <Users size={20} />, grupo: 'gestion' },
+  { id: 'inventario', nombre: 'Inventario', icono: <Boxes size={20} />, grupo: 'gestion' },
+  { id: 'cotizaciones', nombre: 'Cotizaciones web', icono: <ClipboardList size={20} />, grupo: 'web' },
+  { id: 'productos', nombre: 'Productos', icono: <Package size={20} />, soloAdmin: true, grupo: 'web' },
+  { id: 'banners', nombre: 'Banners', icono: <IconoImagen size={20} />, soloAdmin: true, grupo: 'web' },
+  { id: 'promo', nombre: 'Promo', icono: <Percent size={20} />, soloAdmin: true, grupo: 'web' },
 ];
+
+/**
+ * Rol de la cuenta. Si todavía no se aplicó la migración 0006 (no existe mi_rol),
+ * se usa la verificación anterior (es_admin) y el panel sigue funcionando como antes.
+ */
+async function consultarRol(): Promise<{ rol: Rol; gestionDisponible: boolean } | { error: true }> {
+  const r = await supabase.rpc('mi_rol');
+  if (!r.error) {
+    const rol = r.data === 'admin' || r.data === 'operadora' ? r.data : 'ninguno';
+    return { rol, gestionDisponible: true };
+  }
+  const a = await supabase.rpc('es_admin');
+  if (a.error) return { error: true };
+  return { rol: a.data === true ? 'admin' : 'ninguno', gestionDisponible: false };
+}
 
 function Marca({ oscuro = false }: { oscuro?: boolean }) {
   return (
@@ -37,9 +88,11 @@ function Marca({ oscuro = false }: { oscuro?: boolean }) {
 export default function AdminApp() {
   const [sesion, setSesion] = useState<Session | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
+  const [rol, setRol] = useState<Rol | null>(null);
+  const [gestionDisponible, setGestionDisponible] = useState(false);
   const [errorAdmin, setErrorAdmin] = useState('');
-  const [seccion, setSeccion] = useState<Seccion>('cotizaciones');
+  const [seccion, setSeccion] = useState<Seccion>('eventos');
+  const [eventoAbierto, setEventoAbierto] = useState<string | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
   useBloqueoScroll(menuAbierto);
 
@@ -59,21 +112,31 @@ export default function AdminApp() {
     return () => suscripcion.subscription.unsubscribe();
   }, []);
 
-  // Verifica en la base de datos si la cuenta es la del administrador
+  // Verifica en la base de datos qué rol tiene la cuenta (admin u operadora)
+  const usuarioId = sesion?.user.id;
   useEffect(() => {
-    if (!sesion) {
-      setEsAdmin(null);
+    if (!usuarioId) {
+      setRol(null);
       return;
     }
-    supabase.rpc('es_admin').then(({ data, error }) => {
-      if (error) {
+    consultarRol().then((r) => {
+      if ('error' in r) {
         setErrorAdmin('No se pudo verificar la cuenta. Intentá de nuevo en un momento.');
-        setEsAdmin(false);
-      } else {
-        setEsAdmin(data === true);
+        setRol('ninguno');
+        return;
       }
+      setRol(r.rol);
+      setGestionDisponible(r.gestionDisponible);
+      // Sin la migración de gestión aplicada, se abre en Cotizaciones como antes
+      if (!r.gestionDisponible) setSeccion('cotizaciones');
     });
-  }, [sesion]);
+  }, [usuarioId]);
+
+  const abrirEvento = (id: string | null) => {
+    setEventoAbierto(id);
+    if (id) setSeccion('eventos');
+    window.scrollTo({ top: 0 });
+  };
 
   const iniciarSesion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +150,8 @@ export default function AdminApp() {
 
   const cerrarSesion = async () => {
     await supabase.auth.signOut();
-    setEsAdmin(null);
+    setRol(null);
+    setEventoAbierto(null);
     setMenuAbierto(false);
   };
 
@@ -107,7 +171,7 @@ export default function AdminApp() {
           <Marca />
         </div>
         <h1 className="font-playfair text-2xl font-bold text-stone-900 mb-1">Ingresar</h1>
-        <p className="font-manrope text-sm text-stone-600 mb-6">Acceso solo para administradores.</p>
+        <p className="font-manrope text-sm text-stone-600 mb-6">Acceso solo para el equipo de EJ.</p>
 
         <form onSubmit={iniciarSesion} autoComplete="on">
           <label htmlFor="admin-email" className={ETIQUETA}>Email</label>
@@ -139,12 +203,12 @@ export default function AdminApp() {
     );
   }
 
-  if (esAdmin === null) {
+  if (rol === null) {
     return pantallaCentrada(<p className="font-manrope text-sm text-stone-300">Verificando cuenta…</p>);
   }
 
-  // Sesión válida pero no es la cuenta administradora
-  if (!esAdmin) {
+  // Sesión válida pero la cuenta no tiene rol asignado
+  if (rol === 'ninguno') {
     return pantallaCentrada(
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl">
         <h1 className="font-playfair text-xl font-bold text-stone-900 mb-2">Sin acceso</h1>
@@ -158,7 +222,9 @@ export default function AdminApp() {
     );
   }
 
-  const actual = SECCIONES.find((s) => s.id === seccion)!;
+  const esAdmin = rol === 'admin';
+  const visibles = SECCIONES.filter((s) => (esAdmin || !s.soloAdmin) && (gestionDisponible || s.grupo === 'web'));
+  const actual = visibles.find((s) => s.id === seccion) ?? visibles[0];
 
   return (
     <div className="min-h-dvh bg-[#E9E5DC] md:flex">
@@ -186,15 +252,22 @@ export default function AdminApp() {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Secciones">
-          {SECCIONES.map((s) => {
-            const activa = s.id === seccion;
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Secciones">
+          {visibles.map((s, i) => {
+            const activa = s.id === actual.id;
+            const titulo = i === 0 || visibles[i - 1].grupo !== s.grupo;
             return (
+              <React.Fragment key={s.id}>
+              {titulo && gestionDisponible && (
+                <p className={`px-4 pb-1 font-manrope text-[11px] font-bold uppercase tracking-wider text-stone-500 ${i > 0 ? 'pt-4' : ''}`}>
+                  {s.grupo === 'gestion' ? 'Alquileres' : 'Página web'}
+                </p>
+              )}
               <button
-                key={s.id}
                 type="button"
                 onClick={() => {
                   setSeccion(s.id);
+                  if (s.id === 'eventos') setEventoAbierto(null);
                   setMenuAbierto(false);
                 }}
                 aria-current={activa ? 'page' : undefined}
@@ -205,6 +278,7 @@ export default function AdminApp() {
                 {s.icono}
                 {s.nombre}
               </button>
+              </React.Fragment>
             );
           })}
         </nav>
@@ -245,10 +319,17 @@ export default function AdminApp() {
         </header>
 
         <main className="mx-auto max-w-5xl px-4 py-6 sm:px-8 md:py-10">
-          {seccion === 'cotizaciones' && <CotizacionesAdmin />}
-          {seccion === 'productos' && <ProductosAdmin />}
-          {seccion === 'banners' && <BannersAdmin />}
-          {seccion === 'promo' && <PromoAdmin />}
+          {actual.id === 'eventos' && <EventosAdmin abierto={eventoAbierto} onAbrir={abrirEvento} esAdmin={esAdmin} />}
+          {actual.id === 'calendario' && <CalendarioAdmin onAbrirEvento={abrirEvento} />}
+          {actual.id === 'disponibilidad' && <DisponibilidadAdmin onAbrirEvento={abrirEvento} />}
+          {actual.id === 'clientes' && <ClientesAdmin />}
+          {actual.id === 'inventario' && <InventarioAdmin />}
+          {actual.id === 'cotizaciones' && (
+            <CotizacionesAdmin puedeConvertir={gestionDisponible} puedeEliminar={esAdmin} onEventoCreado={abrirEvento} />
+          )}
+          {esAdmin && actual.id === 'productos' && <ProductosAdmin />}
+          {esAdmin && actual.id === 'banners' && <BannersAdmin />}
+          {esAdmin && actual.id === 'promo' && <PromoAdmin />}
         </main>
       </div>
     </div>

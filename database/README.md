@@ -40,3 +40,20 @@ Entrá a `https://tusitio.com/admin` con la cuenta administradora (email y contr
 Desde ahí podés: ver y gestionar cotizaciones (estado, WhatsApp/llamar al cliente), agregar/editar/ocultar/ordenar productos (con foto) y editar la promo.
 El ingreso es con email y contraseña de Supabase Auth (nunca van escritos en el código).
 Los cambios se reflejan en la web en menos de 1 minuto.
+
+## Actualización 0006–0009 — Gestión de alquileres (Fase 1)
+
+**No aplicar hasta que Tomás lo apruebe.** Ejecutar en orden en **SQL Editor** (son idempotentes):
+
+| Archivo | Qué hace | ¿Toca datos existentes? |
+|---|---|---|
+| [`0006_roles.sql`](./migrations/0006_roles.sql) | Tabla `perfiles` (admin / operadora). `es_admin()` pasa a leer esa tabla. La operadora puede ver y cambiar el estado de cotizaciones (no borrarlas). | Solo redefine `es_admin()`; Tomás queda cargado como admin, así que todo sigue igual. |
+| [`0007_gestion_nucleo.sql`](./migrations/0007_gestion_nucleo.sql) | Tablas nuevas: `items`, `clientes`, `eventos`, `evento_lineas`, `evento_costos`, `pagos`, `configuracion`. Reglas (precio obligatorio al confirmar, evento cerrado congelado) y RLS solo para el equipo. Precarga los 25 artículos del contrato. | No. Solo crea. |
+| [`0008_disponibilidad.sql`](./migrations/0008_disponibilidad.sql) | Funciones de stock por día y confirmación con bloqueo (evita reservar dos veces lo mismo). | No. Solo funciones. |
+| [`0009_auditoria.sql`](./migrations/0009_auditoria.sql) | Registro de quién cambió qué (eventos, líneas, costos, pagos, clientes). Solo el admin lo lee. | No. |
+
+**Vuelta atrás:** [`migrations/rollback/`](./migrations/rollback/), en orden inverso (0009 → 0006). La de 0007 borra todo lo cargado en gestión; exportar antes si ya hay datos reales.
+
+**Dar acceso a María Eugenia:** crear su usuario en Authentication > Users y correr el `INSERT INTO perfiles …` que está comentado al final de `0006_roles.sql`.
+
+**Prueba automática** (en un Postgres local de prueba, sin tocar Supabase): desde `frontend/`, `npm run test:db`.
