@@ -139,7 +139,7 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
                 );
                 return (
                   <li key={d.dia} className="flex flex-wrap items-start gap-x-3 py-2 text-sm">
-                    <span className="w-28 shrink-0 capitalize text-stone-700">{fechaLarga(d.dia)}</span>
+                    <span className="w-28 shrink-0 text-stone-700">{fechaLarga(d.dia)}</span>
                     <span className={`w-24 shrink-0 text-right font-bold tabular-nums ${(d.disponible ?? 0) < 0 ? 'text-amber-700' : ''}`}>
                       {(d.disponible ?? 0) < 0 ? `subalq. ${-(d.disponible ?? 0)}` : mostrarStock(d.disponible)}
                     </span>

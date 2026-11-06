@@ -201,5 +201,6 @@ export function nombreMes(mes0: number): string {
 
 export function fechaLarga(dia: string): string {
   const t = new Date(parseDia(dia));
-  return `${DIAS_SEMANA[t.getUTCDay()]} ${t.getUTCDate()} de ${MESES[t.getUTCMonth()]}`;
+  const texto = `${DIAS_SEMANA[t.getUTCDay()]} ${t.getUTCDate()} de ${MESES[t.getUTCMonth()]}`;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }

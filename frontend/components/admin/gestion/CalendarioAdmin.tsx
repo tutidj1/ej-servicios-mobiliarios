@@ -115,7 +115,7 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
       {dia && (
         <section className="mt-5 grid gap-5 md:grid-cols-2">
           <div className={TARJETA}>
-            <h3 className="mb-2 font-playfair text-lg font-bold capitalize">{fechaLarga(dia)}</h3>
+            <h3 className="mb-2 font-playfair text-lg font-bold">{fechaLarga(dia)}</h3>
             {eventosDelDia(dia).length === 0 && <p className="font-manrope text-sm text-stone-600">Ningún evento ocupa este día.</p>}
             <ul className="space-y-2">
               {eventosDelDia(dia).map((e) => (
