@@ -47,10 +47,10 @@ export const paginasProducto: PaginaProducto[] = [
     intro:
       'Si estás organizando un casamiento, un cumpleaños de 15 o una reunión familiar en Santa Fe, te alquilamos las sillas y te las llevamos al lugar. Vos nos decís cuántos invitados esperás y armamos el pedido con vos.',
     incluye: [
-      'Sillas de plástico reforzado, apilables y cómodas.',
+      'Sillas blancas de plástico reforzado, apilables y cómodas.',
       'Las podés combinar en el mismo pedido con tablones, caballetes, vajilla y mantelería.',
       'Contrato de alquiler por escrito con el detalle de lo que se entrega.',
-      // TODO(Tomás): confirmar color y medidas de las sillas para agregarlas acá.
+      // Tomás (2026-11-06): color blanco confirmado; las medidas de la silla no se publican.
     ],
     referencia: [
       'Como referencia, se calcula una silla por invitado. Si vas a tener mesa dulce o un sector de estar, sumá algunas más.',

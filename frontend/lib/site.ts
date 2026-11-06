@@ -23,7 +23,7 @@ export const OG_IMAGE = {
   url: 'https://ejserviciomobiliarios.com/og-image.jpg',
   width: 1200,
   height: 630,
-  alt: 'Mesa de evento armada con vajilla, copas y mantelería',
+  alt: 'Silla blanca, tablón de madera, plato y copas que alquila EJ Servicios Mobiliarios',
 };
 
 export const REDES = [
