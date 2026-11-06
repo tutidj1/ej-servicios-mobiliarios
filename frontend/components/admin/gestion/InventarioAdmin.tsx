@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { CATEGORIAS, type Categoria, type Item, leerMonto, mensajeError, mostrarMonto, mostrarStock } from '@/lib/gestion/tipos';
 import type { Sugerencia } from '@/lib/gestion/calculos';
-import { AYUDA, type Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
+import { AYUDA, type Aviso, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Interruptor, Mensaje } from '../ui';
 
 interface Borrador {
@@ -43,6 +43,22 @@ export default function InventarioAdmin() {
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [edicion, setEdicion] = useState<Borrador | null>(null);
   const [guardando, setGuardando] = useState(false);
+
+  const eliminar = async () => {
+    if (!edicion?.id) return;
+    if (!window.confirm(`¿Eliminar "${edicion.nombre}" del inventario? Si ya se usó en algún evento no se puede borrar; en ese caso apagá "Activo".`)) return;
+    const { error } = await supabase.from('items').delete().eq('id', edicion.id);
+    if (error) {
+      setAviso({
+        tipo: 'error',
+        texto: /foreign key/i.test(error.message ?? '') ? 'Ese artículo ya se usó en eventos, así que no se puede borrar. Apagá "Activo" para que no aparezca más.' : mensajeError(error, 'No se pudo eliminar.'),
+      });
+      return;
+    }
+    setAviso({ tipo: 'ok', texto: 'Artículo eliminado.' });
+    setEdicion(null);
+    cargar();
+  };
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.from('items').select('*').order('orden_contrato', { nullsFirst: false }).order('nombre');
@@ -165,6 +181,11 @@ export default function InventarioAdmin() {
           <div className="flex gap-2">
             <button type="submit" disabled={guardando} className={BTN_PRIMARIO}>{guardando ? 'Guardando…' : 'Guardar'}</button>
             <button type="button" onClick={() => setEdicion(null)} className={BTN_SECUNDARIO}>Cancelar</button>
+            {edicion.id && (
+              <button type="button" onClick={eliminar} className={`${BTN_PELIGRO_SUAVE} ml-auto`}>
+                <Trash2 size={16} /> Eliminar
+              </button>
+            )}
           </div>
         </form>
       )}

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { fechaLarga, hoyArgentina, nombreMes, sumarDias } from '@/lib/gestion/calculos';
+import { diasDelRango, fechaLarga, hoyArgentina, nombreMes, sumarDias } from '@/lib/gestion/calculos';
 import { useBloqueoScroll } from '@/lib/useMovil';
 import { CAMPO } from '../estilos';
 
@@ -72,16 +72,19 @@ export interface PropsCalendario {
   vistas?: VistaCal[];
   min?: string;
   max?: string;
+  /** Rango marcado (varios días seguidos). hasta null = todavía se está eligiendo. */
+  rango?: { desde: string; hasta: string | null };
 }
 
 /** Calendario chico: un toque elige el día. Vistas de semana, mes y año. */
-export function MiniCalendario({ vista, ancla, onCambio, valor, onElegir, marcas, marcasMes, vistas = ['semana', 'mes', 'anio'], min, max }: PropsCalendario) {
+export function MiniCalendario({ vista, ancla, onCambio, valor, onElegir, marcas, marcasMes, vistas = ['semana', 'mes', 'anio'], min, max, rango }: PropsCalendario) {
   const hoy = hoyArgentina();
   const [y, m] = ancla.split('-').map(Number);
   const deshabilitado = (d: string) => (!!min && d < min) || (!!max && d > max);
 
   const celda = (d: string, alto: string) => {
-    const elegido = d === valor;
+    const elegido = d === valor || (!!rango && (d === rango.desde || d === (rango.hasta ?? rango.desde)));
+    const intermedio = !!rango && !!rango.hasta && d > rango.desde && d < rango.hasta;
     return (
       <button
         key={d}
@@ -91,7 +94,7 @@ export function MiniCalendario({ vista, ancla, onCambio, valor, onElegir, marcas
         aria-label={fechaLarga(d)}
         aria-pressed={elegido}
         className={`flex ${alto} flex-col items-center justify-center gap-0.5 rounded-lg font-manrope text-sm font-semibold transition-colors disabled:opacity-30 ${
-          elegido ? 'bg-stone-900 text-white' : d === hoy ? 'bg-amber-100 text-stone-900 ring-1 ring-amber-400' : 'text-stone-800 hover:bg-stone-100'
+          elegido ? 'bg-stone-900 text-white' : intermedio ? 'bg-emerald-100 text-emerald-900' : d === hoy ? 'bg-amber-100 text-stone-900 ring-1 ring-amber-400' : 'text-stone-800 hover:bg-stone-100'
         }`}
       >
         {Number(d.slice(8))}
@@ -253,6 +256,104 @@ export function CampoFecha({
               min={min}
               max={max}
             />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const corta = (dia: string) => {
+  const [d, n, , mes] = fechaLarga(dia).split(' ');
+  return `${d} ${n} ${(mes ?? '').slice(0, 3)}`;
+};
+
+/**
+ * Fechas del alquiler en un solo campo: se toca primero el día del evento y después el día que lo devuelven
+ * (si es el mismo día, se toca dos veces). Sirve también para reservas de dos o más días seguidos.
+ */
+export function CampoRango({
+  id,
+  desde,
+  hasta,
+  onChange,
+  deshabilitado,
+}: {
+  id?: string;
+  desde: string;
+  hasta: string;
+  onChange: (desde: string, hasta: string) => void;
+  deshabilitado?: boolean;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [vista, setVista] = useState<VistaCal>('mes');
+  const [ancla, setAncla] = useState(desde || hoyArgentina());
+  const [inicio, setInicio] = useState<string | null>(null);
+  useBloqueoScroll(abierto);
+
+  const abrir = () => {
+    setAncla(desde || hoyArgentina());
+    setVista('mes');
+    setInicio(null);
+    setAbierto(true);
+  };
+  const tocar = (d: string) => {
+    if (inicio === null) {
+      setInicio(d);
+      return;
+    }
+    const a = d < inicio ? d : inicio;
+    const b = d < inicio ? inicio : d;
+    onChange(a, b);
+    setAbierto(false);
+  };
+
+  const fin = hasta || desde;
+  const dias = desde ? diasDelRango(desde, fin < desde ? desde : fin).length : 0;
+  const texto = !desde
+    ? 'Elegir fechas'
+    : desde === fin
+      ? `${fechaLarga(desde)} · 1 día`
+      : `${corta(desde)} → ${corta(fin)} · ${dias} días`;
+
+  return (
+    <>
+      <button
+        id={id}
+        type="button"
+        disabled={deshabilitado}
+        onClick={abrir}
+        className={`${CAMPO} flex items-center justify-between gap-2 text-left ${desde ? '' : 'text-stone-400'} disabled:opacity-60`}
+      >
+        <span className="truncate">{texto}</span>
+        <CalendarDays size={18} className="shrink-0 text-stone-500" />
+      </button>
+      {abierto && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setAbierto(false)}>
+          <div className="w-full max-w-sm rounded-t-2xl bg-white p-4 pb-6 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Elegir fechas del alquiler">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <p className="font-manrope text-sm font-semibold text-stone-800">
+                {inicio === null ? '1. Tocá el día del evento' : `2. Ahora tocá el día que te lo devuelven (evento: ${corta(inicio)})`}
+              </p>
+              <button type="button" className="-mr-2 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center" onClick={() => setAbierto(false)} aria-label="Cerrar">
+                <X size={20} />
+              </button>
+            </div>
+            {inicio !== null && (
+              <button type="button" className="mb-2 min-h-[40px] rounded-lg px-3 font-manrope text-sm font-semibold text-emerald-800 hover:bg-emerald-50" onClick={() => { onChange(inicio, inicio); setAbierto(false); }}>
+                Es de un solo día
+              </button>
+            )}
+            <MiniCalendario
+              vista={vista}
+              ancla={ancla}
+              vistas={['mes', 'anio']}
+              onCambio={(c) => { setVista(c.vista); setAncla(c.ancla); }}
+              onElegir={tocar}
+              rango={inicio !== null ? { desde: inicio, hasta: null } : desde ? { desde, hasta: fin } : undefined}
+              min={inicio ?? undefined}
+            />
+            <p className="mt-3 font-manrope text-xs text-stone-500">Para dos o más días seguidos, el segundo toque es el último día.</p>
           </div>
         </div>
       )}

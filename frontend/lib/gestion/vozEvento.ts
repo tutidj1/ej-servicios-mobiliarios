@@ -5,6 +5,7 @@
 
 import { extraerNumeros, interpretarFecha, mismo, normalizar, type ItemVoz } from './voz';
 import type { Canal } from './tipos';
+import { sumarDias } from './calculos';
 
 export interface LineaBorrador {
   /** null = el artículo no existe todavía en el inventario (se propone crearlo). */
@@ -21,6 +22,8 @@ export interface BorradorEvento {
   lineas: LineaBorrador[];
   personas: number | null;
   fecha: string | null;
+  /** Último día si se reserva más de un día seguido ("del 21 al 23", "por 3 días"). */
+  fechaHasta: string | null;
   /** "flete incluido": el flete va dentro del precio, no se cobra aparte. */
   fleteIncluido: boolean;
   fleteCobrado: number | null;
@@ -163,7 +166,7 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
   const mens = menciones(p, items);
 
   const res: BorradorEvento = {
-    cliente: '', lugar: '', canal: detectarCanal(p), lineas: [], personas: null, fecha: null, fleteIncluido: false,
+    cliente: '', lugar: '', canal: detectarCanal(p), lineas: [], personas: null, fecha: null, fechaHasta: null, fleteIncluido: false,
     fleteCobrado: null, fletePagado: null, senaPorcentaje: null, senaMonto: null,
   };
 
@@ -320,5 +323,54 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
   // ---- Fecha (sin confundir "con el 50 por ciento" con "el 50")
   const sinPorcentaje = p.map((w, i) => (enRun.has(i) && p[runs.find((r) => i >= r.desde && i <= r.hasta)!.hasta + 1] === 'porciento' ? '_' : w));
   res.fecha = interpretarFecha(sinPorcentaje, hoy);
+
+  // ---- Varios días seguidos: "del 21 al 23 de noviembre", "por tres días"
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  for (let i = 0; i < p.length - 3; i++) {
+    if (p[i] !== 'del') continue;
+    const a = runs.find((x) => x.desde === i + 1);
+    if (!a || p[a.hasta + 1] !== 'al') continue;
+    const b = runs.find((x) => x.desde === a.hasta + 2);
+    if (!b || a.valor < 1 || a.valor > 31 || b.valor < 1 || b.valor > 31) continue;
+    const mes = p[b.hasta + 1] === 'de' && MESES.includes(p[b.hasta + 2]) ? p[b.hasta + 2] : null;
+    const dd = (n: number) => String(n).padStart(2, '0');
+    const valido = (f: string, dia: number) => new Date(`${f}T00:00:00Z`).getUTCDate() === dia;
+    let desde: string | null;
+    let hasta: string;
+    if (mes) {
+      // el mes que se dice al final es el del último día: "del 28 al 2 de diciembre"
+      const finDia = interpretarFecha(['el', String(b.valor), 'de', mes], hoy);
+      if (!finDia) continue;
+      hasta = finDia;
+      if (a.valor <= b.valor) desde = `${finDia.slice(0, 8)}${dd(a.valor)}`;
+      else {
+        const [y, m] = finDia.split('-').map(Number);
+        desde = `${new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 8)}${dd(a.valor)}`;
+      }
+    } else {
+      desde = interpretarFecha(['el', String(a.valor)], hoy);
+      if (!desde) continue;
+      hasta = `${desde.slice(0, 8)}${dd(b.valor)}`;
+      if (hasta < desde) {
+        const [y, m] = desde.split('-').map(Number);
+        hasta = `${new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 8)}${dd(b.valor)}`;
+      }
+    }
+    if (valido(desde, a.valor) && valido(hasta, b.valor) && desde <= hasta) {
+      res.fecha = desde;
+      res.fechaHasta = hasta;
+    }
+    break;
+  }
+  if (res.fecha && !res.fechaHasta) {
+    for (let i = 0; i < p.length - 2; i++) {
+      if (p[i] !== 'por' && p[i] !== 'durante') continue;
+      const rn = runs.find((x) => x.desde === i + 1);
+      if (rn && ['dias', 'dia'].includes(p[rn.hasta + 1]) && rn.valor >= 2 && rn.valor <= 30) {
+        res.fechaHasta = sumarDias(res.fecha, rn.valor - 1);
+        break;
+      }
+    }
+  }
   return res;
 }

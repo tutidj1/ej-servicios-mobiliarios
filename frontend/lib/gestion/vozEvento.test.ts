@@ -100,3 +100,24 @@ describe('flete ida y vuelta', () => {
     expect(interpretarEvento('evento de Ana, el flete me sale 80 mil ida y vuelta', items, HOY).fletePagado).toBe(80000);
   });
 });
+
+describe('reservas de varios días seguidos', () => {
+  it('"del 21 al 23 de noviembre"', () => {
+    const b = interpretarEvento('nuevo evento de Ana, del 21 al 23 de noviembre, 10 sillas a 800', items, HOY);
+    expect(b.fecha).toBe('2026-11-21');
+    expect(b.fechaHasta).toBe('2026-11-23');
+  });
+  it('"del 28 al 2" pasa al mes siguiente', () => {
+    const b = interpretarEvento('nuevo evento de Ana, del 28 al 2 de diciembre', items, HOY);
+    expect(b.fecha).toBe('2026-11-28');
+    expect(b.fechaHasta).toBe('2026-12-02');
+  });
+  it('"el sábado por tres días"', () => {
+    const b = interpretarEvento('nuevo evento de Ana, el sábado por tres días', items, HOY);
+    expect(b.fecha).toBe('2026-11-07');
+    expect(b.fechaHasta).toBe('2026-11-09');
+  });
+  it('un solo día no inventa fecha de fin', () => {
+    expect(interpretarEvento('nuevo evento de Ana, para el 21 de noviembre', items, HOY).fechaHasta).toBeNull();
+  });
+});

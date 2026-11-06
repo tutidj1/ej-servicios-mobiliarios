@@ -41,7 +41,7 @@ Desde ahí podés: ver y gestionar cotizaciones (estado, WhatsApp/llamar al clie
 El ingreso es con email y contraseña de Supabase Auth (nunca van escritos en el código).
 Los cambios se reflejan en la web en menos de 1 minuto.
 
-## Actualización 0007–0011 — Gestión de alquileres (Fase 1)
+## Actualización 0007–0013 — Gestión de alquileres (Fase 1)
 
 **No aplicar hasta que Tomás lo apruebe.** Ejecutar en orden en **SQL Editor** (son idempotentes):
 
@@ -52,8 +52,10 @@ Los cambios se reflejan en la web en menos de 1 minuto.
 | [`0009_disponibilidad.sql`](./migrations/0009_disponibilidad.sql) | Funciones de stock por día y confirmación con bloqueo (evita reservar dos veces lo mismo). | No. Solo funciones. |
 | [`0010_auditoria.sql`](./migrations/0010_auditoria.sql) | Registro de quién cambió qué (eventos, líneas, costos, pagos, clientes). Solo el admin lo lee. | No. |
 | [`0011_fix_costos.sql`](./migrations/0011_fix_costos.sql) | Corrección: el disparador de eventos cerrados rechazaba todo costo nuevo. Solo redefine una función. | No. |
+| [`0012_locador_en_configuracion.sql`](./migrations/0012_locador_en_configuracion.sql) | Tres columnas vacías para los datos del locador (van en la base, no en el código: el repo es público). | No. |
+| [`0013_proteger_eventos_cerrados.sql`](./migrations/0013_proteger_eventos_cerrados.sql) | Un evento cerrado solo lo puede borrar el administrador. Solo agrega un disparador. | No. |
 
-**Vuelta atrás:** [`migrations/rollback/`](./migrations/rollback/), en orden inverso (0011 → 0007). La de 0008 borra todo lo cargado en gestión; exportar antes si ya hay datos reales.
+**Vuelta atrás:** [`migrations/rollback/`](./migrations/rollback/), en orden inverso (0013 → 0007). La de 0008 borra todo lo cargado en gestión; exportar antes si ya hay datos reales.
 
 **María Eugenia:** por ahora usa la cuenta de Tomás (admin); no hace falta crearle otra. Si más adelante se quiere una cuenta propia de operadora, está el `INSERT INTO perfiles …` comentado al final de `0007_roles.sql`.
 

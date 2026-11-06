@@ -15,6 +15,7 @@ import {
   Package,
   PartyPopper,
   Percent,
+  TrendingUp,
   Users,
   X,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import CalendarioAdmin from './gestion/CalendarioAdmin';
 import ClientesAdmin from './gestion/ClientesAdmin';
 import InventarioAdmin from './gestion/InventarioAdmin';
 import InicioAdmin from './gestion/InicioAdmin';
+import PreciosAdmin from './gestion/PreciosAdmin';
 import AsistenteVoz from './gestion/AsistenteVoz';
 import { BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from './estilos';
 
@@ -38,6 +40,7 @@ type Seccion =
   | 'calendario'
   | 'clientes'
   | 'inventario'
+  | 'precios'
   | 'cotizaciones'
   | 'productos'
   | 'banners'
@@ -52,6 +55,7 @@ const SECCIONES: { id: Seccion; nombre: string; icono: React.ReactNode; soloAdmi
   { id: 'calendario', nombre: 'Calendario', icono: <CalendarDays size={20} />, grupo: 'gestion' },
   { id: 'clientes', nombre: 'Clientes', icono: <Users size={20} />, grupo: 'gestion' },
   { id: 'inventario', nombre: 'Stock', icono: <Boxes size={20} />, grupo: 'gestion' },
+  { id: 'precios', nombre: 'Precios', icono: <TrendingUp size={20} />, grupo: 'gestion' },
   { id: 'cotizaciones', nombre: 'Cotizaciones web', icono: <ClipboardList size={20} />, grupo: 'web' },
   { id: 'productos', nombre: 'Productos', icono: <Package size={20} />, soloAdmin: true, grupo: 'web' },
   { id: 'banners', nombre: 'Banners', icono: <IconoImagen size={20} />, soloAdmin: true, grupo: 'web' },
@@ -350,6 +354,7 @@ export default function AdminApp() {
           {actual.id === 'calendario' && <CalendarioAdmin onAbrirEvento={abrirEvento} />}
           {actual.id === 'clientes' && <ClientesAdmin />}
           {actual.id === 'inventario' && <InventarioAdmin />}
+          {actual.id === 'precios' && <PreciosAdmin />}
           {actual.id === 'cotizaciones' && (
             <CotizacionesAdmin puedeConvertir={gestionDisponible} puedeEliminar={esAdmin} onEventoCreado={abrirEvento} />
           )}
