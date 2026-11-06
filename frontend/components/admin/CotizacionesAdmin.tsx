@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { MapPin, MessageCircle, Phone, RefreshCw, Trash2, Users } from 'lucide-react';
+import { MapPin, MessageCircle, PartyPopper, Phone, RefreshCw, Trash2, Users } from 'lucide-react';
+import { mensajeError } from '@/lib/gestion/tipos';
 import { supabase } from '@/lib/supabase';
 import { linkWhatsappCliente } from '@/lib/phone';
 import { formatearFecha } from '@/lib/services/whatsappService';
@@ -34,7 +35,83 @@ const COLOR_ESTADO: Record<string, string> = {
   cancelado: 'bg-stone-200 text-stone-600',
 };
 
-export default function CotizacionesAdmin() {
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Crea cliente (canal web, vinculado a la cotización) y evento en estado presupuesto.
+ * Los artículos pedidos que coinciden con el inventario se agregan en cantidad 0:
+ * la cantidad y el precio los pone la operadora (no se infieren).
+ * Si la cotización ya se convirtió, devuelve el evento existente.
+ */
+async function convertirEnEvento(f: FilaCotizacion): Promise<{ id?: string; error?: string }> {
+  const previo = await supabase.from('clientes').select('id, eventos(id)').eq('lead_id', f.id).limit(1).maybeSingle();
+  const eventosPrevios = (previo.data as { id: string; eventos: { id: string }[] } | null)?.eventos;
+  if (eventosPrevios?.length) return { id: eventosPrevios[0].id };
+
+  let clienteId = (previo.data as { id: string } | null)?.id;
+  if (!clienteId) {
+    const c = await supabase
+      .from('clientes')
+      .insert({ nombre_apellido: f.nombre, telefono: f.telefono || f.whatsapp || null, canal_origen: 'web', lead_id: f.id })
+      .select('id')
+      .single();
+    if (c.error || !c.data) return { error: mensajeError(c.error, 'No se pudo crear el cliente.') };
+    clienteId = c.data.id;
+  }
+
+  const pedidos = f.items ? Object.values(f.items).flat() : f.mobiliario_solicitado ?? [];
+  const notas = [
+    pedidos.length ? `Pedido desde la web: ${pedidos.join(', ')}.` : '',
+    f.mensaje ? `Mensaje: “${f.mensaje}”` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const ev = await supabase
+    .from('eventos')
+    .insert({
+      cliente_id: clienteId,
+      fecha_evento: f.fecha_evento,
+      fecha_entrega: f.fecha_evento,
+      fecha_devolucion: f.fecha_evento,
+      lugar: f.ubicacion,
+      tipo_evento: f.tipo_evento,
+      cantidad_personas: f.cantidad_invitados > 0 ? f.cantidad_invitados : null,
+      notas: notas || null,
+    })
+    .select('id')
+    .single();
+  if (ev.error || !ev.data) return { error: mensajeError(ev.error, 'No se pudo crear el evento.') };
+
+  if (pedidos.length) {
+    const { data: items } = await supabase.from('items').select('id, nombre, alias').eq('activo', true);
+    const buscados = new Set(pedidos.map(normalizar));
+    const coinciden = ((items as { id: string; nombre: string; alias: string[] }[]) ?? []).filter(
+      (i) => buscados.has(normalizar(i.nombre)) || i.alias.some((a) => buscados.has(normalizar(a))),
+    );
+    if (coinciden.length) {
+      await supabase.from('evento_lineas').insert(coinciden.map((i) => ({ evento_id: ev.data.id, item_id: i.id })));
+    }
+  }
+  return { id: ev.data.id };
+}
+
+export default function CotizacionesAdmin({
+  puedeConvertir = false,
+  puedeEliminar = true,
+  onEventoCreado,
+}: {
+  puedeConvertir?: boolean;
+  puedeEliminar?: boolean;
+  onEventoCreado?: (id: string) => void;
+}) {
+  const [convirtiendo, setConvirtiendo] = useState<string | null>(null);
   const [filas, setFilas] = useState<FilaCotizacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState('todas');
@@ -193,9 +270,27 @@ export default function CotizacionesAdmin() {
                     </a>
                   </>
                 )}
-                <button type="button" onClick={() => eliminar(f.id)} className={`${BTN_PELIGRO_SUAVE} sm:ml-auto`}>
-                  <Trash2 size={16} /> Eliminar
-                </button>
+                {puedeConvertir && onEventoCreado && (
+                  <button
+                    type="button"
+                    disabled={convirtiendo === f.id}
+                    onClick={async () => {
+                      setConvirtiendo(f.id);
+                      const r = await convertirEnEvento(f);
+                      setConvirtiendo(null);
+                      if (r.error || !r.id) setAviso({ tipo: 'error', texto: r.error ?? 'No se pudo convertir.' });
+                      else onEventoCreado(r.id);
+                    }}
+                    className={`${BTN_SECUNDARIO} min-h-[52px] sm:min-h-[44px]`}
+                  >
+                    <PartyPopper size={18} /> {convirtiendo === f.id ? 'Creando…' : 'Convertir en evento'}
+                  </button>
+                )}
+                {puedeEliminar && (
+                  <button type="button" onClick={() => eliminar(f.id)} className={`${BTN_PELIGRO_SUAVE} sm:ml-auto`}>
+                    <Trash2 size={16} /> Eliminar
+                  </button>
+                )}
               </div>
             </article>
           );
