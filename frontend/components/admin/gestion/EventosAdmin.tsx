@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronRight, MapPin, Plus, Search, Users, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, MapPin, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { ESTADOS_EVENTO, type EstadoEvento, fechaCorta, hoyArgentina, nombreMes } from '@/lib/gestion/calculos';
 import { CANALES, COLOR_ESTADO_EVENTO, type Cliente, type EventoConCliente, mensajeError } from '@/lib/gestion/tipos';
 import { AYUDA, type Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
-import { CampoFecha } from './Calendarios';
+import { CampoRango } from './Calendarios';
 import { CLIENTE_VACIO, type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import EventoEditor from './EventoEditor';
 
@@ -153,21 +153,19 @@ function AltaRapida({ onCreado, onCancelar }: { onCreado: (id: string) => void; 
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className={ETIQUETA} htmlFor="ev-fecha">Fecha del evento</label>
-          <CampoFecha id="ev-fecha" valor={fechaEvento} onChange={cambiarFechaEvento} />
-        </div>
-        <div>
-          <label className={ETIQUETA} htmlFor="ev-entrega">Entrega</label>
-          <CampoFecha id="ev-entrega" valor={fechaEntrega} max={fechaEvento || undefined} onChange={setFechaEntrega} />
-        </div>
-        <div>
-          <label className={ETIQUETA} htmlFor="ev-devolucion">Devolución</label>
-          <CampoFecha id="ev-devolucion" valor={fechaDevolucion} min={fechaEvento || undefined} onChange={setFechaDevolucion} />
-        </div>
+      <div>
+        <p className={ETIQUETA}>Fechas del alquiler{!fechaEvento && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700">Falta</span>}</p>
+        <CampoRango
+          desde={fechaEvento}
+          hasta={fechaDevolucion || fechaEvento}
+          onChange={(a, b) => {
+            setFechaEvento(a);
+            setFechaEntrega(a);
+            setFechaDevolucion(b);
+          }}
+        />
+        <p className={AYUDA}>Tocá el día del evento y después el día que te lo devuelven. Si lo reservan dos o más días seguidos, elegí el último día. El stock queda ocupado todos esos días.</p>
       </div>
-      <p className={AYUDA}>El stock queda ocupado desde la entrega hasta la devolución, ambos días incluidos.</p>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label className={ETIQUETA} htmlFor="ev-lugar">Lugar</label>
@@ -234,6 +232,17 @@ export default function EventosAdmin({
     if (!abierto) cargar();
   }, [cargar, abierto]);
 
+  const borrarEvento = async (e: EventoConCliente) => {
+    const quien = e.clientes?.nombre_apellido ?? 'este cliente';
+    if (!window.confirm(`¿Borrar el evento de ${quien} del ${fechaCorta(e.fecha_evento)}? Se borran también sus artículos, costos y pagos. No se puede deshacer.`)) return;
+    const { error } = await supabase.from('eventos').delete().eq('id', e.id);
+    if (error) setAviso({ tipo: 'error', texto: mensajeError(error, 'No se pudo borrar el evento.') });
+    else {
+      setEventos((prev) => prev.filter((x) => x.id !== e.id));
+      setAviso({ tipo: 'ok', texto: 'Evento borrado.' });
+    }
+  };
+
   if (abierto) {
     return <EventoEditor id={abierto} esAdmin={esAdmin} onVolver={() => onAbrir(null)} />;
   }
@@ -283,7 +292,8 @@ export default function EventosAdmin({
 
       <div className="space-y-3">
         {visibles.map((e) => (
-          <button key={e.id} type="button" onClick={() => onAbrir(e.id)} className={`${TARJETA} flex w-full items-center gap-3 text-left hover:border-stone-300`}>
+          <div key={e.id} className="flex items-center rounded-2xl border border-stone-200 bg-white shadow-sm hover:border-stone-300">
+            <button type="button" onClick={() => onAbrir(e.id)} className="flex min-w-0 flex-1 items-center gap-3 p-5 text-left">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-manrope text-base font-semibold text-stone-900">{e.clientes?.nombre_apellido ?? 'Sin cliente'}</span>
@@ -295,8 +305,17 @@ export default function EventosAdmin({
                 {e.lugar && <span className="flex items-center gap-1"><MapPin size={14} /> {e.lugar}</span>}
               </p>
             </div>
-            <ChevronRight size={20} className="shrink-0 text-stone-400" />
-          </button>
+              <ChevronRight size={20} className="shrink-0 text-stone-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => borrarEvento(e)}
+              className="mr-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-600"
+              aria-label={`Borrar el evento de ${e.clientes?.nombre_apellido ?? 'este cliente'}`}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         ))}
       </div>
     </div>

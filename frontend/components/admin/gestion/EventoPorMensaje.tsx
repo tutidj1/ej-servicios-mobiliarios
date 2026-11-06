@@ -7,7 +7,7 @@ import { hoyArgentina, pesos, repartirCantidad, resultadoEvento } from '@/lib/ge
 import { CANALES, type Canal, type Cliente, type FilaDisponibilidad, leerMonto, mensajeError, mostrarMonto } from '@/lib/gestion/tipos';
 import { interpretarEvento } from '@/lib/gestion/vozEvento';
 import { AYUDA, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from '../estilos';
-import { CampoFecha } from './Calendarios';
+import { CampoRango } from './Calendarios';
 
 export interface ItemEvento {
   id: string;
@@ -46,6 +46,7 @@ export default function EventoPorMensaje({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [parecidos, setParecidos] = useState<Cliente[]>([]);
   const [fecha, setFecha] = useState(borrador.fecha ?? '');
+  const [fechaHasta, setFechaHasta] = useState(borrador.fechaHasta ?? borrador.fecha ?? '');
   const [lugar, setLugar] = useState(borrador.lugar);
   const [canal, setCanal] = useState<Canal | ''>(borrador.canal ?? '');
   const [personas, setPersonas] = useState(borrador.personas ? String(borrador.personas) : '');
@@ -84,13 +85,13 @@ export default function EventoPorMensaje({
   const idsReales = lineas.map((l) => l.itemId).filter((id) => id && id !== NUEVO);
   useEffect(() => {
     if (!fecha || !idsReales.length) return setDisp({});
-    supabase.rpc('disponibilidad', { p_items: idsReales, p_desde: fecha, p_hasta: fecha }).then(({ data }) => {
+    supabase.rpc('disponibilidad', { p_items: idsReales, p_desde: fecha, p_hasta: fechaHasta || fecha }).then(({ data }) => {
       const m: Record<string, number> = {};
       for (const f of (data as FilaDisponibilidad[]) ?? []) m[f.item_id] = f.disponible ?? Infinity;
       setDisp(m);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fecha, idsReales.join(',')]);
+  }, [fecha, fechaHasta, idsReales.join(',')]);
 
   const libreDe = (itemId: string): number => {
     if (itemId === NUEVO || !itemId) return Infinity;
@@ -161,7 +162,7 @@ export default function EventoPorMensaje({
           cliente_id: cId,
           fecha_evento: fecha,
           fecha_entrega: fecha,
-          fecha_devolucion: fecha,
+          fecha_devolucion: fechaHasta || fecha,
           lugar: lugar.trim() || null,
           cantidad_personas: Number(personas) > 0 ? Number(personas) : null,
           flete_cobrado: leerMonto(fleteCobrado) ?? 0,
@@ -252,8 +253,8 @@ export default function EventoPorMensaje({
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <p className={ETIQUETA}>Fecha del evento{!fecha && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700">Falta</span>}</p>
-          <CampoFecha valor={fecha} onChange={setFecha} />
+          <p className={ETIQUETA}>Fechas del alquiler{!fecha && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700">Falta</span>}</p>
+          <CampoRango desde={fecha} hasta={fechaHasta || fecha} onChange={(a, b) => { setFecha(a); setFechaHasta(b); }} />
         </div>
         <div>
           <label className={ETIQUETA} htmlFor="em-lugar">Dirección / lugar (opcional)</label>

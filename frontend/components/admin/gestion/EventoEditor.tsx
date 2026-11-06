@@ -40,7 +40,7 @@ import {
 import { AYUDA, type Aviso, BTN_OSCURO, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Mensaje } from '../ui';
 import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
-import { CampoFecha } from './Calendarios';
+import { CampoFecha, CampoRango } from './Calendarios';
 import { type Locador, cargarLogo, generarContratoPdf, nombreArchivoContrato } from '@/lib/gestion/contratoPdf';
 import { compartirArchivo, descargarArchivo, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
 
@@ -375,7 +375,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   };
 
   const eliminarEvento = async () => {
-    if (!window.confirm('¿Eliminar este evento con sus artículos, costos y pagos? No se puede deshacer.')) return;
+    const extra = pagos.length ? ` Tiene ${pagos.length} ${pagos.length === 1 ? 'pago cargado' : 'pagos cargados'}.` : '';
+    if (!window.confirm(`¿Eliminar este evento con sus artículos, costos y pagos?${extra} No se puede deshacer.`)) return;
     const { error } = await supabase.from('eventos').delete().eq('id', id);
     if (error) return setAviso({ tipo: 'error', texto: mensajeError(error, 'No se pudo eliminar.') });
     onVolver();
@@ -518,6 +519,13 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setContratoPanel(null)}>
           <div className="w-full max-w-md space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Datos del contrato">
             <h2 className="font-playfair text-xl font-bold">Antes de armar el documento</h2>
+            {!bloqueado && (
+              <div>
+                <p className={ETIQUETA}>Fechas del alquiler</p>
+                <CampoRango desde={evento.fecha_evento} hasta={evento.fecha_devolucion} onChange={(a, b) => cambiarEvento({ fecha_evento: a, fecha_entrega: a, fecha_devolucion: b })} />
+                <p className={AYUDA}>Tocá el día del evento y después el día de devolución. La devolución sale en el contrato.</p>
+              </div>
+            )}
             <div>
               <label className={ETIQUETA} htmlFor="ct-sena">Seña acordada ($)</label>
               <input id="ct-sena" className={CAMPO} inputMode="decimal" placeholder="Dejalo vacío si todavía no hay" value={contratoPanel.sena} onChange={(e) => setContratoPanel({ ...contratoPanel, sena: e.target.value })} />
@@ -666,17 +674,27 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       <section className={`${TARJETA} space-y-4`}>
         <h2 className="font-playfair text-xl font-bold">Evento</h2>
         <fieldset disabled={bloqueado} className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className={ETIQUETA} htmlFor="ed-fecha">Fecha del evento</label>
-            <CampoFecha id="ed-fecha" valor={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_evento: d })} />
-          </div>
-          <div>
-            <label className={ETIQUETA} htmlFor="ed-entrega">Entrega</label>
-            <CampoFecha id="ed-entrega" valor={evento.fecha_entrega} max={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_entrega: d })} />
-          </div>
-          <div>
-            <label className={ETIQUETA} htmlFor="ed-devolucion">Devolución</label>
-            <CampoFecha id="ed-devolucion" valor={evento.fecha_devolucion} min={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_devolucion: d })} />
+          <div className="sm:col-span-3">
+            <p className={ETIQUETA}>Fechas del alquiler</p>
+            <CampoRango desde={evento.fecha_evento} hasta={evento.fecha_devolucion} onChange={(a, b) => cambiarEvento({ fecha_evento: a, fecha_entrega: a, fecha_devolucion: b })} />
+            <p className={AYUDA}>Tocá el día del evento y después el día que te lo devuelven. Para dos o más días seguidos, elegí el último día.</p>
+            <details className="mt-2">
+              <summary className="cursor-pointer font-manrope text-xs font-semibold text-stone-600">Entregar otro día (por ejemplo, el día anterior)</summary>
+              <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={ETIQUETA} htmlFor="ed-fecha">Fecha del evento</label>
+                  <CampoFecha id="ed-fecha" valor={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_evento: d })} />
+                </div>
+                <div>
+                  <label className={ETIQUETA} htmlFor="ed-entrega">Entrega</label>
+                  <CampoFecha id="ed-entrega" valor={evento.fecha_entrega} max={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_entrega: d })} />
+                </div>
+                <div>
+                  <label className={ETIQUETA} htmlFor="ed-devolucion">Devolución</label>
+                  <CampoFecha id="ed-devolucion" valor={evento.fecha_devolucion} min={evento.fecha_evento} onChange={(d) => cambiarEvento({ fecha_devolucion: d })} />
+                </div>
+              </div>
+            </details>
           </div>
           <div className="sm:col-span-2">
             <label className={ETIQUETA} htmlFor="ed-lugar">Lugar</label>
@@ -892,7 +910,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         {cerrado && esAdmin && (
           <button type="button" className={BTN_SECUNDARIO} onClick={() => cerrarEvento(false)}><Unlock size={16} /> Reabrir</button>
         )}
-        {(evento.estado === 'presupuesto' || evento.estado === 'cancelado') && !cerrado && (
+        {(!cerrado || esAdmin) && (
           <button type="button" className={`${BTN_PELIGRO_SUAVE} ml-auto`} onClick={eliminarEvento}><Trash2 size={16} /> Eliminar evento</button>
         )}
       </div>

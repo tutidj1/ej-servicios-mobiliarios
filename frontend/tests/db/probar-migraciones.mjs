@@ -46,7 +46,7 @@ await db.exec(`
   INSERT INTO cotizaciones (nombre) VALUES ('Lead de prueba');
 `);
 
-for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql', '0011_fix_costos.sql', '0012_locador_en_configuracion.sql']) {
+for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql', '0011_fix_costos.sql', '0012_locador_en_configuracion.sql', '0013_proteger_eventos_cerrados.sql']) {
   await db.exec(leer(f));
   ok(true, `aplica ${f}`);
 }
@@ -150,6 +150,27 @@ await db.exec(como(OTRO));
 ok((await db.query(`SELECT * FROM eventos`)).rows.length === 0, 'una cuenta sin rol no ve eventos');
 await espera(`INSERT INTO clientes (nombre_apellido) VALUES ('x')`, /row-level security/, 'una cuenta sin rol no puede crear clientes');
 
+// ---------- Borrar eventos cargados por error
+await db.exec(como(MARU));
+const evB = await q1(`INSERT INTO eventos (cliente_id, fecha_evento, fecha_entrega, fecha_devolucion, estado) VALUES ('${cli.id}', '2027-03-01', '2027-03-01', '2027-03-02', 'presupuesto') RETURNING id`);
+await db.exec(`INSERT INTO evento_lineas (evento_id, item_id, cantidad_total, cantidad_propia, precio_unitario) VALUES ('${evB.id}', '${sillas.id}', 10, 10, 800)`);
+await db.query(`SELECT * FROM cambiar_estado_evento('${evB.id}', 'confirmado')`);
+await db.exec(`INSERT INTO evento_costos (evento_id, tipo, monto) VALUES ('${evB.id}', 'flete', 5000); INSERT INTO pagos (evento_id, tipo, monto, medio) VALUES ('${evB.id}', 'seña', 1000, 'efectivo')`);
+await db.exec(`DELETE FROM eventos WHERE id = '${evB.id}'`);
+ok((await q1(`SELECT (SELECT count(*) FROM eventos WHERE id = '${evB.id}')::int + (SELECT count(*) FROM evento_lineas WHERE evento_id = '${evB.id}')::int + (SELECT count(*) FROM evento_costos WHERE evento_id = '${evB.id}')::int + (SELECT count(*) FROM pagos WHERE evento_id = '${evB.id}')::int AS n`)).n === 0, 'la operadora borra un evento confirmado y se van sus artículos, costos y pagos');
+ok((await q1(`SELECT stock_disponible('${sillas.id}', '2027-03-01') AS v`)).v === 100, 'al borrarlo, el stock vuelve a quedar libre');
+// un evento cerrado: la operadora no puede borrarlo, el admin sí
+const evC = await q1(`INSERT INTO eventos (cliente_id, fecha_evento, fecha_entrega, fecha_devolucion, estado) VALUES ('${cli.id}', '2027-04-01', '2027-04-01', '2027-04-01', 'cancelado') RETURNING id`);
+await db.exec(`INSERT INTO evento_lineas (evento_id, item_id, cantidad_total, cantidad_propia, cantidad_subalquilada, precio_unitario) VALUES ('${evC.id}', '${sillas.id}', 5, 0, 5, 800)`);
+await db.exec(`UPDATE eventos SET cerrado_en = now() WHERE id = '${evC.id}'`);
+await espera(`DELETE FROM eventos WHERE id = '${evC.id}'`, /cerrado/, 'un evento cerrado no lo borra la operadora');
+await db.exec(como(TOMAS));
+await db.exec(`DELETE FROM eventos WHERE id = '${evC.id}'`);
+ok((await q1(`SELECT count(*)::int AS n FROM eventos WHERE id = '${evC.id}'`)).n === 0, 'el admin sí borra un evento cerrado');
+// cliente con eventos / artículo usado: no se pueden borrar
+await espera(`DELETE FROM clientes WHERE id = '${cli.id}'`, /foreign key/, 'no se borra un cliente que tiene eventos');
+await espera(`DELETE FROM items WHERE id = '${sillas.id}'`, /foreign key/, 'no se borra un artículo ya usado en eventos');
+
 // ---------- Datos del locador (0012): la operadora los lee pero no los cambia; el admin sí
 await db.exec(como(MARU));
 ok((await db.query(`SELECT locador_nombre, locador_dni, locador_telefono FROM configuracion`)).rows.length === 1, 'la operadora lee los datos del locador');
@@ -169,7 +190,7 @@ ok(r.n > 5 && r.u === 2, `la auditoría registró ${r.n} cambios de 2 personas`)
 
 // ---------- Vueltas atrás (en orden inverso)
 await db.exec('RESET ROLE');
-for (const f of ['0012_locador_en_configuracion_down.sql', '0011_fix_costos_down.sql', '0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
+for (const f of ['0013_proteger_eventos_cerrados_down.sql', '0012_locador_en_configuracion_down.sql', '0011_fix_costos_down.sql', '0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
   await db.exec(leer(`rollback/${f}`));
   ok(true, `vuelta atrás ${f}`);
 }

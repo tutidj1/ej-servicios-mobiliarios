@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { MessageCircle, Plus, Search, X } from 'lucide-react';
+import { MessageCircle, Plus, Search, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { linkWhatsappCliente } from '@/lib/phone';
 import { CANALES, type Canal, type Cliente, mensajeError } from '@/lib/gestion/tipos';
@@ -111,6 +111,20 @@ export default function ClientesAdmin() {
     return () => clearTimeout(t);
   }, [texto, cargar]);
 
+  const borrar = async (c: Cliente) => {
+    if (!window.confirm(`¿Borrar a ${c.nombre_apellido}? No se puede deshacer.`)) return;
+    const { error } = await supabase.from('clientes').delete().eq('id', c.id);
+    if (error) {
+      setAviso({
+        tipo: 'error',
+        texto: /foreign key/i.test(error.message ?? '') ? `${c.nombre_apellido} tiene eventos cargados. Borrá primero sus eventos y después al cliente.` : mensajeError(error, 'No se pudo borrar el cliente.'),
+      });
+      return;
+    }
+    setClientes((prev) => prev.filter((x) => x.id !== c.id));
+    setAviso({ tipo: 'ok', texto: 'Cliente borrado.' });
+  };
+
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!edicion) return;
@@ -166,6 +180,9 @@ export default function ClientesAdmin() {
                 {c.telefono || 'sin teléfono'} · <span className="capitalize">{c.canal_origen}</span>
                 {c.dni ? ` · DNI ${c.dni}` : ''}
               </p>
+            </button>
+            <button type="button" onClick={() => borrar(c)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label={`Borrar a ${c.nombre_apellido}`}>
+              <Trash2 size={18} />
             </button>
             {c.telefono && (
               <a href={linkWhatsappCliente(c.telefono)} target="_blank" rel="noopener noreferrer" className={`${BTN_SECUNDARIO} shrink-0`} aria-label={`WhatsApp a ${c.nombre_apellido}`}>
