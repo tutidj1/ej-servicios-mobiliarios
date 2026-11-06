@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/site';
 import { paginasProducto } from '@/lib/paginasProducto';
+import { paginasEvento } from '@/lib/paginasEvento';
 import { getUltimaActualizacion } from '@/lib/data';
 
 // Se genera en cada pedido para que lastmod refleje lo último que se guardó en el panel
@@ -20,6 +21,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(p.actualizado),
       changeFrequency: 'monthly' as const,
       priority: 0.8,
+    })),
+    ...paginasEvento.map((p) => ({
+      url: `${SITE_URL}/${p.slug}`,
+      lastModified: new Date(p.actualizado),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
     })),
   ];
 }

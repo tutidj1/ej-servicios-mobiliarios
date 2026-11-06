@@ -1,6 +1,7 @@
 import React from 'react';
 import { Facebook, Instagram } from 'lucide-react';
 import { paginasProducto } from '@/lib/paginasProducto';
+import { paginasEvento } from '@/lib/paginasEvento';
 
 const Footer: React.FC = () => {
   return (
@@ -24,6 +25,11 @@ const Footer: React.FC = () => {
             {paginasProducto.map((p) => (
               <li key={p.slug}>
                 <a href={`/${p.slug}`} className="hover:text-acento-amarillo transition-colors">{p.h1.replace(' para eventos', '').replace(' en Santa Fe', '')}</a>
+              </li>
+            ))}
+            {paginasEvento.map((p) => (
+              <li key={p.slug}>
+                <a href={`/${p.slug}`} className="hover:text-acento-amarillo transition-colors">Para {p.nombreCorto.toLowerCase()}</a>
               </li>
             ))}
             <li><a href="/#contacto" className="hover:text-acento-amarillo transition-colors">Contacto</a></li>

@@ -5,6 +5,7 @@ import FAQ from '@/components/FAQ';
 import Footer from '@/components/Footer';
 import type { Producto } from '@/lib/productos';
 import { paginasProducto, productoCorresponde, type PaginaProducto } from '@/lib/paginasProducto';
+import { paginasEvento } from '@/lib/paginasEvento';
 import { faqLd, jsonLd, negocioLd, NEGOCIO_ID } from '@/lib/jsonld';
 import { linkWhatsappNegocio, SITE_URL } from '@/lib/site';
 
@@ -144,6 +145,11 @@ export default function PaginaProductoView({ pagina, productos }: { pagina: Pagi
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 font-manrope text-sm">
               <span className="text-gris-suave">También alquilamos:</span>
               {otras.map((p) => (
+                <a key={p.slug} href={`/${p.slug}`} className="font-semibold text-negro-carbon underline underline-offset-4 hover:text-gris-suave">
+                  {p.nombreCorto}
+                </a>
+              ))}
+              {paginasEvento.map((p) => (
                 <a key={p.slug} href={`/${p.slug}`} className="font-semibold text-negro-carbon underline underline-offset-4 hover:text-gris-suave">
                   {p.nombreCorto}
                 </a>
