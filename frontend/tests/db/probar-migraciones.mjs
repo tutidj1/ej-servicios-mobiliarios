@@ -75,6 +75,17 @@ await db.exec(como(MARU));
 const sillas = await q1(`SELECT id, stock_total FROM items WHERE nombre = 'Sillas'`);
 ok(sillas.stock_total === 100, 'inventario: 100 sillas');
 ok((await q1(`SELECT count(*)::int n FROM items`)).n === 25, 'inventario: 25 artículos de la plantilla');
+ok((await q1(`SELECT stock_total FROM items WHERE nombre = 'Tablones de madera'`)).stock_total === 16, 'inventario: 16 tablones');
+ok((await q1(`SELECT count(*)::int n FROM items WHERE stock_total IS NULL`)).n === 23, 'inventario: el resto sin límite');
+
+// Artículo sin límite: nunca marca subalquiler
+const platos = await q1(`SELECT id FROM items WHERE nombre = 'Plato principal'`);
+const cli0 = await q1(`INSERT INTO clientes (nombre_apellido) VALUES ('Sin límite') RETURNING id`);
+const ev0 = await q1(`INSERT INTO eventos (cliente_id, fecha_evento, fecha_entrega, fecha_devolucion) VALUES ('${cli0.id}', '2026-12-05', '2026-12-05', '2026-12-05') RETURNING id`);
+await db.exec(`INSERT INTO evento_lineas (evento_id, item_id, cantidad_total, cantidad_propia, precio_unitario) VALUES ('${ev0.id}', '${platos.id}', 5000, 5000, 10)`);
+ok((await db.query(`SELECT * FROM cambiar_estado_evento('${ev0.id}', 'confirmado')`)).rows.length === 0, 'sin límite: confirma 5000 platos sin ajustar nada');
+ok((await q1(`SELECT stock_disponible('${platos.id}', '2026-12-05') v`)).v === null, 'sin límite: la disponibilidad vuelve vacía (no se controla)');
+await db.exec(`DELETE FROM eventos WHERE id = '${ev0.id}'`);
 
 // ---------- Ejemplo de la especificación: 150 personas, 100 sillas propias
 const cli = await q1(`INSERT INTO clientes (nombre_apellido, canal_origen) VALUES ('Ana Prueba', 'instagram') RETURNING id`);

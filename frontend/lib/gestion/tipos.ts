@@ -19,7 +19,7 @@ export interface Item {
   id: string;
   nombre: string;
   categoria: Categoria;
-  stock_total: number;
+  stock_total: number | null; // null = sin límite
   orden_contrato: number | null;
   costo_compra_unitario: number | null;
   activo: boolean;
@@ -91,10 +91,10 @@ export interface Pago {
 export interface FilaDisponibilidad {
   item_id: string;
   dia: string;
-  stock_total: number;
+  stock_total: number | null;
   reservado: number;
   tentativo: number;
-  disponible: number;
+  disponible: number | null; // null = sin límite
 }
 
 export interface Configuracion {
@@ -135,4 +135,9 @@ export function mensajeError(error: { message?: string } | null | undefined, por
   if (/duplicate key|unique/.test(m)) return 'Ya existe uno con ese nombre.';
   if (/Failed to fetch|NetworkError|network/i.test(m)) return 'Sin conexión. Revisá internet y probá de nuevo.';
   return porDefecto;
+}
+
+/** Stock para mostrar: un número, o "sin límite" si no se controla. */
+export function mostrarStock(n: number | null | undefined): string {
+  return n === null || n === undefined || !Number.isFinite(n) ? 'sin límite' : String(n);
 }

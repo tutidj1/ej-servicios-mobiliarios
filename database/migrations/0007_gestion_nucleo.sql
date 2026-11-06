@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS items (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre                VARCHAR(120) NOT NULL UNIQUE,
   categoria             TEXT NOT NULL CHECK (categoria IN ('mobiliario', 'vajilla', 'mantelería', 'otros')),
-  stock_total           INTEGER NOT NULL DEFAULT 0 CHECK (stock_total >= 0),
+  stock_total           INTEGER CHECK (stock_total >= 0),  -- vacío (NULL) = sin límite: no se controla
   orden_contrato        INTEGER,                         -- posición en la grilla del contrato
   costo_compra_unitario NUMERIC(12,2) CHECK (costo_compra_unitario >= 0),
   activo                BOOLEAN NOT NULL DEFAULT TRUE,
@@ -224,34 +224,34 @@ CREATE POLICY "Admin modifica configuracion" ON configuracion FOR UPDATE TO auth
 
 -- -------------------------------------------------------------------------
 -- 11. INVENTARIO INICIAL: los artículos de la plantilla del contrato, en su orden.
---     Stock confirmado: 100 sillas, 16 tablones, 100 de cada pieza del set de vajilla.
---     El resto queda en 0 para que la operadora cargue los números reales.
+--     Solo se controla el stock de sillas (100) y tablones (16). El resto queda SIN LÍMITE (NULL):
+--     se subalquila lo que haga falta. Se puede cargar un número cuando se quiera controlar.
 --     No pisa nada si el artículo ya existe.
 -- -------------------------------------------------------------------------
 INSERT INTO items (nombre, categoria, stock_total, orden_contrato, sugerencia, alias) VALUES
   ('Sillas',                     'mobiliario', 100,  1, 'personas', '{silla}'),
-  ('Mesa redonda',               'mobiliario',   0,  2, 'ninguna',  '{"mesas redondas","mesa"}'),
-  ('Caballetes',                 'mobiliario',   0,  3, 'ninguna',  '{caballete}'),
-  ('Plato principal',            'vajilla',    100,  4, 'personas', '{"platos principales","plato playo","plato"}'),
-  ('Cuchillos',                  'vajilla',    100,  5, 'personas', '{cuchillo}'),
-  ('Platos de postre',           'vajilla',    100,  6, 'personas', '{"plato de postre"}'),
-  ('Cuchara de postre',          'vajilla',    100,  7, 'personas', '{"cucharas de postre"}'),
-  ('Copa de champagne',          'vajilla',    100,  8, 'personas', '{"copas de champagne","copa de champán"}'),
-  ('Frasco dispensador',         'vajilla',      0,  9, 'ninguna',  '{"dispensador","frasco para jugo"}'),
-  ('Cubre sillas',               'mantelería',   0, 10, 'ninguna',  '{"cubre silla","cubresillas","fundas de sillas"}'),
-  ('Ensaladera',                 'vajilla',      0, 11, 'ninguna',  '{ensaladeras}'),
-  ('Bandeja de mozo',            'vajilla',      0, 12, 'ninguna',  '{"bandejas de mozo","bandeja"}'),
-  ('Mantelería blanca',          'mantelería',   0, 13, 'mesas',    '{"manteles blancos","mantel blanco","manteles"}'),
-  ('Servilletas',                'mantelería',   0, 14, 'ninguna',  '{servilleta}'),
-  ('Caminos celeste pastel',     'mantelería',   0, 15, 'ninguna',  '{"camino de mesa","caminos"}'),
-  ('Platos cuadrados',           'vajilla',      0, 16, 'ninguna',  '{"plato cuadrado"}'),
-  ('Tenedores',                  'vajilla',    100, 17, 'personas', '{tenedor}'),
-  ('Tenedores de postre',        'vajilla',    100, 18, 'personas', '{"tenedor de postre"}'),
-  ('Copas de vino / agua',       'vajilla',    100, 19, 'personas', '{"copas de vino","copas de agua","copa"}'),
-  ('Estaca para asado',          'otros',        0, 20, 'ninguna',  '{estacas,"estaca"}'),
-  ('Taza de té',                 'vajilla',    100, 21, 'personas', '{"tazas de té","tazas","taza"}'),
-  ('Cucharas de té',             'vajilla',    100, 22, 'personas', '{"cucharita de té","cucharitas"}'),
-  ('Frapera',                    'otros',        0, 23, 'ninguna',  '{fraperas}'),
-  ('Hielera con pinza',          'otros',        0, 24, 'ninguna',  '{hielera,hieleras}'),
+  ('Mesa redonda',               'mobiliario',   NULL,  2, 'ninguna',  '{"mesas redondas","mesa"}'),
+  ('Caballetes',                 'mobiliario',   NULL,  3, 'ninguna',  '{caballete}'),
+  ('Plato principal',            'vajilla',    NULL,  4, 'personas', '{"platos principales","plato playo","plato"}'),
+  ('Cuchillos',                  'vajilla',    NULL,  5, 'personas', '{cuchillo}'),
+  ('Platos de postre',           'vajilla',    NULL,  6, 'personas', '{"plato de postre"}'),
+  ('Cuchara de postre',          'vajilla',    NULL,  7, 'personas', '{"cucharas de postre"}'),
+  ('Copa de champagne',          'vajilla',    NULL,  8, 'personas', '{"copas de champagne","copa de champán"}'),
+  ('Frasco dispensador',         'vajilla',      NULL,  9, 'ninguna',  '{"dispensador","frasco para jugo"}'),
+  ('Cubre sillas',               'mantelería',   NULL, 10, 'ninguna',  '{"cubre silla","cubresillas","fundas de sillas"}'),
+  ('Ensaladera',                 'vajilla',      NULL, 11, 'ninguna',  '{ensaladeras}'),
+  ('Bandeja de mozo',            'vajilla',      NULL, 12, 'ninguna',  '{"bandejas de mozo","bandeja"}'),
+  ('Mantelería blanca',          'mantelería',   NULL, 13, 'mesas',    '{"manteles blancos","mantel blanco","manteles"}'),
+  ('Servilletas',                'mantelería',   NULL, 14, 'ninguna',  '{servilleta}'),
+  ('Caminos celeste pastel',     'mantelería',   NULL, 15, 'ninguna',  '{"camino de mesa","caminos"}'),
+  ('Platos cuadrados',           'vajilla',      NULL, 16, 'ninguna',  '{"plato cuadrado"}'),
+  ('Tenedores',                  'vajilla',    NULL, 17, 'personas', '{tenedor}'),
+  ('Tenedores de postre',        'vajilla',    NULL, 18, 'personas', '{"tenedor de postre"}'),
+  ('Copas de vino / agua',       'vajilla',    NULL, 19, 'personas', '{"copas de vino","copas de agua","copa"}'),
+  ('Estaca para asado',          'otros',        NULL, 20, 'ninguna',  '{estacas,"estaca"}'),
+  ('Taza de té',                 'vajilla',    NULL, 21, 'personas', '{"tazas de té","tazas","taza"}'),
+  ('Cucharas de té',             'vajilla',    NULL, 22, 'personas', '{"cucharita de té","cucharitas"}'),
+  ('Frapera',                    'otros',        NULL, 23, 'ninguna',  '{fraperas}'),
+  ('Hielera con pinza',          'otros',        NULL, 24, 'ninguna',  '{hielera,hieleras}'),
   ('Tablones de madera',         'mobiliario',  16, 25, 'mesas',    '{"tablón","tablones","mesa de tablón"}')
 ON CONFLICT (nombre) DO NOTHING;

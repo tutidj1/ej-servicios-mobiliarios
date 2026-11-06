@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { diasDelRango, fechaLarga, hoyArgentina, nombreMes, sumarDias } from '@/lib/gestion/calculos';
-import { COLOR_ESTADO_EVENTO, type EventoConCliente, type FilaDisponibilidad, type Item, mensajeError } from '@/lib/gestion/tipos';
+import { COLOR_ESTADO_EVENTO, type EventoConCliente, type FilaDisponibilidad, type Item, mensajeError, mostrarStock } from '@/lib/gestion/tipos';
 import { type Aviso, BTN_SECUNDARIO, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
 
@@ -154,8 +154,10 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
                 {ocupacion.map((f) => (
                   <tr key={f.item_id} className="border-t border-stone-100">
                     <td className="py-2">{nombreItem(f.item_id)}{f.tentativo > 0 && <span className="block text-xs text-amber-700">+{f.tentativo} en presupuestos</span>}</td>
-                    <td className="py-2 text-right tabular-nums">{f.reservado} / {f.stock_total}</td>
-                    <td className={`py-2 text-right font-bold tabular-nums ${f.disponible < 0 ? 'text-red-700' : ''}`}>{f.disponible}</td>
+                    <td className="py-2 text-right tabular-nums">{f.stock_total === null ? f.reservado : `${f.reservado} / ${f.stock_total}`}</td>
+                    <td className={`py-2 text-right font-bold tabular-nums ${(f.disponible ?? 0) < 0 ? 'text-amber-700' : ''}`}>
+                      {(f.disponible ?? 0) < 0 ? `subalquilar ${-(f.disponible ?? 0)}` : mostrarStock(f.disponible)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

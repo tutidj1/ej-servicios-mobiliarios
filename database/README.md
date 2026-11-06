@@ -48,7 +48,7 @@ Los cambios se reflejan en la web en menos de 1 minuto.
 | Archivo | Qué hace | ¿Toca datos existentes? |
 |---|---|---|
 | [`0006_roles.sql`](./migrations/0006_roles.sql) | Tabla `perfiles` (admin / operadora). `es_admin()` pasa a leer esa tabla. La operadora puede ver y cambiar el estado de cotizaciones (no borrarlas). | Solo redefine `es_admin()`; Tomás queda cargado como admin, así que todo sigue igual. |
-| [`0007_gestion_nucleo.sql`](./migrations/0007_gestion_nucleo.sql) | Tablas nuevas: `items`, `clientes`, `eventos`, `evento_lineas`, `evento_costos`, `pagos`, `configuracion`. Reglas (precio obligatorio al confirmar, evento cerrado congelado) y RLS solo para el equipo. Precarga los 25 artículos del contrato. | No. Solo crea. |
+| [`0007_gestion_nucleo.sql`](./migrations/0007_gestion_nucleo.sql) | Tablas nuevas: `items`, `clientes`, `eventos`, `evento_lineas`, `evento_costos`, `pagos`, `configuracion`. Reglas (precio obligatorio al confirmar, evento cerrado congelado) y RLS solo para el equipo. Precarga los 25 artículos del contrato: sillas 100 y tablones 16; el resto **sin límite** (nunca se limita un alquiler: lo que falta se marca como subalquilado). | No. Solo crea. |
 | [`0008_disponibilidad.sql`](./migrations/0008_disponibilidad.sql) | Funciones de stock por día y confirmación con bloqueo (evita reservar dos veces lo mismo). | No. Solo funciones. |
 | [`0009_auditoria.sql`](./migrations/0009_auditoria.sql) | Registro de quién cambió qué (eventos, líneas, costos, pagos, clientes). Solo el admin lo lee. | No. |
 

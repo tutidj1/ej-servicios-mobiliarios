@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fechaLarga, hoyArgentina, sumarDias } from '@/lib/gestion/calculos';
-import { type FilaDisponibilidad, type Item, mensajeError } from '@/lib/gestion/tipos';
+import { type FilaDisponibilidad, type Item, mensajeError, mostrarStock } from '@/lib/gestion/tipos';
 import { type Aviso, BTN_PRIMARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
 
@@ -71,7 +71,7 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
 
   return (
     <div>
-      <Encabezado titulo="Disponibilidad" descripcion="¿Tengo 150 sillas para el 21? Elegí artículos y fechas y te muestra lo libre día por día." />
+      <Encabezado titulo="Disponibilidad" descripcion="¿Tengo 150 sillas para el 21? Te muestra cuántas propias quedan libres día por día. No hay límite: lo que falte se subalquila." />
       <form onSubmit={consultar} className={`${TARJETA} mb-5 space-y-4`}>
         <div>
           <p className={ETIQUETA}>Artículos</p>
@@ -114,14 +114,18 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
         const dias = porItem[itemId] ?? [];
         const item = items.find((i) => i.id === itemId);
         if (!item || dias.length === 0) return null;
-        const minimo = Math.min(...dias.map((d) => d.disponible));
+        const minimo = Math.min(...dias.map((d) => d.disponible ?? Infinity));
         return (
           <section key={itemId} className={`${TARJETA} mb-4 font-manrope`}>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-playfair text-xl font-bold">{item.nombre}</h2>
               <p className="text-sm">
-                Libres en todo el rango: <strong className="text-lg">{Math.max(0, minimo)}</strong> de {item.stock_total}
-                {cantidadNecesaria > 0 && (
+                {item.stock_total === null ? (
+                  <strong>Sin límite de stock</strong>
+                ) : (
+                  <>Propias libres en todo el rango: <strong className="text-lg">{Math.max(0, minimo)}</strong> de {item.stock_total}</>
+                )}
+                {cantidadNecesaria > 0 && item.stock_total !== null && (
                   <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${cantidadNecesaria <= minimo ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
                     {cantidadNecesaria <= minimo ? 'Alcanza' : `Faltan ${cantidadNecesaria - Math.max(0, minimo)}: hay que subalquilar`}
                   </span>
@@ -136,7 +140,9 @@ export default function DisponibilidadAdmin({ onAbrirEvento }: { onAbrirEvento: 
                 return (
                   <li key={d.dia} className="flex flex-wrap items-start gap-x-3 py-2 text-sm">
                     <span className="w-28 shrink-0 capitalize text-stone-700">{fechaLarga(d.dia)}</span>
-                    <span className={`w-16 shrink-0 text-right font-bold tabular-nums ${d.disponible < 0 ? 'text-red-700' : ''}`}>{d.disponible}</span>
+                    <span className={`w-24 shrink-0 text-right font-bold tabular-nums ${(d.disponible ?? 0) < 0 ? 'text-amber-700' : ''}`}>
+                      {(d.disponible ?? 0) < 0 ? `subalq. ${-(d.disponible ?? 0)}` : mostrarStock(d.disponible)}
+                    </span>
                     <span className="min-w-0 flex-1 text-stone-600">
                       {del.length === 0
                         ? 'libre'

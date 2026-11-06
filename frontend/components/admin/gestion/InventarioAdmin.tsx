@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { CATEGORIAS, type Categoria, type Item, leerMonto, mensajeError, mostrarMonto } from '@/lib/gestion/tipos';
+import { CATEGORIAS, type Categoria, type Item, leerMonto, mensajeError, mostrarMonto, mostrarStock } from '@/lib/gestion/tipos';
 import type { Sugerencia } from '@/lib/gestion/calculos';
 import { AYUDA, type Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Interruptor, Mensaje } from '../ui';
@@ -23,7 +23,7 @@ interface Borrador {
 const NUEVO: Borrador = {
   nombre: '',
   categoria: 'vajilla',
-  stock_total: '0',
+  stock_total: '',
   orden_contrato: '',
   costo_compra_unitario: '',
   activo: true,
@@ -60,7 +60,7 @@ export default function InventarioAdmin() {
       id: i.id,
       nombre: i.nombre,
       categoria: i.categoria,
-      stock_total: String(i.stock_total),
+      stock_total: i.stock_total === null ? '' : String(i.stock_total),
       orden_contrato: i.orden_contrato === null ? '' : String(i.orden_contrato),
       costo_compra_unitario: mostrarMonto(i.costo_compra_unitario),
       activo: i.activo,
@@ -71,9 +71,10 @@ export default function InventarioAdmin() {
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!edicion) return;
-    const stock = Number(edicion.stock_total);
-    if (!edicion.nombre.trim() || !Number.isInteger(stock) || stock < 0) {
-      setAviso({ tipo: 'error', texto: 'Completá el nombre y un stock válido (número entero, 0 o más).' });
+    // Vacío = sin límite (no se controla)
+    const stock = edicion.stock_total.trim() === '' ? null : Number(edicion.stock_total);
+    if (!edicion.nombre.trim() || (stock !== null && (!Number.isInteger(stock) || stock < 0))) {
+      setAviso({ tipo: 'error', texto: 'Completá el nombre. El stock va vacío (sin límite) o un número entero.' });
       return;
     }
     setGuardando(true);
@@ -104,7 +105,7 @@ export default function InventarioAdmin() {
     <div>
       <Encabezado
         titulo="Inventario"
-        descripcion="Lo que tenés propio. El stock se descuenta solo en los días que dura cada alquiler confirmado."
+        descripcion="Lo que tenés propio. Nunca limita los alquileres: si falta, se marca como subalquilado. Lo que dice “sin límite” no se controla."
         accion={
           <button type="button" className={BTN_PRIMARIO} onClick={() => setEdicion({ ...NUEVO })}>
             <Plus size={18} /> Agregar artículo
@@ -136,7 +137,8 @@ export default function InventarioAdmin() {
             </div>
             <div>
               <label className={ETIQUETA} htmlFor="inv-stock">Stock propio</label>
-              <input id="inv-stock" className={CAMPO} inputMode="numeric" value={edicion.stock_total} onChange={(e) => setEdicion({ ...edicion, stock_total: e.target.value.replace(/\D/g, '') })} />
+              <input id="inv-stock" className={CAMPO} inputMode="numeric" placeholder="Sin límite" value={edicion.stock_total} onChange={(e) => setEdicion({ ...edicion, stock_total: e.target.value.replace(/\D/g, '') })} />
+              <p className={AYUDA}>Dejalo vacío si no querés controlarlo. Con un número, el sistema te dice cuántas hay que subalquilar.</p>
             </div>
             <div>
               <label className={ETIQUETA} htmlFor="inv-sug">Sugerir cantidad</label>
@@ -183,7 +185,7 @@ export default function InventarioAdmin() {
                   className={`flex w-full items-center gap-3 px-5 py-3 text-left min-h-[56px] hover:bg-stone-50 ${i.activo ? '' : 'opacity-50'}`}
                 >
                   <span className="flex-1 font-manrope text-base text-stone-900">{i.nombre}</span>
-                  <span className="font-manrope text-lg font-bold tabular-nums text-stone-900">{i.stock_total}</span>
+                  <span className={`font-manrope tabular-nums ${i.stock_total === null ? 'text-sm text-stone-500' : 'text-lg font-bold text-stone-900'}`}>{mostrarStock(i.stock_total)}</span>
                   <Pencil size={16} className="text-stone-400" />
                 </button>
               ))}

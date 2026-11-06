@@ -6,9 +6,13 @@
 -- Reservan stock los eventos 'confirmado' y 'entregado', todos los días
 -- de fecha_entrega a fecha_devolucion (inclusive). Los 'presupuesto' no reservan:
 -- se informan aparte como "tentativo".
+--
+-- SOLO INFORMA: nunca impide confirmar un alquiler. Si falta stock propio, lo que
+-- falta se marca como subalquilado (para calcular el costo y la ganancia real).
+-- Artículos con stock vacío (NULL) = sin límite: devuelven NULL y no se controlan.
 -- =========================================================================
 
--- Disponible de un artículo en un día (puede dar negativo si hay sobreventa)
+-- Disponible de un artículo en un día (NULL = sin límite; negativo si se pasó)
 CREATE OR REPLACE FUNCTION public.stock_disponible(p_item UUID, p_dia DATE, p_excluir_evento UUID DEFAULT NULL)
 RETURNS INTEGER
 LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public
@@ -90,7 +94,9 @@ BEGIN
     FROM evento_lineas l JOIN items i ON i.id = l.item_id
     WHERE l.evento_id = p_evento
   LOOP
-    disp := GREATEST(COALESCE(public.stock_disponible_rango(ln.item_id, ev.fecha_entrega, ev.fecha_devolucion, p_evento), 0), 0);
+    disp := public.stock_disponible_rango(ln.item_id, ev.fecha_entrega, ev.fecha_devolucion, p_evento);
+    CONTINUE WHEN disp IS NULL;  -- sin límite: no se toca
+    disp := GREATEST(disp, 0);
     nueva_propia := LEAST(ln.cantidad_propia, ln.cantidad_total, disp);
     IF nueva_propia <> ln.cantidad_propia THEN
       UPDATE evento_lineas

@@ -34,6 +34,7 @@ import {
   leerMonto,
   mensajeError,
   mostrarMonto,
+  mostrarStock,
 } from '@/lib/gestion/tipos';
 import { AYUDA, type Aviso, BTN_OSCURO, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Mensaje } from '../ui';
@@ -147,8 +148,9 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       const res: Record<string, Disponible> = {};
       for (const f of (data as FilaDisponibilidad[]) ?? []) {
         const actual = res[f.item_id];
+        const libreDia = f.disponible ?? Infinity; // sin límite
         res[f.item_id] = {
-          libre: actual ? Math.min(actual.libre, f.disponible) : f.disponible,
+          libre: actual ? Math.min(actual.libre, libreDia) : libreDia,
           tentativo: actual ? Math.max(actual.tentativo, f.tentativo) : f.tentativo,
         };
       }
@@ -157,7 +159,12 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
     return () => clearTimeout(t);
   }, [desde, hasta, items, id]);
 
-  const libreDe = (itemId: string) => disp[itemId]?.libre ?? itemPorId[itemId]?.stock_total ?? 0;
+  // Infinity = artículo sin límite de stock (todo cuenta como propio)
+  const libreDe = (itemId: string): number => {
+    if (disp[itemId]) return disp[itemId].libre;
+    const stock = itemPorId[itemId]?.stock_total;
+    return stock === null || stock === undefined ? Infinity : stock;
+  };
 
   // ------------------------------------------------------------------ edición
   const cambiarEvento = (cambio: Partial<Evento>) => {
@@ -488,7 +495,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
         <p className={AYUDA}>
           {ESTADOS_QUE_RESERVAN.includes(evento.estado)
             ? 'Este evento reserva stock desde la entrega hasta la devolución.'
-            : 'En estado presupuesto todavía no reserva stock. Al confirmarlo se reserva.'}
+            : 'En estado presupuesto todavía no reserva stock. Al confirmarlo se reserva.'}{' '}
+          Nunca hay límite: si falta stock propio, se marca como subalquilado.
         </p>
       </section>
 
@@ -548,7 +556,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
               <fieldset key={l.item_id} disabled={bloqueado} className="rounded-xl border border-stone-200 p-3">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="flex-1 font-manrope text-base font-semibold text-stone-900">{item?.nombre ?? 'Artículo'}</span>
-                  <span className="font-manrope text-xs text-stone-500">libres: {libre}</span>
+                  <span className="font-manrope text-xs text-stone-500">libres: {mostrarStock(libre)}</span>
                   {!bloqueado && (
                     <button type="button" onClick={() => quitarLinea(l.item_id)} className="h-10 w-10 flex items-center justify-center text-stone-400 hover:text-red-600" aria-label={`Quitar ${item?.nombre}`}>
                       <X size={18} />
