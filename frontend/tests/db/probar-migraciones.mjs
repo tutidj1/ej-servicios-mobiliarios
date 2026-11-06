@@ -46,7 +46,7 @@ await db.exec(`
   INSERT INTO cotizaciones (nombre) VALUES ('Lead de prueba');
 `);
 
-for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql']) {
+for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql', '0011_fix_costos.sql']) {
   await db.exec(leer(f));
   ok(true, `aplica ${f}`);
 }
@@ -120,6 +120,13 @@ await db.exec(`INSERT INTO evento_lineas (evento_id, item_id, cantidad_total, ca
 r = await q1(`SELECT * FROM disponibilidad(ARRAY['${sillas.id}']::uuid[], '2026-11-23', '2026-11-23')`);
 ok(r.disponible === 100 && r.tentativo === 80, 'un presupuesto no reserva, figura como tentativo');
 
+// ---------- Costos y pagos (camino feliz)
+await db.exec(`INSERT INTO evento_costos (evento_id, tipo, monto, descripcion) VALUES ('${ev1.id}', 'flete', 30000, NULL)`);
+await db.exec(`INSERT INTO pagos (evento_id, tipo, monto, medio) VALUES ('${ev1.id}', 'seña', 50000, 'efectivo')`);
+r = await q1(`SELECT (SELECT sum(monto) FROM evento_costos WHERE evento_id = '${ev1.id}') AS c, (SELECT sum(monto) FROM pagos WHERE evento_id = '${ev1.id}') AS p`);
+ok(Number(r.c) === 30000 && Number(r.p) === 50000, 'se guardan un costo (flete) y un pago en un evento abierto');
+await db.exec(`DELETE FROM evento_costos WHERE evento_id = '${ev1.id}'; DELETE FROM pagos WHERE evento_id = '${ev1.id}'`);
+
 // ---------- Reglas
 await espera(`SELECT * FROM cambiar_estado_evento('${ev3.id}', 'confirmado')`, /sin precio/, 'no confirma con artículos sin precio');
 await espera(`UPDATE evento_lineas SET precio_unitario = NULL WHERE evento_id = '${ev1.id}'`, /necesita precio/, 'no deja borrar el precio de un evento confirmado');
@@ -152,7 +159,7 @@ ok(r.n > 5 && r.u === 2, `la auditoría registró ${r.n} cambios de 2 personas`)
 
 // ---------- Vueltas atrás (en orden inverso)
 await db.exec('RESET ROLE');
-for (const f of ['0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
+for (const f of ['0011_fix_costos_down.sql', '0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
   await db.exec(leer(`rollback/${f}`));
   ok(true, `vuelta atrás ${f}`);
 }

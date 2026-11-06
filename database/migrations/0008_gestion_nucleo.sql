@@ -186,10 +186,12 @@ BEGIN
   IF ev.cerrado_en IS NOT NULL AND NOT public.es_admin() THEN
     RAISE EXCEPTION 'El evento está cerrado: sus precios y costos quedan congelados.';
   END IF;
-  IF TG_TABLE_NAME = 'evento_lineas' AND TG_OP <> 'DELETE'
-     AND ev.estado IN ('confirmado', 'entregado', 'devuelto')
-     AND NEW.cantidad_total > 0 AND NEW.precio_unitario IS NULL THEN
-    RAISE EXCEPTION 'El evento está confirmado: cada artículo necesita precio.';
+  IF TG_TABLE_NAME = 'evento_lineas' AND TG_OP <> 'DELETE' THEN
+    -- (anidado: evento_costos no tiene cantidad_total ni precio_unitario)
+    IF ev.estado IN ('confirmado', 'entregado', 'devuelto')
+       AND fila.cantidad_total > 0 AND fila.precio_unitario IS NULL THEN
+      RAISE EXCEPTION 'El evento está confirmado: cada artículo necesita precio.';
+    END IF;
   END IF;
   IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
   RETURN NEW;
