@@ -62,8 +62,8 @@ describe('contrato PDF (réplica de la plantilla)', () => {
     expect(/subalquil/i.test(texto)).toBe(false);
   });
   it('con el logo incrustado sigue siendo válido', async () => {
-    const png = readFileSync(new URL('../../public/images/logo-ej.png', import.meta.url));
-    const logo = `data:image/png;base64,${png.toString('base64')}`;
+    const png = readFileSync(new URL('../../public/images/logo-ej.jpg', import.meta.url));
+    const logo = `data:image/jpeg;base64,${png.toString('base64')}`;
     const blob = await generarContratoPdf({ ...datos, logo });
     expect(blob.size).toBeGreaterThan(50000);
   });

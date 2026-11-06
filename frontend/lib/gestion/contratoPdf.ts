@@ -43,7 +43,7 @@ export interface DatosContrato {
   fleteCobrado: number;
   total: number;
   sena: number | null;
-  /** Logo en data URL (PNG/JPEG). Si falta, el contrato sale sin logo. */
+  /** Logo en data URL (JPEG/PNG). Si falta, el contrato sale sin logo. */
   logo?: string;
 }
 
@@ -90,7 +90,7 @@ export async function generarContratoPdf(d: DatosContrato): Promise<Blob> {
   cuerpo();
 
   const encabezado = () => {
-    if (d.logo) doc.addImage(d.logo, 'PNG', (ANCHO - 37) / 2, 3, 37, 20);
+    if (d.logo) doc.addImage(d.logo, d.logo.startsWith('data:image/png') ? 'PNG' : 'JPEG', (ANCHO - 37) / 2, 3, 37, 20);
   };
   const pie = (n: number) => {
     cuerpo();
@@ -252,7 +252,7 @@ export function nombreArchivoContrato(cliente: string, fecha: string): string {
 /** Carga el logo del sitio como data URL para incrustarlo en el PDF. */
 export async function cargarLogo(): Promise<string | undefined> {
   try {
-    const res = await fetch('/images/logo-ej.png');
+    const res = await fetch('/images/logo-ej.jpg');
     if (!res.ok) return undefined;
     const blob = await res.blob();
     return await new Promise<string>((ok, mal) => {
