@@ -60,3 +60,43 @@ describe('otras formas de pedirlo', () => {
     expect(interpretarEvento('nuevo evento de Ana, 10 sillas', items, HOY).lineas).toMatchObject([{ itemId: 'sillas', cantidad: 10, precio: null }]);
   });
 });
+
+// Segundo mensaje real de la operadora (con otras palabras)
+const MENSAJE_2 =
+  'El cliente se llama Javier de la Costa, la dirección es Sarmiento, me contactó por WhatsApp, alquiló para 100 personas 100 sillas a un costo de 800 pesos, diez tablones a un costo de 4000 pesos, y 7 vajillas completo a un costo de 2000 pesos. El flete me sale 50 ida y 50 de vuelta, o sea que son 100000 pesos de flete.';
+const itemsConSet = [...items, { id: 'set', nombre: 'Set de vajilla completo', alias: [] as string[] }];
+
+describe('segundo mensaje de la operadora', () => {
+  const b = interpretarEvento(MENSAJE_2, itemsConSet, HOY);
+
+  it('se reconoce como evento completo', () => {
+    expect(b.lineas.length).toBeGreaterThanOrEqual(2);
+    expect(b.cliente).not.toBe('');
+  });
+  it('cliente con "de la"', () => expect(b.cliente).toBe('Javier de la Costa'));
+  it('dirección', () => expect(b.lugar).toBe('Sarmiento'));
+  it('canal: WhatsApp', () => expect(b.canal).toBe('whatsapp'));
+  it('para 100 personas', () => expect(b.personas).toBe(100));
+  it('100 sillas a 800', () => expect(b.lineas.find((l) => l.itemId === 'sillas')).toMatchObject({ cantidad: 100, precio: 800 }));
+  it('"diez tablones" a 4000', () => expect(b.lineas.find((l) => l.itemId === 'tablones')).toMatchObject({ cantidad: 10, precio: 4000 }));
+  it('"7 vajillas completo" es el Set de vajilla completo, a 2000', () => {
+    expect(b.lineas.find((l) => l.itemId === 'set')).toMatchObject({ cantidad: 7, precio: 2000 });
+  });
+  it('no inventa artículos de más', () => expect(b.lineas).toHaveLength(3));
+  it('flete: 50 ida + 50 vuelta = $100.000 (el total dicho manda)', () => {
+    expect(b.fletePagado).toBe(100000);
+    expect(b.fleteCobrado).toBeNull();
+  });
+  it('total de artículos: 80.000 + 40.000 + 14.000', () => {
+    expect(b.lineas.reduce((t, l) => t + (l.cantidad ?? 0) * (l.precio ?? 0), 0)).toBe(134000);
+  });
+});
+
+describe('flete ida y vuelta', () => {
+  it('suma las dos partes si no dice el total', () => {
+    expect(interpretarEvento('evento de Ana, el flete me sale 50 mil ida y 50 mil vuelta', items, HOY).fletePagado).toBe(100000);
+  });
+  it('un solo monto "ida y vuelta"', () => {
+    expect(interpretarEvento('evento de Ana, el flete me sale 80 mil ida y vuelta', items, HOY).fletePagado).toBe(80000);
+  });
+});

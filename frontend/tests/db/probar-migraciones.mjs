@@ -46,7 +46,7 @@ await db.exec(`
   INSERT INTO cotizaciones (nombre) VALUES ('Lead de prueba');
 `);
 
-for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql', '0011_fix_costos.sql']) {
+for (const f of ['0007_roles.sql', '0008_gestion_nucleo.sql', '0009_disponibilidad.sql', '0010_auditoria.sql', '0011_fix_costos.sql', '0012_locador_en_configuracion.sql']) {
   await db.exec(leer(f));
   ok(true, `aplica ${f}`);
 }
@@ -150,6 +150,16 @@ await db.exec(como(OTRO));
 ok((await db.query(`SELECT * FROM eventos`)).rows.length === 0, 'una cuenta sin rol no ve eventos');
 await espera(`INSERT INTO clientes (nombre_apellido) VALUES ('x')`, /row-level security/, 'una cuenta sin rol no puede crear clientes');
 
+// ---------- Datos del locador (0012): la operadora los lee pero no los cambia; el admin sí
+await db.exec(como(MARU));
+ok((await db.query(`SELECT locador_nombre, locador_dni, locador_telefono FROM configuracion`)).rows.length === 1, 'la operadora lee los datos del locador');
+await db.exec(`UPDATE configuracion SET locador_nombre = 'x' WHERE id = 1`);
+await db.exec(como(TOMAS));
+ok((await q1(`SELECT locador_nombre FROM configuracion`)).locador_nombre === null, 'la operadora NO pudo cambiarlos');
+await db.exec(`UPDATE configuracion SET locador_nombre = 'Prueba', locador_dni = '11.111.111', locador_telefono = '342 111 1111' WHERE id = 1`);
+ok((await q1(`SELECT locador_dni FROM configuracion`)).locador_dni === '11.111.111', 'el admin sí los cambia');
+await db.exec(`UPDATE configuracion SET locador_nombre = NULL, locador_dni = NULL, locador_telefono = NULL WHERE id = 1`);
+
 // ---------- Auditoría
 await db.exec(como(MARU));
 ok((await db.query(`SELECT * FROM audit_log`)).rows.length === 0, 'la operadora no lee la auditoría');
@@ -159,7 +169,7 @@ ok(r.n > 5 && r.u === 2, `la auditoría registró ${r.n} cambios de 2 personas`)
 
 // ---------- Vueltas atrás (en orden inverso)
 await db.exec('RESET ROLE');
-for (const f of ['0011_fix_costos_down.sql', '0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
+for (const f of ['0012_locador_en_configuracion_down.sql', '0011_fix_costos_down.sql', '0010_auditoria_down.sql', '0009_disponibilidad_down.sql', '0008_gestion_nucleo_down.sql', '0007_roles_down.sql']) {
   await db.exec(leer(`rollback/${f}`));
   ok(true, `vuelta atrás ${f}`);
 }

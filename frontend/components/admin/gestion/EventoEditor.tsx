@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Lock, MessageCircle, Plus, Sparkles, Trash2, Unlock, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, FileDown, Lock, MessageCircle, Plus, Send, Sparkles, Trash2, Unlock, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { linkWhatsappCliente } from '@/lib/phone';
 import {
@@ -41,6 +41,8 @@ import { AYUDA, type Aviso, BTN_OSCURO, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SEC
 import { Mensaje } from '../ui';
 import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import { CampoFecha } from './Calendarios';
+import { type Locador, cargarLogo, generarContratoPdf, nombreArchivoContrato } from '@/lib/gestion/contratoPdf';
+import { compartirArchivo, descargarArchivo, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -84,6 +86,10 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const [cargando, setCargando] = useState(true);
   const [editandoCliente, setEditandoCliente] = useState<BorradorCliente | null>(null);
   const [pestana, setPestana] = useState<'datos' | 'articulos' | 'dinero'>('datos');
+  const [generando, setGenerando] = useState(false);
+  const [contratoPanel, setContratoPanel] = useState<{ accion: 'descargar' | 'enviar'; sena: string; dni: string; locador: Locador } | null>(null);
+  const [locador, setLocador] = useState<Locador>({ nombre: '', dni: '', telefono: '' });
+  const [locadorGuardable, setLocadorGuardable] = useState(true);
   const [asistente, setAsistente] = useState<{ item: Item; cantidad: number; marcado: boolean }[] | null>(null);
 
   const cerrado = !!evento?.cerrado_en;
@@ -121,6 +127,22 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  // Datos del locador para el contrato (viven en la base, no en el código)
+  useEffect(() => {
+    supabase
+      .from('configuracion')
+      .select('locador_nombre, locador_dni, locador_telefono')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          setLocadorGuardable(false); // todavía no se aplicó la actualización 0012 de la base
+          return;
+        }
+        if (data) setLocador({ nombre: data.locador_nombre ?? '', dni: data.locador_dni ?? '', telefono: data.locador_telefono ?? '' });
+      });
+  }, []);
 
   // Último precio usado por artículo (solo si está activado en configuración; es una sugerencia en gris)
   useEffect(() => {
@@ -405,8 +427,140 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   });
   const sinAgregar = items.filter((i) => i.activo && !lineas.some((l) => l.item_id === i.id));
 
+  // ---- Contrato en PDF (réplica de la plantilla del Drive). Pide la seña acordada y el DNI antes de armarlo.
+  const abrirContrato = (accion: 'descargar' | 'enviar') => {
+    let sena = pagos.filter((x) => x.tipo === 'seña').reduce((t, x) => t + Number(x.monto), 0);
+    if (!sena && evento.notas) {
+      const m = evento.notas.match(/Seña acordada:\s*(?:\d+%\s*=\s*)?\$\s*([\d.,]+)/);
+      if (m) sena = leerMonto(m[1]) ?? 0;
+    }
+    setContratoPanel({ accion, sena: sena ? mostrarMonto(sena) : '', dni: cliente.dni ?? '', locador: { ...locador } });
+  };
+
+  const armarContrato = async (sena: number | null, dni: string, datosLocador: Locador) => {
+    if (cambios && !(await guardar())) return null;
+    if (faltantes.length) {
+      setAviso({ tipo: 'error', texto: `Todavía no se puede armar el documento. ${faltantes.join(' ')}` });
+      return null;
+    }
+    const dniLimpio = dni.trim() || null;
+    if (dniLimpio !== (cliente.dni || null)) {
+      const { error } = await supabase.from('clientes').update({ dni: dniLimpio }).eq('id', cliente.id);
+      if (error) {
+        setAviso({ tipo: 'error', texto: mensajeError(error, 'No se pudo guardar el DNI.') });
+        return null;
+      }
+      setCliente({ ...cliente, dni: dniLimpio });
+    }
+    // Los datos del locador los guarda solo el administrador (la operadora los lee)
+    const cambioLocador = datosLocador.nombre !== locador.nombre || datosLocador.dni !== locador.dni || datosLocador.telefono !== locador.telefono;
+    if (cambioLocador && esAdmin && locadorGuardable) {
+      const { error } = await supabase
+        .from('configuracion')
+        .update({ locador_nombre: datosLocador.nombre.trim() || null, locador_dni: datosLocador.dni.trim() || null, locador_telefono: datosLocador.telefono.trim() || null })
+        .eq('id', 1);
+      if (error) setAviso({ tipo: 'error', texto: 'No se pudieron guardar los datos del locador; el contrato igual los lleva.' });
+      else setLocador({ ...datosLocador });
+    }
+    const cantidadDe = (itemId: string) => lineas.find((l) => l.item_id === itemId)?.cantidad_total ?? 0;
+    const articulos = items
+      .map((i) => ({ nombre: i.nombre, orden: i.orden_contrato, cantidad: cantidadDe(i.id) }))
+      .filter((a) => a.orden !== null || a.cantidad > 0);
+    const total = totalPresupuesto({
+      lineas: lineas.filter((l) => l.cantidad_total > 0).map((l) => ({ nombre: '', cantidad: l.cantidad_total, precio: leerMonto(l.precioTexto) ?? 0 })),
+      fleteCobrado: leerMonto(fleteTexto) ?? 0,
+    });
+    const blob = await generarContratoPdf({
+      locador: { nombre: datosLocador.nombre.trim(), dni: datosLocador.dni.trim(), telefono: datosLocador.telefono.trim() },
+      locatario: { nombre: cliente.nombre_apellido, dni: dniLimpio, telefono: cliente.telefono },
+      lugar: evento.lugar,
+      emision: hoyArgentina(),
+      fechaDevolucion: evento.fecha_devolucion,
+      articulos,
+      fleteCobrado: leerMonto(fleteTexto) ?? 0,
+      total,
+      sena,
+      logo: await cargarLogo(),
+    });
+    return { blob, archivo: nombreArchivoContrato(cliente.nombre_apellido, evento.fecha_evento) };
+  };
+
+  const confirmarContrato = async () => {
+    if (!contratoPanel) return;
+    const { accion, sena, dni, locador: datosLocador } = contratoPanel;
+    if (sena.trim() && leerMonto(sena) === null) return setAviso({ tipo: 'error', texto: 'La seña no es un número válido.' });
+    setGenerando(true);
+    try {
+      const r = await armarContrato(sena.trim() ? leerMonto(sena) : null, dni, datosLocador);
+      if (r) {
+        setContratoPanel(null);
+        if (accion === 'descargar') {
+          descargarArchivo(r.blob, r.archivo);
+          setAviso({ tipo: 'ok', texto: 'Documento descargado.' });
+        } else {
+          const texto = `Hola ${cliente.nombre_apellido.split(' ')[0]}, te paso el presupuesto y contrato de alquiler para tu evento del ${fechaLarga(evento.fecha_evento).toLowerCase()}.`;
+          if (!(await compartirArchivo(r.blob, r.archivo, texto))) {
+            descargarArchivo(r.blob, r.archivo);
+            if (cliente.telefono) window.open(`${linkWhatsappCliente(cliente.telefono)}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+            setAviso({ tipo: 'ok', texto: cliente.telefono ? 'Se descargó el PDF y se abrió el chat del cliente: adjuntalo ahí.' : 'Se descargó el PDF. El cliente no tiene teléfono cargado.' });
+          }
+        }
+      }
+    } catch {
+      setAviso({ tipo: 'error', texto: 'No se pudo armar el PDF. Probá de nuevo.' });
+    }
+    setGenerando(false);
+  };
+
   return (
     <div className="space-y-5 pb-44 md:pb-28">
+      {contratoPanel && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setContratoPanel(null)}>
+          <div className="w-full max-w-md space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Datos del contrato">
+            <h2 className="font-playfair text-xl font-bold">Antes de armar el documento</h2>
+            <div>
+              <label className={ETIQUETA} htmlFor="ct-sena">Seña acordada ($)</label>
+              <input id="ct-sena" className={CAMPO} inputMode="decimal" placeholder="Dejalo vacío si todavía no hay" value={contratoPanel.sena} onChange={(e) => setContratoPanel({ ...contratoPanel, sena: e.target.value })} />
+              <p className={AYUDA}>Salen la seña y el saldo en el contrato. Si lo dejás vacío, quedan en blanco para completar a mano.</p>
+            </div>
+            <div>
+              <label className={ETIQUETA} htmlFor="ct-dni">DNI del cliente</label>
+              <input id="ct-dni" className={CAMPO} inputMode="numeric" value={contratoPanel.dni} onChange={(e) => setContratoPanel({ ...contratoPanel, dni: e.target.value })} />
+              <p className={AYUDA}>Se guarda en la ficha del cliente. Si lo dejás vacío, queda en blanco.</p>
+            </div>
+            <details className="rounded-xl border border-stone-200 p-3" open={!locador.nombre || !locador.dni}>
+              <summary className="cursor-pointer font-manrope text-sm font-semibold text-stone-800">
+                Datos de quien alquila (locador){!locador.nombre || !locador.dni ? ' · faltan' : ''}
+              </summary>
+              <div className="mt-3 space-y-3">
+                {(['nombre', 'dni', 'telefono'] as const).map((campo) => (
+                  <div key={campo}>
+                    <label className={ETIQUETA} htmlFor={`ct-loc-${campo}`}>{campo === 'nombre' ? 'Nombre y apellido' : campo === 'dni' ? 'DNI' : 'Teléfono'}</label>
+                    <input
+                      id={`ct-loc-${campo}`}
+                      className={CAMPO}
+                      value={contratoPanel.locador[campo]}
+                      onChange={(e) => setContratoPanel({ ...contratoPanel, locador: { ...contratoPanel.locador, [campo]: e.target.value } })}
+                    />
+                  </div>
+                ))}
+                <p className={AYUDA}>
+                  {!locadorGuardable
+                    ? 'Estos datos salen en este contrato, pero todavía no se pueden guardar (falta aplicar la actualización 0012 de la base).'
+                    : esAdmin
+                      ? 'Se guardan una sola vez y se usan en todos los contratos. Si dejás algo vacío, queda en blanco.'
+                      : 'Solo el administrador puede cambiarlos para siempre; acá salen solo en este contrato.'}
+                </p>
+              </div>
+            </details>
+            <div className="flex gap-2">
+              <button type="button" disabled={generando} onClick={confirmarContrato} className={`${BTN_PRIMARIO} min-h-[52px] flex-1`}>{generando ? 'Armando…' : contratoPanel.accion === 'enviar' ? 'Armar y enviar' : 'Armar PDF'}</button>
+              <button type="button" onClick={() => setContratoPanel(null)} className={BTN_SECUNDARIO}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button type="button" onClick={volver} className={BTN_SECUNDARIO}><ArrowLeft size={18} /> Volver a eventos</button>
 
       {/* Resumen siempre a la vista: quién, cuándo, cuánto y qué sigue */}
@@ -432,6 +586,24 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
           <button type="button" disabled={guardando} onClick={() => cambiarEstado(SIGUIENTE[evento.estado]!.estado)} className={`${BTN_PRIMARIO} min-h-[56px] w-full text-base`}>
             {SIGUIENTE[evento.estado]!.texto}
           </button>
+        )}
+        {evento.estado !== 'cancelado' && (
+          <div className="space-y-2">
+            <p className="font-manrope text-[11px] font-semibold uppercase tracking-wide text-stone-500">Documento para el cliente</p>
+            {[
+              { nombre: 'Presupuesto y contrato', descargar: () => abrirContrato('descargar'), enviar: () => abrirContrato('enviar') },
+            ].map((doc) => (
+              <div key={doc.nombre} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                <span className="font-manrope text-sm font-semibold text-stone-800">{doc.nombre}</span>
+                <button type="button" disabled={generando} onClick={doc.descargar} className={`${BTN_SECUNDARIO} min-h-[48px]`} aria-label={`Descargar ${doc.nombre} en PDF`}>
+                  <FileDown size={18} /> {generando ? '…' : 'PDF'}
+                </button>
+                <button type="button" disabled={generando} onClick={doc.enviar} className={`${BTN_SECUNDARIO} min-h-[48px]`} aria-label={`Enviar ${doc.nombre} al cliente`}>
+                  <Send size={18} /> Enviar
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

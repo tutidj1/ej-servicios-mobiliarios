@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { fechaCorta, fechaLarga, hoyArgentina, pesos } from '@/lib/gestion/calculos';
 import { type FilaDisponibilidad, type MedioPago, type TipoCosto, type TipoPago, leerMonto, mensajeError, mostrarMonto } from '@/lib/gestion/tipos';
 import { type Intencion, eventoPorNombre, interpretar } from '@/lib/gestion/voz';
+import { interpretarEvento } from '@/lib/gestion/vozEvento';
 import { useBloqueoScroll } from '@/lib/useMovil';
 import { AYUDA, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from '../estilos';
 import { CampoFecha } from './Calendarios';
@@ -187,6 +188,9 @@ export default function AsistenteVoz({
     if (!frase) return setAviso('Primero decí o escribí algo.');
     const hoy = hoyArgentina();
     const r = interpretar(frase, items, hoy);
+    // Un mensaje largo con cliente y artículos es un evento completo, aunque no diga "nuevo evento"
+    const borrador = interpretarEvento(frase, items, hoy);
+    if (r.intencion !== 'evento' && (borrador.lineas.length >= 2 || (!!borrador.cliente && borrador.lineas.length >= 1))) r.intencion = 'evento';
     const sugerido = eventoPorNombre(frase, eventos.map((e) => ({ id: e.id, nombre: e.cliente })));
     setAmbiguo(r.itemIds.length > 1);
     setEventoSugerido(!eventoActual && !!sugerido);
