@@ -1,5 +1,6 @@
 import React from 'react';
 import { Facebook, Instagram } from 'lucide-react';
+import { paginasProducto } from '@/lib/paginasProducto';
 
 const Footer: React.FC = () => {
   return (
@@ -17,10 +18,15 @@ const Footer: React.FC = () => {
         <div className="space-y-4">
           <h4 className="font-manrope font-semibold uppercase text-sm">Navegación</h4>
           <ul className="space-y-2 font-manrope text-sm">
-            <li><a href="#hero" className="hover:text-acento-amarillo transition-colors">Inicio</a></li>
-            <li><a href="#catalogo" className="hover:text-acento-amarillo transition-colors">Catálogo</a></li>
-            <li><a href="#servicios" className="hover:text-acento-amarillo transition-colors">Servicios</a></li>
-            <li><a href="#contacto" className="hover:text-acento-amarillo transition-colors">Contacto</a></li>
+            <li><a href="/#inicio" className="hover:text-acento-amarillo transition-colors">Inicio</a></li>
+            <li><a href="/#catalogo" className="hover:text-acento-amarillo transition-colors">Catálogo</a></li>
+            <li><a href="/#servicios" className="hover:text-acento-amarillo transition-colors">Servicios</a></li>
+            {paginasProducto.map((p) => (
+              <li key={p.slug}>
+                <a href={`/${p.slug}`} className="hover:text-acento-amarillo transition-colors">{p.h1.replace(' para eventos', '').replace(' en Santa Fe', '')}</a>
+              </li>
+            ))}
+            <li><a href="/#contacto" className="hover:text-acento-amarillo transition-colors">Contacto</a></li>
           </ul>
         </div>
         {/* Social Media */}

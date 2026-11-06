@@ -3,10 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Phone } from 'lucide-react';
 import Button from './ui/Button';
+import { paginasProducto } from '@/lib/paginasProducto';
 
-export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void }) {
+interface NavbarProps {
+  /** En la home abre el modal de cotización */
+  onOpenCotizar?: () => void;
+  /** En las páginas internas el botón "Cotizar" abre WhatsApp con este link */
+  cotizarHref?: string;
+  /** Fondo claro siempre (páginas sin imagen de portada) */
+  solida?: boolean;
+}
+
+export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolledReal, setScrolled] = useState(false);
+  const scrolled = solida || scrolledReal;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,26 +27,48 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Los enlaces apuntan a "/#seccion" para que funcionen también desde las páginas de producto
   const navLinks = [
-    { name: 'Inicio', href: '#inicio' },
-    { name: 'Servicios', href: '#servicios' },
-    { name: 'Nosotros', href: '#nosotros' },
-    { name: 'Catálogo', href: '#catalogo' },
-    { name: 'Contacto', href: '#contacto' },
+    { name: 'Inicio', href: '/#inicio' },
+    { name: 'Servicios', href: '/#servicios' },
+    { name: 'Nosotros', href: '/#nosotros' },
+    ...paginasProducto.map((p) => ({ name: p.nombreCorto, href: `/${p.slug}` })),
+    { name: 'Catálogo', href: '/#catalogo' },
+    { name: 'Contacto', href: '/#contacto' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
     setIsOpen(false);
-    const target = document.querySelector(href);
-    if (target) target.scrollIntoView({ behavior: 'smooth' });
+    const id = href.split('#')[1];
+    const target = id ? document.getElementById(id) : null;
+    // Si la sección está en esta página, desplazamiento suave; si no, navegación normal
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
   };
+
+  const botonCotizar = (size: 'sm' | 'full') =>
+    cotizarHref ? (
+      <a
+        href={cotizarHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center justify-center font-manrope font-semibold uppercase tracking-cta border bg-negro-carbon text-crema-base border-negro-carbon hover:bg-transparent hover:text-negro-carbon transition-all duration-300 ${size === 'sm' ? 'px-4 py-2 text-xs' : 'w-full py-4 text-sm'}`}
+      >
+        Cotizar evento
+      </a>
+    ) : (
+      <Button variant="primary" size={size} onClick={() => { setIsOpen(false); onOpenCotizar?.(); }}>
+        Cotizar evento
+      </Button>
+    );
 
   return (
     <>
       <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-crema-base/80 backdrop-blur-md border-b border-gris-borde py-4' : 'bg-transparent py-6'}`} data-scrolled={scrolled ? 'true' : 'false'}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <a href="#inicio" className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3" aria-label="EJ Servicios Mobiliarios, inicio">
             <div className="w-10 h-10 rounded-none bg-negro-carbon flex items-center justify-between text-crema-base font-playfair font-bold text-lg select-none px-2.5 shrink-0">
               <span>EJ</span>
             </div>
@@ -49,7 +82,7 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
             </div>
           </a>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-5 xl:gap-7">
             {navLinks.map((link) => (
               <a
                 key={link.name}
@@ -66,14 +99,10 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
             ))}
           </div>
 
-          <div className="hidden md:block">
-            <Button variant="primary" size="sm" onClick={onOpenCotizar}>
-              Cotizar evento
-            </Button>
-          </div>
+          <div className="hidden lg:block">{botonCotizar('sm')}</div>
 
           <button
-            className={`md:hidden p-1 outline-none transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'text-blanco-puro'}`}
+            className={`lg:hidden p-1 outline-none transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'text-blanco-puro'}`}
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle Menu"
           >
@@ -84,12 +113,12 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed inset-0 z-30 bg-negro-carbon/60 transition-opacity duration-300 md:hidden ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-30 bg-negro-carbon/60 transition-opacity duration-300 lg:hidden ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsOpen(false)}
       />
 
       <div
-        className={`fixed top-0 right-0 h-full w-[280px] bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out md:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 h-full w-[280px] overflow-y-auto bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex flex-col gap-8">
           <div className="flex items-center justify-between border-b border-gris-borde pb-4">
@@ -121,9 +150,7 @@ export default function Navbar({ onOpenCotizar }: { onOpenCotizar: () => void })
         </div>
 
         <div className="flex flex-col gap-4 border-top border-gris-borde pt-6">
-          <Button variant="primary" size="full" onClick={() => { setIsOpen(false); onOpenCotizar(); }}>
-            Cotizar evento
-          </Button>
+          {botonCotizar('full')}
           <a
             href="https://wa.me/5493425068365"
             target="_blank"

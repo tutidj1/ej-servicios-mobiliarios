@@ -98,3 +98,29 @@ export async function getBanners(): Promise<Record<string, Banner>> {
     return BANNERS_POR_DEFECTO;
   }
 }
+
+/**
+ * Fecha de la última modificación del contenido público que viene de Supabase
+ * (productos, banners y promo). Se usa como lastmod real de la home en el sitemap.
+ */
+export async function getUltimaActualizacion(): Promise<Date | null> {
+  const supabase = clienteLectura();
+  if (!supabase) return null;
+
+  try {
+    const consultas = await Promise.all(
+      ['productos', 'banners', 'promo_config'].map((tabla) =>
+        supabase.from(tabla).select('updated_at').order('updated_at', { ascending: false }).limit(1)
+      )
+    );
+    const fechas = consultas
+      .flatMap((r) => (r.error ? [] : r.data ?? []))
+      .map((fila: any) => (fila.updated_at ? new Date(fila.updated_at) : null))
+      .filter((d): d is Date => d !== null && !Number.isNaN(d.getTime()));
+    if (fechas.length === 0) return null;
+    return new Date(Math.max(...fechas.map((d) => d.getTime())));
+  } catch (err) {
+    console.warn('No se pudo leer la fecha de actualización para el sitemap:', err);
+    return null;
+  }
+}

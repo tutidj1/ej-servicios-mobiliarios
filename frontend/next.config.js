@@ -20,6 +20,8 @@ const csp = [
 const nextConfig = {
   reactStrictMode: true,
   images: {
+    // Fotos del catálogo servidas en AVIF/WebP según el navegador
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',

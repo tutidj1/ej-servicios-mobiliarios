@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Armchair, MapPin, GlassWater, ShieldCheck } from 'lucide-react';
+import { Armchair, MapPin, GlassWater, ShieldCheck, ArrowRight } from 'lucide-react';
+import { paginasProducto } from '@/lib/paginasProducto';
 
 export default function Servicios() {
   const services = [
@@ -69,6 +70,22 @@ export default function Servicios() {
             </motion.div>
           ))}
         </div>
+
+        {/* Enlaces a las páginas de cada producto */}
+        <nav aria-label="Alquiler por producto" className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {paginasProducto.map((p) => (
+            <a
+              key={p.slug}
+              href={`/${p.slug}`}
+              className="group flex items-center justify-between gap-3 bg-blanco-puro border border-gris-borde px-6 py-5 hover:border-negro-carbon transition-colors duration-300"
+            >
+              <span className="font-manrope text-sm font-semibold text-negro-carbon">
+                Alquiler de {p.nombreCorto.toLowerCase()}
+              </span>
+              <ArrowRight className="w-4 h-4 text-negro-carbon transition-transform duration-300 group-hover:translate-x-1" />
+            </a>
+          ))}
+        </nav>
       </div>
     </section>
   );

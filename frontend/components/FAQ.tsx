@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { faqs } from '@/lib/faq';
+import { faqs as faqsHome } from '@/lib/faq';
 
-const FAQ: React.FC = () => {
+type Pregunta = { question: string; answer: string };
+
+const FAQ: React.FC<{ preguntas?: Pregunta[] }> = ({ preguntas }) => {
+  const faqs = preguntas ?? faqsHome;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggle = (index: number) => {
@@ -58,25 +61,22 @@ const FAQ: React.FC = () => {
                   </motion.div>
                 </button>
 
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      id={`faq-panel-${index}`}
-                      role="region"
-                      aria-labelledby={`faq-btn-${index}`}
-                      key="content"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className="overflow-hidden"
-                    >
-                      <p className="font-manrope text-sm text-gris-suave leading-relaxed pb-5 pr-10">
-                        {faq.answer}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* La respuesta siempre está en el HTML (Google la lee aunque el acordeón esté cerrado);
+                    solo se pliega visualmente con una transición de CSS. */}
+                <div
+                  id={`faq-panel-${index}`}
+                  role="region"
+                  aria-labelledby={`faq-btn-${index}`}
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                  }`}
+                >
+                  <div className="overflow-hidden" aria-hidden={!isOpen}>
+                    <p className="font-manrope text-sm text-gris-suave leading-relaxed pb-5 pr-10">
+                      {faq.answer}
+                    </p>
+                  </div>
+                </div>
               </div>
             );
           })}

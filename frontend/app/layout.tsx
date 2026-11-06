@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Manrope } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
-import { PALABRAS_CLAVE, SITE_NAME, SITE_URL } from '@/lib/site';
+import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, PALABRAS_CLAVE, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // Configuración de la fuente Playfair Display para títulos elegantes
 const playfair = Playfair_Display({
@@ -22,11 +22,11 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: {
-    default: 'EJ Servicios Mobiliarios — Alquiler de Sillas, Vajilla y Mobiliario para Eventos en Santa Fe',
-    template: '%s | EJ Servicios Mobiliarios',
+    default: HOME_TITLE,
+    // Cada página interna define su title completo (ya incluye "| EJ")
+    template: '%s',
   },
-  description:
-    'Alquiler de sillas, tablones, caballetes, vajilla, cubiertos, copas y mantelería para casamientos, cumpleaños, 15 años y eventos en Santa Fe Capital. Sin límite de invitados. Llevamos, traemos y lavamos todo. ¡Cotizá por WhatsApp!',
+  description: HOME_DESCRIPTION,
   keywords: PALABRAS_CLAVE,
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
@@ -36,20 +36,19 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'EJ Servicios Mobiliarios — Exclusivo para vos',
-    description:
-      'Alquiler de sillas, tablones y vajilla para eventos en Santa Fe Capital. Llevamos, traemos y lavamos todo.',
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     url: SITE_URL,
     siteName: SITE_NAME,
     locale: 'es_AR',
     type: 'website',
-    images: [{ url: '/hero-banner.png', alt: 'EJ Servicios Mobiliarios — alquiler de mobiliario para eventos' }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EJ Servicios Mobiliarios — Alquiler para eventos en Santa Fe',
-    description: 'Sillas, tablones, vajilla y mantelería para tu evento. Llevamos, traemos y lavamos todo.',
-    images: ['/hero-banner.png'],
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
   robots: {
     index: true,
