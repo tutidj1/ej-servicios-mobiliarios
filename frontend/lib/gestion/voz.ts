@@ -4,7 +4,7 @@
 
 import { sumarDias } from './calculos';
 
-export type Intencion = 'pago' | 'costo' | 'subalquiler' | 'disponibilidad' | 'desconocido';
+export type Intencion = 'evento' | 'pago' | 'costo' | 'subalquiler' | 'disponibilidad' | 'desconocido';
 export type TipoPagoVoz = 'seña' | 'saldo' | 'otro';
 export type TipoCostoVoz = 'flete' | 'lavado' | 'rotura' | 'ayudante' | 'otro';
 
@@ -25,6 +25,12 @@ export interface Interpretacion {
   medio: 'efectivo' | 'transferencia' | null;
   tipoCosto: TipoCostoVoz | null;
   fecha: string | null;
+}
+
+/** ¿Es el pedido de cargar un evento completo (y no un pago o un gasto suelto)? */
+export function esEventoNuevo(texto: string): boolean {
+  const t = normalizar(texto);
+  return /\b(nuevo|nueva|subir|cargar|armar|crear|agregar|anotar)\b.{0,40}\b(evento|alquiler)\b/.test(t) || /\bevento (es )?(de|para|del)\b/.test(t);
 }
 
 export function normalizar(texto: string): string {
@@ -60,6 +66,7 @@ const MILLON = new Set(['millon', 'millones']);
 function cifra(t: string): number | null {
   if (!/^\d+([.,]\d+)*$/.test(t)) return null;
   if (/^\d{1,3}(\.\d{3})+$/.test(t)) return Number(t.replace(/\./g, ''));
+  if (/^\d{1,3}(,\d{3})+$/.test(t)) return Number(t.replace(/,/g, ''));
   return Number(t.replace(',', '.'));
 }
 
@@ -113,7 +120,21 @@ export function extraerNumeros(partes: string[]): CorridaNumerica[] {
 // ---------------------------------------------------------------------------
 // Artículos
 // ---------------------------------------------------------------------------
-const mismo = (a: string, b: string) => a === b || a + 's' === b || a + 'es' === b || b + 's' === a || b + 'es' === a;
+const raiz = (t: string) => (t.length > 5 && t.endsWith('es') ? t.slice(0, -2) : t.length > 3 && t.endsWith('s') ? t.slice(0, -1) : t);
+
+function distanciaUno(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
+}
+
+/** Mismo término: igual, plural, o parecido (el micrófono escribe "talones" por "tablones"). */
+export const mismo = (a: string, b: string) =>
+  a === b || a + 's' === b || a + 'es' === b || b + 's' === a || b + 'es' === a ||
+  (a.length >= 5 && b.length >= 5 && a[0] === b[0] && distanciaUno(raiz(a), raiz(b)));
 
 /** Busca el artículo mencionado. Gana el nombre más largo; si empatan, devuelve todos (ambiguo). */
 export function buscarItems(partes: string[], items: ItemVoz[]): { ids: string[]; desde: number; hasta: number } | null {
@@ -204,6 +225,9 @@ export function interpretar(texto: string, items: ItemVoz[], hoy: string): Inter
     intencion: 'desconocido', monto: null, cantidad: null, costoUnitario: null,
     itemIds: item?.ids ?? [], tipoPago: null, medio: null, tipoCosto: null, fecha: null,
   };
+
+  // Evento completo: "quiero subir un nuevo evento de Javier, 100 sillas..."
+  if (esEventoNuevo(texto)) return { ...vacio, intencion: 'evento' };
 
   // Subalquiler: "subalquilé 50 sillas a mil"
   if (/\bsubalquil/.test(t)) {
