@@ -109,6 +109,7 @@ export default function PreciosAdmin() {
       .from('evento_lineas')
       .select('item_id, evento_id, cantidad_total, precio_unitario, eventos!inner(estado, fecha_evento)')
       .not('precio_unitario', 'is', null)
+      .gt('precio_unitario', 0)
       .gt('cantidad_total', 0)
       .in('eventos.estado', conPresupuestos ? ['presupuesto', 'confirmado', 'entregado', 'devuelto'] : ['confirmado', 'entregado', 'devuelto'])
       .limit(5000);
@@ -120,9 +121,12 @@ export default function PreciosAdmin() {
       return;
     }
     setAviso(null);
-    setNombres(Object.fromEntries(((items.data as { id: string; nombre: string }[]) ?? []).map((i) => [i.id, i.nombre])));
+    const porNombre: Record<string, string> = Object.fromEntries(((items.data as { id: string; nombre: string }[]) ?? []).map((i) => [i.id, i.nombre]));
+    setNombres(porNombre);
     setLineas(
-      ((res.data as unknown as { item_id: string; evento_id: string; cantidad_total: number; precio_unitario: number }[]) ?? []).map((l) => ({
+      ((res.data as unknown as { item_id: string; evento_id: string; cantidad_total: number; precio_unitario: number }[]) ?? [])
+        .filter((l) => !/^(Total acordado|Alquiler \(contrato anterior\))/.test(porNombre[l.item_id] ?? ''))
+        .map((l) => ({
         item_id: l.item_id,
         evento_id: l.evento_id,
         cantidad_total: Number(l.cantidad_total),
