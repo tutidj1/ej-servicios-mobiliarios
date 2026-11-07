@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronRight, MapPin, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, FileUp, MapPin, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { ESTADOS_EVENTO, type EstadoEvento, fechaCorta, hoyArgentina, nombreMes } from '@/lib/gestion/calculos';
 import { CANALES, COLOR_ESTADO_EVENTO, type Cliente, type EventoConCliente, mensajeError } from '@/lib/gestion/tipos';
 import { AYUDA, type Aviso, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
 import { CampoRango } from './Calendarios';
+import ImportarContrato from './ImportarContrato';
 import { CLIENTE_VACIO, type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdmin';
 import EventoEditor from './EventoEditor';
 
@@ -204,6 +205,7 @@ export default function EventosAdmin({
   const [cargando, setCargando] = useState(true);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [alta, setAlta] = useState(altaInicial);
+  const [importar, setImportar] = useState(false);
   const [mes, setMes] = useState(PROXIMOS);
   const [estado, setEstado] = useState<'todos' | EstadoEvento>('todos');
   const [canal, setCanal] = useState('todos');
@@ -261,13 +263,28 @@ export default function EventosAdmin({
         titulo="Eventos"
         descripcion="Cada alquiler, de cualquier canal: cliente, fechas, artículos, costos y pagos."
         accion={
-          !alta && (
-            <button type="button" className={`${BTN_PRIMARIO} min-h-[52px]`} onClick={() => setAlta(true)}>
-              <Plus size={18} /> Nuevo evento
-            </button>
+          !alta && !importar && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`${BTN_PRIMARIO} min-h-[52px]`} onClick={() => setAlta(true)}>
+                <Plus size={18} /> Nuevo evento
+              </button>
+              <button type="button" className={`${BTN_SECUNDARIO} min-h-[52px]`} onClick={() => setImportar(true)}>
+                <FileUp size={18} /> Cargar contrato PDF
+              </button>
+            </div>
           )
         }
       />
+      {importar && (
+        <ImportarContrato
+          onCancelar={() => setImportar(false)}
+          onCreado={(id, mensaje) => {
+            setImportar(false);
+            setAviso({ tipo: 'ok', texto: mensaje });
+            onAbrir(id);
+          }}
+        />
+      )}
       {alta && <AltaRapida onCancelar={() => setAlta(false)} onCreado={(id) => { setAlta(false); onAbrir(id); }} />}
 
       <div className="mb-4 grid gap-2 sm:grid-cols-4">
