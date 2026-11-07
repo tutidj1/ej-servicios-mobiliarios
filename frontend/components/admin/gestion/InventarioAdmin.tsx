@@ -133,7 +133,13 @@ export default function InventarioAdmin() {
       </div>
 
       {edicion && (
-        <form onSubmit={guardar} className={`${TARJETA} mb-6 space-y-4`}>
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEdicion(null);
+          }}
+        >
+        <form onSubmit={guardar} className={`${TARJETA} w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto overscroll-contain space-y-4 rounded-b-none sm:rounded-b-2xl`}>
           <div className="flex items-center justify-between">
             <h2 className="font-playfair text-xl font-bold">{edicion.id ? 'Editar artículo' : 'Nuevo artículo'}</h2>
             <button type="button" onClick={() => setEdicion(null)} className="h-11 w-11 flex items-center justify-center" aria-label="Cerrar">
@@ -153,7 +159,12 @@ export default function InventarioAdmin() {
             </div>
             <div>
               <label className={ETIQUETA} htmlFor="inv-stock">Stock propio</label>
-              <input id="inv-stock" className={CAMPO} inputMode="numeric" placeholder="Sin límite" value={edicion.stock_total} onChange={(e) => setEdicion({ ...edicion, stock_total: e.target.value.replace(/\D/g, '') })} />
+              <div className="flex items-stretch gap-2">
+                <button type="button" aria-label="Una menos" className={`${BTN_SECUNDARIO} !px-4 text-xl`} onClick={() => setEdicion({ ...edicion, stock_total: String(Math.max(0, (Number(edicion.stock_total) || 0) - 1)) })}>−</button>
+                <input id="inv-stock" className={`${CAMPO} text-center`} inputMode="numeric" placeholder="Sin límite" value={edicion.stock_total} onChange={(e) => setEdicion({ ...edicion, stock_total: e.target.value.replace(/\D/g, '') })} />
+                <button type="button" aria-label="Una más" className={`${BTN_SECUNDARIO} !px-4 text-xl`} onClick={() => setEdicion({ ...edicion, stock_total: String((Number(edicion.stock_total) || 0) + 1) })}>+</button>
+              </div>
+              <button type="button" className="mt-2 min-h-[44px] font-manrope text-sm font-semibold text-emerald-800 underline" onClick={() => setEdicion({ ...edicion, stock_total: '' })}>Sin límite (no controlar)</button>
               <p className={AYUDA}>Dejalo vacío si no querés controlarlo. Con un número, el sistema te dice cuántas hay que subalquilar.</p>
             </div>
             <div>
@@ -187,7 +198,9 @@ export default function InventarioAdmin() {
               </button>
             )}
           </div>
+          <Mensaje aviso={aviso} />
         </form>
+        </div>
       )}
 
       {cargando && <p className="font-manrope text-sm text-stone-600">Cargando…</p>}
