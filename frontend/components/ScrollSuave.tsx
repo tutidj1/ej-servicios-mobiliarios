@@ -12,6 +12,8 @@ export default function ScrollSuave() {
   useEffect(() => {
     if (esAdmin) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // En celulares y tablets (dedo) se deja el scroll nativo: es el más fluido y no choca con el teclado
+    if (window.matchMedia('(pointer: coarse)').matches) return;
 
     let detenido = false;
     let raf = 0;

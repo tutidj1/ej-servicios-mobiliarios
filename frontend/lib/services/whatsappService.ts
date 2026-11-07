@@ -1,5 +1,5 @@
-import { SITE_URL } from '@/lib/site';
-import { cantidadSugerida } from '@/lib/cantidades';
+import { SITE_URL } from '../site';
+import { cantidadSugerida } from '../cantidades';
 
 // Armado del mensaje de WhatsApp para una cotización.
 // Se genera siempre en el servidor a partir de datos ya validados.

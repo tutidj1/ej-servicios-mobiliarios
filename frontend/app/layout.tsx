@@ -70,6 +70,8 @@ export const viewport: Viewport = {
   themeColor: '#F5F1EA',
   width: 'device-width',
   initialScale: 1,
+  // En Android el teclado achica la página en vez de taparla: los campos y botones quedan a la vista
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({
