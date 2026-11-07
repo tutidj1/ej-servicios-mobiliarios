@@ -39,7 +39,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
   const [fecha, setFecha] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [total, setTotal] = useState('');
-  const [gastos, setGastos] = useState('');
+  const [gananciaTexto, setGananciaTexto] = useState('');
   const [sena, setSena] = useState<number | null>(null);
   const [cobro, setCobro] = useState<Cobro>('completo');
   const [leido, setLeido] = useState(false);
@@ -75,15 +75,20 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
     if (entrada.current) entrada.current.value = '';
   };
 
-  const montoTotal = leerMonto(total) ?? 0;
-  const montoGastos = leerMonto(gastos) ?? 0;
-  const ganancia = montoTotal - montoGastos;
+  // Lo que se sabe: el monto del contrato y/o la ganancia. Con las dos, la diferencia son los gastos.
+  // Con solo la ganancia, ese es el ingreso del evento (no se sabe cuánto se cobró ni cuánto se gastó).
+  const montoContrato = leerMonto(total) ?? 0;
+  const montoGanancia = leerMonto(gananciaTexto) ?? 0;
+  const montoTotal = montoContrato > 0 ? montoContrato : montoGanancia;
+  const montoGastos = montoContrato > 0 && montoGanancia > 0 ? Math.max(0, montoContrato - montoGanancia) : 0;
+  const ganancia = montoGanancia > 0 ? montoGanancia : montoTotal;
 
   const guardar = async () => {
     setAviso(null);
     if (!cliente.trim()) return setAviso({ tipo: 'error', texto: 'Falta el nombre del cliente.' });
     if (!fecha) return setAviso({ tipo: 'error', texto: 'Falta la fecha del evento.' });
-    if (montoTotal <= 0) return setAviso({ tipo: 'error', texto: 'Falta el monto total del contrato.' });
+    if (montoTotal <= 0) return setAviso({ tipo: 'error', texto: 'Poné la ganancia o el monto total del contrato.' });
+    if (montoGanancia > montoContrato && montoContrato > 0) return setAviso({ tipo: 'error', texto: 'La ganancia no puede ser mayor que el monto total del contrato.' });
     const hasta = fechaHasta && fechaHasta >= fecha ? fechaHasta : fecha;
     setGuardando(true);
     try {
@@ -132,7 +137,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
         .insert({ evento_id: ev.id, item_id: itemId, cantidad_total: 1, cantidad_propia: 1, cantidad_subalquilada: 0, precio_unitario: montoTotal });
       if (e4) throw e4;
       if (montoGastos > 0) {
-        const { error } = await supabase.from('evento_costos').insert({ evento_id: ev.id, tipo: 'otro', monto: montoGastos, descripcion: 'Gastos del evento (contrato anterior)' });
+        const { error } = await supabase.from('evento_costos').insert({ evento_id: ev.id, tipo: 'otro', monto: montoGastos, descripcion: 'Gastos del evento (monto menos ganancia, contrato anterior)' });
         if (error) throw error;
       }
       // 4) lo cobrado
@@ -146,7 +151,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
         const { error } = await supabase.rpc('cambiar_estado_evento', { p_evento: ev.id, p_estado: 'devuelto' });
         if (error) throw error;
       }
-      onCreado(ev.id, `Cargué el contrato de ${cliente.trim()}. Total ${enPesos(montoTotal)}${montoGastos > 0 ? `, gastos ${enPesos(montoGastos)}` : ''}. Ganancia ${enPesos(ganancia)}.`);
+      onCreado(ev.id, `Cargué el contrato de ${cliente.trim()}. ${montoContrato > 0 ? `Total ${enPesos(montoContrato)}. ` : ''}Ganancia ${enPesos(ganancia)}.`);
     } catch (e) {
       setAviso({ tipo: 'error', texto: mensajeError(e as { message?: string }, 'No se pudo guardar. Probá de nuevo.') });
     }
@@ -159,7 +164,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
         <h2 className="font-playfair text-xl font-bold">Cargar un contrato que ya tenías</h2>
         <button type="button" onClick={onCancelar} className="h-11 w-11 flex items-center justify-center" aria-label="Cerrar"><X size={20} /></button>
       </div>
-      <p className={AYUDA}>Subí el PDF del contrato y leo el cliente, las fechas y el monto. No hace falta el precio de cada cosa: lo importante es que el evento sume a la ganancia del mes.</p>
+      <p className={AYUDA}>Subí el PDF del contrato y leo el cliente, las fechas y el monto. No hace falta el precio de cada cosa ni cuánto cobraste: si sabés la ganancia, escribila y listo.</p>
 
       <input ref={entrada} type="file" accept="application/pdf,.pdf" className="hidden" onChange={alElegir} />
       <button type="button" className={`${BTN_PRIMARIO} min-h-[52px] w-full sm:w-auto`} onClick={() => entrada.current?.click()} disabled={leyendo}>
@@ -193,13 +198,13 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
               <input id="imp-lugar" className={CAMPO} value={lugar} onChange={(e) => setLugar(e.target.value)} />
             </div>
             <div>
-              <label className={ETIQUETA} htmlFor="imp-total">Monto total del contrato</label>
+              <label className={ETIQUETA} htmlFor="imp-total">Monto total del contrato (si lo sabés)</label>
               <input id="imp-total" className={CAMPO} inputMode="numeric" placeholder="$ en pesos, ej: 1.120.000" value={total} onChange={(e) => setTotal(conPuntos(e.target.value))} />
             </div>
             <div>
-              <label className={ETIQUETA} htmlFor="imp-gastos">Lo que gastaste en ese evento (opcional)</label>
-              <input id="imp-gastos" className={CAMPO} inputMode="numeric" placeholder="$ en pesos: flete, subalquiler, etc." value={gastos} onChange={(e) => setGastos(conPuntos(e.target.value))} />
-              <p className={AYUDA}>Si no te acordás, dejalo vacío: la ganancia va a mostrar el total y lo podés corregir después.</p>
+              <label className={ETIQUETA} htmlFor="imp-ganancia">Ganancia que dejó el evento</label>
+              <input id="imp-ganancia" className={CAMPO} inputMode="numeric" placeholder="$ en pesos, ej: 450.000" value={gananciaTexto} onChange={(e) => setGananciaTexto(conPuntos(e.target.value))} />
+              <p className={AYUDA}>Es lo que te quedó libre, después de los gastos. Con esto alcanza: podés dejar vacío el monto del contrato.</p>
             </div>
           </div>
 
@@ -215,7 +220,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
           </div>
 
           <div className="rounded-xl bg-emerald-600 p-4 text-white">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80">Ganancia que suma este evento</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80">Ganancia que suma este evento al mes</p>
             <p className="text-2xl font-bold tabular-nums">{enPesos(ganancia)}</p>
           </div>
 
