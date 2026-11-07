@@ -8,10 +8,11 @@ import { type Aviso, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
 import { type MarcaDia, MiniCalendario, type VistaCal, rangoVisible } from './Calendarios';
 import DisponibilidadAdmin from './DisponibilidadAdmin';
+import GananciasAdmin from './GananciasAdmin';
 
 export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id: string) => void }) {
   const hoy = hoyArgentina();
-  const [pestana, setPestana] = useState<'calendario' | 'stock'>('calendario');
+  const [pestana, setPestana] = useState<'calendario' | 'ganancias' | 'stock'>('calendario');
   const [vista, setVista] = useState<VistaCal>('mes');
   const [ancla, setAncla] = useState(`${hoy.slice(0, 7)}-01`);
   const [dia, setDia] = useState<string>(hoy);
@@ -129,8 +130,8 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
   return (
     <div>
       <Encabezado titulo="Calendario" />
-      <div role="tablist" className="mb-4 grid max-w-sm grid-cols-2 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-stone-200">
-        {([['calendario', 'Calendario'], ['stock', '¿Hay stock?']] as const).map(([id, texto]) => (
+      <div role="tablist" className="mb-4 grid max-w-md grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-stone-200">
+        {([['calendario', 'Calendario'], ['ganancias', 'Ganancias'], ['stock', '¿Hay stock?']] as const).map(([id, texto]) => (
           <button
             key={id}
             type="button"
@@ -143,6 +144,8 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
           </button>
         ))}
       </div>
+
+      {pestana === 'ganancias' && <GananciasAdmin />}
 
       {pestana === 'stock' && <DisponibilidadAdmin onAbrirEvento={onAbrirEvento} sinEncabezado />}
 
