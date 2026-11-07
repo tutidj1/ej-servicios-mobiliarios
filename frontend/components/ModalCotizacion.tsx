@@ -142,6 +142,13 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
     }
   };
 
+  // Al tocar un campo en el celular, se espera a que termine de subir el teclado y se lo centra en la zona visible
+  const centrarCampo = (e: React.FocusEvent<HTMLFormElement>) => {
+    const el = e.target as HTMLElement;
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+    window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+  };
+
   const cerrar = () => {
     // Si ya se envió, se limpia todo para una próxima cotización
     if (exito) {
@@ -284,6 +291,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
               id="form-cotizacion"
               onSubmit={handleSubmit(onSubmit)}
               noValidate
+              onFocusCapture={centrarCampo}
               onKeyDown={(e) => {
                 // "Ir" del teclado del celular: avanza de paso en lugar de enviar a medias
                 if (e.key === 'Enter' && paso < PASOS.length - 1 && (e.target as HTMLElement).tagName === 'INPUT') {
@@ -499,11 +507,12 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
                 </Button>
               )}
               {paso < PASOS.length - 1 ? (
-                <Button type="button" variant="primary" onClick={siguiente} className="flex-1 min-h-[52px] gap-2">
+                <Button key="btn-siguiente" type="button" variant="primary" onClick={siguiente} className="flex-1 min-h-[52px] gap-2">
                   Siguiente <ArrowRight size={16} />
                 </Button>
               ) : (
                 <Button
+                  key="btn-enviar"
                   type="submit"
                   form="form-cotizacion"
                   variant="primary"
