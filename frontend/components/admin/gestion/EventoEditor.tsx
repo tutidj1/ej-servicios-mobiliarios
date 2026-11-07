@@ -65,6 +65,9 @@ const SIGUIENTE: Partial<Record<EstadoEvento, { estado: EstadoEvento; texto: str
 
 const CELDA = 'w-full min-h-[44px] rounded-lg border border-stone-300 bg-white px-3 text-base font-manrope tabular-nums outline-none focus:border-emerald-600';
 
+/** Artículo interno donde se guarda la parte del total que no tiene el detalle de precios (ver "Total acordado"). */
+export const ARTICULO_TOTAL_ACORDADO = 'Total acordado (sin detalle de precios)';
+
 function aLineaEdicion(l: Linea): LineaEdicion {
   return { ...l, precioTexto: mostrarMonto(l.precio_unitario), costoSubTexto: mostrarMonto(l.costo_subalquiler_unitario) };
 }
@@ -80,6 +83,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const [ultimoPrecio, setUltimoPrecio] = useState<Record<string, number>>({});
   const [disp, setDisp] = useState<Record<string, Disponible>>({});
   const [fleteTexto, setFleteTexto] = useState('');
+  const [totalTexto, setTotalTexto] = useState('');
   const [cambios, setCambios] = useState(false);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -116,7 +120,15 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
     setCliente(clientes);
     setFleteTexto(mostrarMonto(resto.flete_cobrado));
     setItems((it.data as Item[]) ?? []);
-    setLineas(((ln.data as Linea[]) ?? []).map(aLineaEdicion));
+    const todosItems = (it.data as Item[]) ?? [];
+    const idAjuste = todosItems.find((i) => i.nombre === ARTICULO_TOTAL_ACORDADO)?.id;
+    const filasDb = (ln.data as Linea[]) ?? [];
+    const filaAjuste = idAjuste ? filasDb.find((l) => l.item_id === idAjuste) : undefined;
+    const detalle = filasDb.filter((l) => l !== filaAjuste);
+    setLineas(detalle.map(aLineaEdicion));
+    // Si el evento ya tenía un total acordado, se muestra el total completo (detalle + ajuste)
+    const sumaDetalle = detalle.reduce((t, l) => t + l.cantidad_total * Number(l.precio_unitario ?? 0), 0);
+    setTotalTexto(filaAjuste ? mostrarMonto(Math.round((sumaDetalle + Number(filaAjuste.precio_unitario ?? 0)) * 100) / 100) : '');
     setCostos((co.data as Costo[]) ?? []);
     setPagos((pa.data as Pago[]) ?? []);
     if (cf.data) setConfig(cf.data as Configuracion);
@@ -152,6 +164,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       .select('item_id, precio_unitario, updated_at')
       .neq('evento_id', id)
       .not('precio_unitario', 'is', null)
+      .gt('precio_unitario', 0)
       .order('updated_at', { ascending: false })
       .limit(500)
       .then(({ data }) => {
@@ -261,7 +274,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
     const filas: Linea[] = [];
     for (const l of lineas) {
       const nombre = itemPorId[l.item_id]?.nombre ?? 'un artículo';
-      const precio = leerMonto(l.precioTexto);
+      const precioEscrito = leerMonto(l.precioTexto);
+      const precio = precioEscrito === null && !l.precioTexto.trim() && totalTexto.trim() ? 0 : precioEscrito;
       const costoSub = leerMonto(l.costoSubTexto);
       if (l.precioTexto.trim() && precio === null) return { error: `El precio de ${nombre} no es un número válido.` };
       if (l.costoSubTexto.trim() && costoSub === null) return { error: `El costo de subalquiler de ${nombre} no es un número válido.` };
@@ -295,6 +309,16 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
     const { filas, error: errLineas } = prepararLineas();
     if (errLineas || !filas) {
       setAviso({ tipo: 'error', texto: errLineas! });
+      return false;
+    }
+    const totalPedido = leerMonto(totalTexto);
+    if (totalTexto.trim() && totalPedido === null) {
+      setAviso({ tipo: 'error', texto: 'El total acordado no es un número válido.' });
+      return false;
+    }
+    const sumaFilas = filas.reduce((t, f) => t + f.cantidad_total * Number(f.precio_unitario ?? 0), 0);
+    if (totalPedido !== null && totalPedido < sumaFilas - 0.005) {
+      setAviso({ tipo: 'error', texto: `El total acordado (${pesos(Math.round(totalPedido * 100))}) es menor que la suma de los precios (${pesos(Math.round(sumaFilas * 100))}). Corregí uno de los dos.` });
       return false;
     }
     const flete = leerMonto(fleteTexto);
@@ -345,6 +369,36 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       setAviso({ tipo: 'error', texto: mensajeError(e3, 'No se pudieron quitar artículos.') });
       return false;
     }
+    // Total acordado: la parte sin detalle se guarda como un renglón aparte (o se saca si ya no hace falta)
+    const diferencia = totalPedido !== null ? Math.round((totalPedido - sumaFilas) * 100) / 100 : 0;
+    let idAjuste = items.find((i) => i.nombre === ARTICULO_TOTAL_ACORDADO)?.id;
+    if (diferencia > 0 && !idAjuste) {
+      const { data: nuevo, error: eNuevo } = await supabase
+        .from('items')
+        .insert({ nombre: ARTICULO_TOTAL_ACORDADO, categoria: 'otros', stock_total: null, sugerencia: 'ninguna', alias: [] })
+        .select('id')
+        .single();
+      if (eNuevo || !nuevo) {
+        setGuardando(false);
+        setAviso({ tipo: 'error', texto: mensajeError(eNuevo, 'No se pudo guardar el total acordado.') });
+        return false;
+      }
+      idAjuste = nuevo.id;
+    }
+    if (idAjuste) {
+      const { error: eAjuste } =
+        diferencia > 0
+          ? await supabase.from('evento_lineas').upsert(
+              { evento_id: id, item_id: idAjuste, cantidad_total: 1, cantidad_propia: 1, cantidad_subalquilada: 0, precio_unitario: diferencia, costo_subalquiler_unitario: null },
+              { onConflict: 'evento_id,item_id' },
+            )
+          : await supabase.from('evento_lineas').delete().eq('evento_id', id).eq('item_id', idAjuste);
+      if (eAjuste) {
+        setGuardando(false);
+        setAviso({ tipo: 'error', texto: mensajeError(eAjuste, 'No se pudo guardar el total acordado.') });
+        return false;
+      }
+    }
     let huboAjustes = false;
     if (ESTADOS_QUE_RESERVAN.includes(evento.estado)) {
       const { data } = await supabase.rpc('reservar_stock', { p_evento: id });
@@ -388,20 +442,26 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   };
 
   // ------------------------------------------------------------------ cálculo en vivo
+  const sumaPrecios = lineas.reduce((t, l) => t + l.cantidad_total * (leerMonto(l.precioTexto) ?? 0), 0);
+  const totalAcordado = leerMonto(totalTexto);
+  const ajusteTotal = totalAcordado !== null && totalAcordado > sumaPrecios ? Math.round((totalAcordado - sumaPrecios) * 100) / 100 : 0;
   const resultado = useMemo(
     () =>
       resultadoEvento({
-        lineas: lineas.map((l) => ({
-          cantidad_total: l.cantidad_total,
-          cantidad_subalquilada: l.cantidad_subalquilada,
-          precio_unitario: leerMonto(l.precioTexto),
-          costo_subalquiler_unitario: leerMonto(l.costoSubTexto),
-        })),
+        lineas: [
+          ...lineas.map((l) => ({
+            cantidad_total: l.cantidad_total,
+            cantidad_subalquilada: l.cantidad_subalquilada,
+            precio_unitario: leerMonto(l.precioTexto),
+            costo_subalquiler_unitario: leerMonto(l.costoSubTexto),
+          })),
+          ...(ajusteTotal > 0 ? [{ cantidad_total: 1, cantidad_subalquilada: 0, precio_unitario: ajusteTotal, costo_subalquiler_unitario: null }] : []),
+        ],
         fleteCobrado: leerMonto(fleteTexto),
         costos,
         pagos,
       }),
-    [lineas, fleteTexto, costos, pagos],
+    [lineas, fleteTexto, costos, pagos, ajusteTotal],
   );
 
   if (cargando) return <p className="font-manrope text-sm text-stone-600">Cargando…</p>;
@@ -422,11 +482,11 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       nombre: itemPorId[l.item_id]?.nombre,
       cantidad_total: l.cantidad_total,
       cantidad_subalquilada: l.cantidad_subalquilada,
-      precio_unitario: leerMonto(l.precioTexto),
+      precio_unitario: leerMonto(l.precioTexto) ?? (totalTexto.trim() ? 0 : null),
       costo_subalquiler_unitario: null,
     })),
   });
-  const sinAgregar = items.filter((i) => i.activo && !lineas.some((l) => l.item_id === i.id));
+  const sinAgregar = items.filter((i) => i.activo && i.nombre !== ARTICULO_TOTAL_ACORDADO && !lineas.some((l) => l.item_id === i.id));
 
   // ---- Contrato en PDF (réplica de la plantilla del Drive). Pide la seña acordada y el DNI antes de armarlo.
   const abrirContrato = (accion: 'descargar' | 'enviar') => {
@@ -468,7 +528,10 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       .map((i) => ({ nombre: i.nombre, orden: i.orden_contrato, cantidad: cantidadDe(i.id) }))
       .filter((a) => a.orden !== null || a.cantidad > 0);
     const total = totalPresupuesto({
-      lineas: lineas.filter((l) => l.cantidad_total > 0).map((l) => ({ nombre: '', cantidad: l.cantidad_total, precio: leerMonto(l.precioTexto) ?? 0 })),
+      lineas: [
+        ...lineas.filter((l) => l.cantidad_total > 0).map((l) => ({ nombre: '', cantidad: l.cantidad_total, precio: leerMonto(l.precioTexto) ?? 0 })),
+        ...(ajusteTotal > 0 ? [{ nombre: '', cantidad: 1, precio: ajusteTotal }] : []),
+      ],
       fleteCobrado: leerMonto(fleteTexto) ?? 0,
     });
     const blob = await generarContratoPdf({
@@ -784,7 +847,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
             const sugerido = ultimoPrecio[l.item_id];
             const choqueTentativo = d && d.tentativo > 0 && l.cantidad_total + d.tentativo > Math.max(0, libre);
             const subtotal = l.cantidad_total * (leerMonto(l.precioTexto) ?? 0);
-            const faltaPrecio = l.cantidad_total > 0 && !l.precioTexto.trim();
+            const faltaPrecio = l.cantidad_total > 0 && !l.precioTexto.trim() && !totalTexto.trim();
             return (
               <fieldset key={l.item_id} disabled={bloqueado} className="rounded-xl border border-stone-200 p-3">
                 <div className="mb-2 flex items-center gap-2">
@@ -848,6 +911,38 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
               </fieldset>
             );
           })}
+        </div>
+
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+          <p className="font-manrope text-sm font-semibold text-stone-900">Total del evento</p>
+          <p className="mb-3 font-manrope text-sm text-stone-600">
+            Suma de los precios que cargaste: <strong>{pesos(Math.round(sumaPrecios * 100))}</strong>. Si no tenés el precio de cada cosa pero sí el total, escribilo acá y los precios que falten quedan incluidos en ese total.
+          </p>
+          <label className={ETIQUETA} htmlFor="ed-total-acordado">Total acordado (opcional)</label>
+          <input
+            id="ed-total-acordado"
+            className={CAMPO}
+            inputMode="numeric"
+            placeholder="$ en pesos, ej: 1.120.000"
+            disabled={bloqueado}
+            value={totalTexto}
+            onChange={(e) => {
+              const d = e.target.value.replace(/\D/g, '').slice(0, 10);
+              setTotalTexto(d ? Number(d).toLocaleString('es-AR') : '');
+              setCambios(true);
+            }}
+          />
+          {totalAcordado !== null && totalAcordado < sumaPrecios - 0.005 && (
+            <p className="mt-2 font-manrope text-xs font-semibold text-red-700">El total es menor que la suma de los precios.</p>
+          )}
+          {ajusteTotal > 0 && (
+            <p className="mt-2 font-manrope text-xs text-stone-600">Sin detalle de precios: {pesos(Math.round(ajusteTotal * 100))}.</p>
+          )}
+          {totalTexto && !bloqueado && (
+            <button type="button" className="mt-1 min-h-[44px] font-manrope text-sm font-semibold text-emerald-800 underline" onClick={() => { setTotalTexto(''); setCambios(true); }}>
+              Calcular el total solo (con los precios de arriba)
+            </button>
+          )}
         </div>
 
         {!bloqueado && sinAgregar.length > 0 && (
