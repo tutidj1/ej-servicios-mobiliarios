@@ -17,7 +17,7 @@ export default function PaginaProductoView({ pagina, productos }: { pagina: Pagi
   // Fotos reales del catálogo (las que se cargan desde /admin)
   const fotos = productos
     .filter((p) => p.imagen_url?.startsWith('http') && productoCorresponde(pagina.filtroFotos, p))
-    .slice(0, 8);
+    .slice(0, 24);
 
   const otras = paginasProducto.filter((p) => p.slug !== pagina.slug);
 
