@@ -12,6 +12,13 @@ import { CampoFecha } from './Calendarios';
 
 const NOMBRE_ARTICULO = 'Alquiler (contrato anterior)';
 
+/** Los importes se escriben solo con números; los puntos de miles se ponen solos (1120000 → 1.120.000). */
+const conPuntos = (texto: string) => {
+  const digitos = texto.replace(/\D/g, '').slice(0, 10);
+  return digitos ? Number(digitos).toLocaleString('es-AR') : '';
+};
+const enPesos = (n: number) => pesos(Math.round(n * 100));
+
 type Cobro = 'completo' | 'sena' | 'nada';
 
 /**
@@ -50,7 +57,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
       setLugar(d.lugar);
       setFecha(d.fechaFirma && d.fechaDevolucion && d.fechaFirma > d.fechaDevolucion ? d.fechaDevolucion : d.fechaFirma || d.fechaDevolucion);
       setFechaHasta(d.fechaDevolucion);
-      setTotal(d.total ? String(d.total) : '');
+      setTotal(d.total ? conPuntos(String(d.total)) : '');
       setSena(d.sena);
       setCobro('completo');
       setLeido(true);
@@ -139,7 +146,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
         const { error } = await supabase.rpc('cambiar_estado_evento', { p_evento: ev.id, p_estado: 'devuelto' });
         if (error) throw error;
       }
-      onCreado(ev.id, `Cargué el contrato de ${cliente.trim()}. Total ${pesos(montoTotal)}${montoGastos > 0 ? `, gastos ${pesos(montoGastos)}` : ''}. Ganancia ${pesos(ganancia)}.`);
+      onCreado(ev.id, `Cargué el contrato de ${cliente.trim()}. Total ${enPesos(montoTotal)}${montoGastos > 0 ? `, gastos ${enPesos(montoGastos)}` : ''}. Ganancia ${enPesos(ganancia)}.`);
     } catch (e) {
       setAviso({ tipo: 'error', texto: mensajeError(e as { message?: string }, 'No se pudo guardar. Probá de nuevo.') });
     }
@@ -187,11 +194,11 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
             </div>
             <div>
               <label className={ETIQUETA} htmlFor="imp-total">Monto total del contrato</label>
-              <input id="imp-total" className={CAMPO} inputMode="decimal" placeholder="$" value={total} onChange={(e) => setTotal(e.target.value)} />
+              <input id="imp-total" className={CAMPO} inputMode="numeric" placeholder="$ en pesos, ej: 1.120.000" value={total} onChange={(e) => setTotal(conPuntos(e.target.value))} />
             </div>
             <div>
               <label className={ETIQUETA} htmlFor="imp-gastos">Lo que gastaste en ese evento (opcional)</label>
-              <input id="imp-gastos" className={CAMPO} inputMode="decimal" placeholder="$ flete, subalquiler, etc." value={gastos} onChange={(e) => setGastos(e.target.value)} />
+              <input id="imp-gastos" className={CAMPO} inputMode="numeric" placeholder="$ en pesos: flete, subalquiler, etc." value={gastos} onChange={(e) => setGastos(conPuntos(e.target.value))} />
               <p className={AYUDA}>Si no te acordás, dejalo vacío: la ganancia va a mostrar el total y lo podés corregir después.</p>
             </div>
           </div>
@@ -199,7 +206,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
           <div>
             <p className={ETIQUETA}>¿Cuánto se cobró?</p>
             <div className="flex flex-wrap gap-2">
-              {([['completo', 'Se cobró todo'], ...(sena ? [['sena', `Solo la seña (${pesos(sena)})`]] : []), ['nada', 'Nada todavía']] as [Cobro, string][]).map(([v, t]) => (
+              {([['completo', 'Se cobró todo'], ...(sena ? [['sena', `Solo la seña (${enPesos(sena)})`]] : []), ['nada', 'Nada todavía']] as [Cobro, string][]).map(([v, t]) => (
                 <button key={v} type="button" aria-pressed={cobro === v} onClick={() => setCobro(v)} className={`min-h-[48px] rounded-full px-4 font-manrope text-sm font-semibold ${cobro === v ? 'bg-stone-900 text-white' : 'border border-stone-300 bg-white text-stone-700'}`}>
                   {t}
                 </button>
@@ -209,7 +216,7 @@ export default function ImportarContrato({ onCancelar, onCreado }: { onCancelar:
 
           <div className="rounded-xl bg-emerald-600 p-4 text-white">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80">Ganancia que suma este evento</p>
-            <p className="text-2xl font-bold tabular-nums">{pesos(ganancia)}</p>
+            <p className="text-2xl font-bold tabular-nums">{enPesos(ganancia)}</p>
           </div>
 
           <div className="flex gap-2">
