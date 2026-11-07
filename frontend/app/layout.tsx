@@ -3,6 +3,7 @@ import { Playfair_Display, Manrope } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
 import MedirWhatsapp from '@/components/MedirWhatsapp';
+import ScrollSuave from "@/components/ScrollSuave";
 import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, PALABRAS_CLAVE, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // Configuración de la fuente Playfair Display para títulos elegantes
@@ -114,6 +115,7 @@ export default function RootLayout({
         </noscript>
         {children}
         <MedirWhatsapp />
+        <ScrollSuave />
       </body>
     </html>
   );

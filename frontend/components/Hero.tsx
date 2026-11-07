@@ -16,7 +16,9 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
   const handleScrollToCatalogo = () => {
     const target = document.querySelector('#catalogo');
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (el: Element, o?: object) => void } }).__lenis;
+      if (lenis) lenis.scrollTo(target, { offset: -70 });
+      else target.scrollIntoView({ behavior: 'smooth' });
     }
   };
 

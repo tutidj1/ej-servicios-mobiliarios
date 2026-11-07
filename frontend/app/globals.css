@@ -18,7 +18,6 @@
     font-family: var(--font-manrope), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -77,3 +76,8 @@ main > section:not(#inicio) {
   .ej-aparece { animation: none; }
   body { scroll-behavior: auto; }
 }
+
+/* Lenis maneja el scroll suave */
+html.lenis, html.lenis body { height: auto; }
+html.lenis, html.lenis body { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }

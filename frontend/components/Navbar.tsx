@@ -44,7 +44,9 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
     // Si la sección está en esta página, desplazamiento suave; si no, navegación normal
     if (target) {
       e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth' });
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (el: Element, o?: object) => void } }).__lenis;
+      if (lenis) lenis.scrollTo(target, { offset: -70 });
+      else target.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -118,7 +120,7 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
       />
 
       <div
-        className={`fixed top-0 right-0 h-full w-[280px] overflow-y-auto bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        data-lenis-prevent className={`fixed top-0 right-0 h-full w-[280px] overflow-y-auto bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex flex-col gap-8">
           <div className="flex items-center justify-between border-b border-gris-borde pb-4">
