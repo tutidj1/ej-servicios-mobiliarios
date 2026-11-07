@@ -34,6 +34,17 @@ function ImagenProducto({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+// La pestaña 'Vajilla' agrupa todo lo que el contrato de EJ lista como vajilla (cubiertos, copas y algunas piezas de servicio),
+// aunque en el panel cada producto tenga su propia categoría.
+const CATEGORIAS_VAJILLA = ['vajilla', 'cubiertos', 'cristalería', 'cristaleria'];
+const PIEZAS_VAJILLA = ['ensaladera', 'frasco', 'bandeja de mozo'];
+
+function esVajilla(p: Producto): boolean {
+  const cat = p.categoria.toLowerCase();
+  const nombre = p.nombre.toLowerCase();
+  return CATEGORIAS_VAJILLA.includes(cat) || PIEZAS_VAJILLA.some((n) => nombre.includes(n));
+}
+
 const Catalogo: React.FC<CatalogoProps> = ({ productos, selectedProducts, onToggleProduct }) => {
   const [activeCategory, setActiveCategory] = useState('Todo');
 
@@ -46,7 +57,9 @@ const Catalogo: React.FC<CatalogoProps> = ({ productos, selectedProducts, onTogg
   const filteredProducts =
     activeCategory === 'Todo'
       ? productos
-      : productos.filter((p) => p.categoria.toLowerCase() === activeCategory.toLowerCase());
+      : activeCategory.toLowerCase() === 'vajilla'
+        ? productos.filter(esVajilla)
+        : productos.filter((p) => p.categoria.toLowerCase() === activeCategory.toLowerCase());
 
   return (
     <section id="catalogo" className="bg-blanco-puro py-24 border-b border-gris-borde">
