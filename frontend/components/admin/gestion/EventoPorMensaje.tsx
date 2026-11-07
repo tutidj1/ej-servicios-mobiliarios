@@ -8,6 +8,7 @@ import { CANALES, type Canal, type Cliente, type FilaDisponibilidad, leerMonto, 
 import { interpretarEvento } from '@/lib/gestion/vozEvento';
 import { AYUDA, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA } from '../estilos';
 import { CampoRango } from './Calendarios';
+import { ARTICULO_TOTAL_ACORDADO } from './EventoEditor';
 
 export interface ItemEvento {
   id: string;
@@ -68,6 +69,9 @@ export default function EventoPorMensaje({
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [fleteDecidido, setFleteDecidido] = useState(false);
+  // Total acordado: sirve cuando no se sabe el precio de cada artículo (cargas desde la libreta)
+  const [totalTexto, setTotalTexto] = useState(borrador.total ? Number(borrador.total).toLocaleString('es-AR') : '');
+  const itemsVisibles = items.filter((i) => i.nombre !== ARTICULO_TOTAL_ACORDADO);
 
   // ¿Ya existe este cliente? Se ofrecen los parecidos para no duplicarlo.
   useEffect(() => {
@@ -107,22 +111,28 @@ export default function EventoPorMensaje({
       return { l, cantidad, rep, precio: leerMonto(l.precio), costoSub: leerMonto(l.costoSub) };
     });
     const fletePag = leerMonto(fletePagado) ?? 0;
+    const totalAcordado = leerMonto(totalTexto);
+    const suma = filas.reduce((t, f) => t + f.cantidad * (f.precio ?? 0), 0);
+    const ajuste = totalAcordado !== null && totalAcordado > suma ? Math.round((totalAcordado - suma) * 100) / 100 : 0;
     const r = resultadoEvento({
-      lineas: filas.map((f) => ({ cantidad_total: f.cantidad, cantidad_subalquilada: f.rep.subalquilada, precio_unitario: f.precio, costo_subalquiler_unitario: f.costoSub })),
+      lineas: [
+        ...filas.map((f) => ({ cantidad_total: f.cantidad, cantidad_subalquilada: f.rep.subalquilada, precio_unitario: f.precio ?? (totalAcordado !== null ? 0 : null), costo_subalquiler_unitario: f.costoSub })),
+        ...(ajuste > 0 ? [{ cantidad_total: 1, cantidad_subalquilada: 0, precio_unitario: ajuste, costo_subalquiler_unitario: null }] : []),
+      ],
       fleteCobrado: leerMonto(fleteCobrado),
       costos: fletePag > 0 ? [{ tipo: 'flete', monto: fletePag }] : [],
       pagos: [],
     });
     const pct = Number(senaPct) || 0;
     const sena = pct > 0 ? Math.round((r.ingresos * pct) / 100) : Math.round((leerMonto(senaMonto) ?? 0) * 100);
-    return { filas, r, sena, saldo: r.ingresos - sena };
+    return { filas, r, sena, saldo: r.ingresos - sena, suma, totalAcordado, ajuste };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineas, fleteCobrado, fletePagado, senaPct, senaMonto, disp]);
+  }, [lineas, fleteCobrado, fletePagado, senaPct, senaMonto, disp, totalTexto]);
 
   const cambiarLinea = (key: string, c: Partial<LineaForm>) => setLineas((ls) => ls.map((l) => (l.key === key ? { ...l, ...c } : l)));
   const fleteAPagar = leerMonto(fletePagado) ?? 0;
   const preguntarFlete = fleteAPagar > 0 && !leerMonto(fleteCobrado) && !borrador.fleteIncluido && !fleteDecidido;
-  const sinPrecio = calculo.filas.filter((f) => f.cantidad > 0 && f.precio === null);
+  const sinPrecio = calculo.totalAcordado !== null ? [] : calculo.filas.filter((f) => f.cantidad > 0 && f.precio === null);
   const aSubalquilar = calculo.filas.filter((f) => f.rep.subalquilada > 0);
 
   const crear = async () => {
@@ -132,6 +142,10 @@ export default function EventoPorMensaje({
     const validas = calculo.filas.filter((f) => f.cantidad > 0);
     if (!validas.length) return setError('Falta al menos un artículo con cantidad.');
     if (validas.some((f) => !f.l.itemId)) return setError('Elegí qué artículo es cada línea.');
+    if (totalTexto.trim() && calculo.totalAcordado === null) return setError('El total acordado no es un número válido.');
+    if (calculo.totalAcordado !== null && calculo.totalAcordado < calculo.suma - 0.005) {
+      return setError(`El total acordado (${pesos(Math.round(calculo.totalAcordado * 100))}) es menor que la suma de los precios (${pesos(Math.round(calculo.suma * 100))}).`);
+    }
     setGuardando(true);
     try {
       // 1) artículos nuevos (los que no estaban en el inventario)
@@ -179,11 +193,28 @@ export default function EventoPorMensaje({
           cantidad_total: f.cantidad,
           cantidad_propia: f.rep.propia,
           cantidad_subalquilada: f.rep.subalquilada,
-          precio_unitario: f.precio,
+          precio_unitario: f.precio ?? (calculo.totalAcordado !== null ? 0 : null),
           costo_subalquiler_unitario: f.rep.subalquilada > 0 ? f.costoSub : null,
         })),
       );
       if (e4) throw e4;
+      // La parte del total que no tiene detalle de precios va en un renglón aparte
+      if (calculo.ajuste > 0) {
+        let idAjuste = items.find((i) => i.nombre === ARTICULO_TOTAL_ACORDADO)?.id;
+        if (!idAjuste) {
+          const { data: nuevo, error: eN } = await supabase
+            .from('items')
+            .insert({ nombre: ARTICULO_TOTAL_ACORDADO, categoria: 'otros', stock_total: null, sugerencia: 'ninguna', alias: [] })
+            .select('id')
+            .single();
+          if (eN || !nuevo) throw eN ?? { message: 'No se pudo guardar el total acordado.' };
+          idAjuste = nuevo.id;
+        }
+        const { error: eA } = await supabase
+          .from('evento_lineas')
+          .insert({ evento_id: ev.id, item_id: idAjuste, cantidad_total: 1, cantidad_propia: 1, cantidad_subalquilada: 0, precio_unitario: calculo.ajuste, costo_subalquiler_unitario: null });
+        if (eA) throw eA;
+      }
       const fletePag = leerMonto(fletePagado) ?? 0;
       if (fletePag > 0) {
         const { error: e5 } = await supabase.from('evento_costos').insert({ evento_id: ev.id, tipo: 'flete', monto: fletePag, descripcion: 'Flete' });
@@ -279,6 +310,27 @@ export default function EventoPorMensaje({
         </div>
       )}
 
+      {/* Total acordado */}
+      <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+        <label className={ETIQUETA} htmlFor="em-total">Total acordado (si no tenés el precio de cada cosa)</label>
+        <input
+          id="em-total"
+          className={CAMPO}
+          inputMode="numeric"
+          placeholder="$ en pesos, ej: 199.600"
+          value={totalTexto}
+          onChange={(e) => {
+            const d = e.target.value.replace(/\D/g, '').slice(0, 10);
+            setTotalTexto(d ? Number(d).toLocaleString('es-AR') : '');
+          }}
+        />
+        <p className={AYUDA}>
+          {calculo.totalAcordado !== null
+            ? `Con este total no hace falta el precio de cada artículo${calculo.ajuste > 0 ? ` (${pesos(Math.round(calculo.ajuste * 100))} quedan sin detalle de precios)` : ''}. Si lo dejás vacío, el total se calcula con los precios de cada uno.`
+            : 'Vacío: el total se calcula con los precios de cada artículo.'}
+        </p>
+      </div>
+
       {/* Artículos */}
       <div className="space-y-3">
         <p className={ETIQUETA}>Artículos</p>
@@ -288,7 +340,7 @@ export default function EventoPorMensaje({
               <select className={`${CAMPO} min-h-[44px] flex-1`} value={l.itemId} onChange={(e) => cambiarLinea(l.key, { itemId: e.target.value })} aria-label="Artículo">
                 {l.nombreDicho && <option value={NUEVO}>Crear “{capitalizar(l.nombreDicho)}” (no está en el inventario)</option>}
                 {!l.nombreDicho && l.itemId === '' && <option value="">Elegí…</option>}
-                {items.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+                {itemsVisibles.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
               </select>
               <button type="button" onClick={() => setLineas((ls) => ls.filter((x) => x.key !== l.key))} className="flex h-11 w-11 items-center justify-center text-stone-400 hover:text-red-600" aria-label="Quitar">
                 <X size={18} />
@@ -300,8 +352,8 @@ export default function EventoPorMensaje({
                 <input className={CAMPO} inputMode="numeric" value={l.cantidad} onChange={(e) => cambiarLinea(l.key, { cantidad: e.target.value.replace(/\D/g, '') })} />
               </label>
               <label className="text-xs text-stone-600">
-                Precio c/u{cantidad > 0 && precio === null && <span className="ml-1 font-bold text-red-700">falta</span>}
-                <input className={`${CAMPO} ${cantidad > 0 && precio === null ? 'border-red-400' : ''}`} inputMode="decimal" placeholder="$" value={l.precio} onChange={(e) => cambiarLinea(l.key, { precio: e.target.value })} />
+                Precio c/u (opcional si ponés el total){cantidad > 0 && precio === null && calculo.totalAcordado === null && <span className="ml-1 font-bold text-red-700">falta</span>}
+                <input className={`${CAMPO} ${cantidad > 0 && precio === null && calculo.totalAcordado === null ? 'border-red-400' : ''}`} inputMode="decimal" placeholder="$" value={l.precio} onChange={(e) => cambiarLinea(l.key, { precio: e.target.value })} />
               </label>
             </div>
             <p className="mt-2 text-sm text-stone-700">
@@ -323,7 +375,7 @@ export default function EventoPorMensaje({
           aria-label="Agregar artículo"
         >
           <option value="">+ Agregar otro artículo…</option>
-          {items.filter((i) => !lineas.some((l) => l.itemId === i.id)).map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+          {itemsVisibles.filter((i) => !lineas.some((l) => l.itemId === i.id)).map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
         </select>
       </div>
 
