@@ -6,7 +6,7 @@ import { faqLd, jsonLd, negocioLd } from '@/lib/jsonld';
 
 // La página se arma en cada visita con los datos actuales de Supabase: lo que guardás en /admin
 // (productos, banners, promo) se ve en la web en el momento.
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // se regenera cada 5 min y al instante cuando se guarda algo en /admin
 
 export default async function HomePage() {
   const [productos, promo, banners] = await Promise.all([getProductos(), getPromo(), getBanners()]);

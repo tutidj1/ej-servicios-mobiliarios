@@ -1,4 +1,5 @@
 import { SITE_URL } from '@/lib/site';
+import { cantidadSugerida } from '@/lib/cantidades';
 
 // Armado del mensaje de WhatsApp para una cotización.
 // Se genera siempre en el servidor a partir de datos ya validados.
@@ -57,7 +58,8 @@ export function generarMensajeWhatsapp(data: CotizacionData): string {
   for (const item of data.items) {
     const lista = grupos.get(item.categoria) ?? [];
     let linea = limpiar(item.etiqueta || item.nombre);
-    if (item.cantidadSegunInvitados) linea += ` (${data.cantidadInvitados})`;
+    const cantidad = cantidadSugerida(item.nombre, data.cantidadInvitados, Boolean(item.cantidadSegunInvitados));
+    if (cantidad !== null) linea += ` (${cantidad})`;
     lista.push(`• ${linea}`);
     grupos.set(item.categoria, lista);
   }

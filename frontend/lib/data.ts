@@ -13,8 +13,8 @@ function clienteLectura() {
   const url = urlRaw.replace(/\/rest\/v1\/?$/, '');
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    // Sin caché: lo que se guarda en el panel /admin se ve en la web en el momento
-    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
+    // Caché de 5 min: al guardar en /admin se pide revalidar y se ve al instante (ver /api/revalidar)
+    global: { fetch: (input, init) => fetch(input, { ...init, next: { revalidate: 300 } }) },
   });
 }
 

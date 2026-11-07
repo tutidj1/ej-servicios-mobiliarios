@@ -211,7 +211,7 @@ export const ModalCotizacion: React.FC<ModalCotizacionProps> = ({
 
   return (
     <div
-      className="fixed inset-x-0 top-0 bottom-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 overflow-hidden overscroll-none touch-pan-y"
+      data-lenis-prevent className="fixed inset-x-0 top-0 bottom-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 overflow-hidden overscroll-none touch-pan-y"
       style={areaVisible}
       onClick={(e) => {
         if (e.target === e.currentTarget) cerrar();

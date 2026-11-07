@@ -16,7 +16,9 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
   const handleScrollToCatalogo = () => {
     const target = document.querySelector('#catalogo');
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (el: Element, o?: object) => void } }).__lenis;
+      if (lenis) lenis.scrollTo(target, { offset: -70 });
+      else target.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -30,8 +32,8 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
           fill
           priority
           sizes="100vw"
-          className="object-cover transition-all duration-700"
-          quality={85}
+          className="object-cover"
+          quality={75}
         />
         {/* Overlay elegante de contraste */}
         <div className="absolute inset-0 bg-black/45 backdrop-brightness-[0.8]" />

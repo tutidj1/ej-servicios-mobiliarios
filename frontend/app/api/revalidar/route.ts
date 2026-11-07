@@ -24,6 +24,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return NextResponse.json({ ok: true });
 }
