@@ -28,7 +28,7 @@ export default function BarraCotizar({ cantidad, oculta, onOpenCotizar }: BarraC
       <button
         type="button"
         onClick={onOpenCotizar}
-        className="pointer-events-auto w-full md:w-auto min-h-[56px] bg-negro-carbon text-crema-base border border-crema-base/20 shadow-xl px-5 flex items-center justify-center gap-3 font-manrope text-sm font-bold uppercase tracking-cta active:scale-[0.98] transition-transform"
+        className="pointer-events-auto w-full md:w-auto min-h-[56px] bg-negro-carbon text-crema-base border border-crema-base/20 px-5 flex items-center justify-center gap-3 font-manrope text-sm font-bold uppercase tracking-cta active:scale-[0.98] transition-transform"
       >
         {cantidad > 0 ? (
           <>
