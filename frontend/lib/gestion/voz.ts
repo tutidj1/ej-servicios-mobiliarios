@@ -30,7 +30,7 @@ export interface Interpretacion {
 /** ¿Es el pedido de cargar un evento completo (y no un pago o un gasto suelto)? */
 export function esEventoNuevo(texto: string): boolean {
   const t = normalizar(texto);
-  return /\b(nuevo|nueva|subir|cargar|armar|crear|agregar|anotar)\b.{0,40}\b(evento|alquiler)\b/.test(t) || /\bevento (es )?(de|para|del)\b/.test(t);
+  return /\b(nuevo|nueva|subir|cargar|armar|crear|agregar|anotar)\b.{0,40}\b(evento|alquiler)\b/.test(t) || /\bevento (es )?(de|para|del)\b/.test(t) || /\bcliente (se llama|es|de nombre|llamado)\b/.test(t);
 }
 
 export function normalizar(texto: string): string {

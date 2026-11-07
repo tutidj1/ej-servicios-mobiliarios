@@ -31,6 +31,8 @@ export interface BorradorEvento {
   fletePagado: number | null;
   senaPorcentaje: number | null;
   senaMonto: number | null;
+  /** "el total de todos son 199.600": total acordado, sin el precio de cada artículo. */
+  total: number | null;
 }
 
 // Palabras que cortan un nombre de artículo ("100 sillas a un costo de 800")
@@ -43,7 +45,7 @@ const PARAR = new Set([
 const PARAR_NOMBRE = new Set([
   'lo', 'que', 'tiene', 'tienen', 'son', 'quiere', 'quieren', 'necesita', 'necesitan', 'pidio', 'pide', 'alquila', 'alquilo',
   'alquilar', 'con', 'y', 'el', 'para', 'es', 'fecha', 'tengo', 'hace', 'va', 'pagar', 'a', 'se', 'le', 'quiero', 'hola',
-  'direccion', 'domicilio', 'vive', 'celular', 'telefono', 'me', 'contacto', 'llamo', 'en',
+  'direccion', 'domicilio', 'vive', 'celular', 'telefono', 'me', 'contacto', 'llamo', 'en', 'sin', 'doble',
 ]);
 const PARAR_LUGAR = new Set([
   'me', 'el', 'alquilo', 'alquilar', 'para', 'que', 'con', 'flete', 'cliente', 'se', 'contacto', 'y', 'es', 'son', 'tiene', 'quiere',
@@ -51,6 +53,40 @@ const PARAR_LUGAR = new Set([
 const PERSONAS = new Set(['personas', 'invitados', 'gente', 'comensales', 'pax']);
 // Palabras que no identifican a un artículo por sí solas
 const GENERICAS = new Set(['de', 'del', 'la', 'el', 'con', 'para', 'principal', 'postre', 'madera', 'blanca', 'redonda', 'celeste', 'pastel', 'cuadrados', 'cuadrado']);
+
+const MESES_NOMBRES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+// Palabras que, al venir primero, indican que lo que sigue a un número no es un artículo
+const NO_ES_ARTICULO = new Set(['de', 'del', 'en', 'al', 'a', 'un', 'una', 'nuevo', 'nueva', 'dia', 'dias', 'mes', 'meses', 'hs', 'horas']);
+
+function distancia(a: string, b: string): number {
+  const f = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let anterior = f[0];
+    f[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const temp = f[j];
+      f[j] = Math.min(f[j] + 1, f[j - 1] + 1, anterior + (a[i - 1] === b[j - 1] ? 0 : 1));
+      anterior = temp;
+    }
+  }
+  return f[b.length];
+}
+
+/** Para palabras mal entendidas por el micrófono ("raperas" por "fraperas"): el artículo cuyo nombre se parece. */
+function itemParecido(nombre: string, items: ItemVoz[]): string | null {
+  const palabras = nombre.split(' ').filter(Boolean);
+  for (let k = Math.min(3, palabras.length); k >= 1; k--) {
+    const dicho = palabras.slice(0, k).join(' ');
+    if (dicho.length < 5) continue;
+    for (const it of items) {
+      for (const cand of [it.nombre, ...it.alias]) {
+        const c = normalizar(cand);
+        if (c.length >= 5 && distancia(dicho, c) <= (c.length >= 8 ? 2 : 1)) return it.id;
+      }
+    }
+  }
+  return null;
+}
 
 function tokensDe(texto: string): string[] {
   const t = normalizar(texto.replace(/%/g, ' porciento ')).replace(/\bpor ciento\b/g, 'porciento');
@@ -167,7 +203,7 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
 
   const res: BorradorEvento = {
     cliente: '', lugar: '', canal: detectarCanal(p), lineas: [], personas: null, fecha: null, fechaHasta: null, fleteIncluido: false,
-    fleteCobrado: null, fletePagado: null, senaPorcentaje: null, senaMonto: null,
+    fleteCobrado: null, fletePagado: null, senaPorcentaje: null, senaMonto: null, total: null,
   };
 
   // ---- Cliente
@@ -201,6 +237,22 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
     }
   }
 
+  // ---- Lugar sin la palabra "dirección": "...de 2026 en Monte Vera Formosa 1875 son 25 platos"
+  if (!res.lugar) {
+    for (let i = 1; i < p.length; i++) {
+      if (p[i] !== 'en') continue;
+      const despuesDeFecha = p.slice(Math.max(0, i - 3), i).some((w) => MESES_NOMBRES.includes(w) || (/^[0-9]{4}$/.test(w) && Number(w) >= 2000));
+      if (!despuesDeFecha) continue;
+      const partes: string[] = [];
+      for (let k = i + 1; k < p.length && partes.length < 8; k++) {
+        if (PARAR_LUGAR.has(p[k])) break;
+        partes.push(p[k]);
+      }
+      if (partes.length) res.lugar = original(i + 1, partes.length).map(mayuscula).join(' ');
+      break;
+    }
+  }
+
   // ---- Flete: "flete incluido", "el flete me sale 50 ida y 50 de vuelta, o sea que son 100000"
   for (let i = 0; i < p.length; i++) {
     if (p[i] !== 'flete') continue;
@@ -227,6 +279,17 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
     if (cobrado && !costo) res.fleteCobrado = monto;
     else if (costo || !cobrado) res.fletePagado = monto;
     enVentana.forEach(({ k }) => usado.add(k));
+  }
+
+  // ---- Total acordado: "el total de todos son 199,600 pesos" (sin el precio de cada artículo)
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] !== 'total') continue;
+    const ri = runs.findIndex((r, k) => !usado.has(k) && r.desde > i && r.desde <= i + 6 && p[r.hasta + 1] !== 'porciento');
+    if (ri >= 0) {
+      res.total = runs[ri].valor;
+      usado.add(ri);
+      break;
+    }
   }
 
   // ---- Artículos: "100 sillas a un costo de 800 pesos", "10 talones y 100 set de vajilla completo"
@@ -259,6 +322,15 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
 
   runs.forEach((r, ri) => {
     if (usado.has(ri) || p[r.hasta + 1] === 'porciento') return;
+    // Números de una fecha ("el 15 del 11 de 2026"): no son cantidades de artículos
+    const sigueFecha =
+      (p[r.hasta + 1] === 'de' && (MESES_NOMBRES.includes(p[r.hasta + 2]) || runEn(r.hasta + 2) >= 0)) ||
+      (p[r.hasta + 1] === 'del' && (runEn(r.hasta + 2) >= 0 || MESES_NOMBRES.includes(p[r.hasta + 2]))) ||
+      (r.valor >= 2000 && r.valor <= 2100 && p[r.desde - 1] === 'de');
+    if (sigueFecha) {
+      usado.add(ri);
+      return;
+    }
     const noun: string[] = [];
     let i = r.hasta + 1;
     while (i < p.length && noun.length < 5 && !enRun.has(i) && !PARAR.has(p[i])) noun.push(p[i++]);
@@ -271,7 +343,8 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
     const m = mens.find((x) => x.desde === r.hasta + 1);
     usado.add(ri);
     const pr = precioDespues(i);
-    cands.push({ itemId: m?.itemId ?? null, nombre: m ? '' : noun.join(' '), cantidad: r.valor, precio: pr?.valor ?? null, fin: pr?.hasta ?? i - 1 });
+    const parecido = m ? null : itemParecido(noun.join(' '), items);
+    cands.push({ itemId: m?.itemId ?? parecido ?? null, nombre: m || parecido ? '' : noun.join(' '), cantidad: r.valor, precio: pr?.valor ?? null, fin: pr?.hasta ?? i - 1 });
   });
 
   // ---- Precios dichos aparte: "la silla las cobro 800", "el set de vajilla completo los cobró 2000 cada uno"
@@ -297,7 +370,8 @@ export function interpretarEvento(texto: string, items: ItemVoz[], hoy: string):
   // Un nombre que no está en el inventario y no tiene precio no es un artículo ("un nuevo evento")
   const vistos = new Set<string>();
   for (const c of cands) {
-    if (!c.itemId && c.precio === null) continue;
+    const nombreValido = c.nombre.length >= 3 && !NO_ES_ARTICULO.has(c.nombre.split(' ')[0]) && !/\d/.test(c.nombre);
+    if (!c.itemId && c.precio === null && !(res.total !== null && nombreValido)) continue;
     const clave = c.itemId ?? c.nombre;
     if (vistos.has(clave)) continue;
     vistos.add(clave);
