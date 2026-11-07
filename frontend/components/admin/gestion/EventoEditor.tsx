@@ -580,7 +580,17 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
     <div className="space-y-5 pb-44 md:pb-28">
       {contratoPanel && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setContratoPanel(null)}>
-          <div className="w-full max-w-md space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Datos del contrato">
+          <div
+            className="w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onFocusCapture={(e) => {
+              const el = e.target as HTMLElement;
+              if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+              window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+            }}
+            role="dialog"
+            aria-label="Datos del contrato"
+          >
             <h2 className="font-playfair text-xl font-bold">Antes de armar el documento</h2>
             {!bloqueado && (
               <div>
