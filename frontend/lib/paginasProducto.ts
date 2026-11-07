@@ -122,7 +122,8 @@ export const paginasProducto: PaginaProducto[] = [
     ],
     mensajeWhatsapp:
       'Hola! Quiero consultar por el alquiler de vajilla para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
-    filtroFotos: { categorias: ['vajilla', 'cubiertos', 'cristaleria', 'manteleria'] },
+    // Misma lista que la pestaña Vajilla del catálogo de la home
+    filtroFotos: { categorias: ['vajilla', 'cubiertos', 'cristaleria'], nombreIncluye: ['ensaladera', 'frasco', 'bandeja de mozo'] },
   },
   {
     slug: 'alquiler-de-tablones-santa-fe',
