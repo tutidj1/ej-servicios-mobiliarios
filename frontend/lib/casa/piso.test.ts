@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asignadoA, confiabilidad, equivalenteMensual, medianaDe, mesesDeDatos, pisoDeLaCasa, pisoPersonal, type GastoPiso } from './piso';
+import { asignadoA, confiabilidad, equivalenteMensual, medianaDe, medianaTransferencias, mesesDeDatos, pisoDeLaCasa, pisoPersonal, type GastoPiso } from './piso';
 
 const HOY = { anio: 2026, mes: 11 };
 
@@ -18,11 +18,16 @@ describe('piso de la casa', () => {
       { monto_estimado: 24_000_000, recurrencia: 'anual', hijo_id: 'bauti' },       // matrícula (hijo): va a hijos, no a anuales
       { monto_estimado: 60_000_000, recurrencia: 'anual', hijo_id: null },          // patente → 5.000.000
     ]);
-    expect(p).toEqual({ obligaciones: 14_500_000, hijos: 22_000_000, anuales: 5_000_000, total: 41_500_000 });
+    expect(p).toEqual({ obligaciones: 14_500_000, hijos: 22_000_000, transferencias: 0, anuales: 5_000_000, total: 41_500_000 });
+  });
+
+  it('las transferencias a los hijos suman con su mediana, en su propio renglón', () => {
+    const p = pisoDeLaCasa([{ monto_estimado: 8_500_000, recurrencia: 'mensual', hijo_id: null }], 10_000_000);
+    expect(p).toEqual({ obligaciones: 8_500_000, hijos: 0, transferencias: 10_000_000, anuales: 0, total: 18_500_000 });
   });
 
   it('sin obligaciones el piso es cero', () => {
-    expect(pisoDeLaCasa([])).toEqual({ obligaciones: 0, hijos: 0, anuales: 0, total: 0 });
+    expect(pisoDeLaCasa([])).toEqual({ obligaciones: 0, hijos: 0, transferencias: 0, anuales: 0, total: 0 });
   });
 
   it('lo asignado a una persona', () => {
@@ -34,6 +39,31 @@ describe('piso de la casa', () => {
     ];
     expect(asignadoA(obls, 'j')).toBe(11_000_000);
     expect(asignadoA(obls, 'e')).toBe(5_000_000);
+  });
+});
+
+describe('transferencias a los hijos en el piso (mediana de 3 meses cerrados)', () => {
+  const t = (fecha: string, monto: number) => ({ fecha, monto });
+
+  it('mediana de los totales mensuales: un mes raro no lo infla', () => {
+    const r = medianaTransferencias([
+      t('2026-08-05', 10_000_000), t('2026-08-20', 2_000_000),   // ago 12.000.000
+      t('2026-09-10', 11_000_000),                                // sep 11.000.000
+      t('2026-10-03', 90_000_000),                                // oct 90.000.000 (mes raro)
+      t('2026-11-02', 50_000_000),                                // mes en curso: no cuenta
+    ], HOY, '2026-01-01');
+    expect(r).toEqual({ mediana: 12_000_000, meses: 3 });
+  });
+
+  it('un mes ya usando la app sin transferencias cuenta como cero; uno anterior a la app no cuenta', () => {
+    // La app arrancó en septiembre: solo septiembre y octubre entran. Septiembre 10M, octubre sin transferencias.
+    const r = medianaTransferencias([t('2026-09-10', 10_000_000)], HOY, '2026-09-01');
+    expect(r).toEqual({ mediana: 5_000_000, meses: 2 }); // mediana de [10M, 0] = 5M
+  });
+
+  it('sin datos compartidos o sin meses cerrados, no hay número', () => {
+    expect(medianaTransferencias([], HOY, null)).toEqual({ mediana: null, meses: 0 });
+    expect(medianaTransferencias([t('2026-11-02', 5)], HOY, '2026-11-01')).toEqual({ mediana: null, meses: 0 });
   });
 });
 

@@ -18,13 +18,14 @@ export function equivalenteMensual(monto: number, rec: Recurrencia): number {
 
 export type OblPiso = { monto_estimado: number; recurrencia: Recurrencia; hijo_id: string | null; responsable_id?: string | null };
 
-export type PisoCasa = { obligaciones: number; hijos: number; anuales: number; total: number };
+export type PisoCasa = { obligaciones: number; hijos: number; transferencias: number; anuales: number; total: number };
 
 /**
  * Cada obligación va a un solo renglón: si es a nombre de un hijo, "hijos"; si no y es anual, "anuales" (1/12 por mes);
- * si no, "obligaciones". Así el total nunca cuenta nada dos veces.
+ * si no, "obligaciones". Las transferencias a los hijos entran con su mediana mensual (ver `medianaTransferencias`).
+ * Así el total nunca cuenta nada dos veces.
  */
-export function pisoDeLaCasa(obls: OblPiso[]): PisoCasa {
+export function pisoDeLaCasa(obls: OblPiso[], transferencias = 0): PisoCasa {
   let obligaciones = 0, hijos = 0, anuales = 0;
   for (const o of obls) {
     const m = equivalenteMensual(o.monto_estimado, o.recurrencia);
@@ -32,7 +33,7 @@ export function pisoDeLaCasa(obls: OblPiso[]): PisoCasa {
     else if (o.recurrencia === 'anual') anuales += m;
     else obligaciones += m;
   }
-  return { obligaciones, hijos, anuales, total: obligaciones + hijos + anuales };
+  return { obligaciones, hijos, transferencias, anuales, total: obligaciones + hijos + transferencias + anuales };
 }
 
 /** Lo asignado a una persona, en equivalente mensual (su "parte del reparto" por asignación, no por porcentaje). */
@@ -60,6 +61,23 @@ export function medianaDe(numeros: number[]): number | null {
   const s = [...numeros].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+}
+
+/**
+ * Transferencias a los hijos dentro del piso de la casa: mediana del total mensual (todos los hijos, ambos adultos)
+ * de los últimos 3 meses CERRADOS. Un mes raro no infla el piso. Solo cuentan los meses desde que hay datos
+ * compartidos (`primerMes`, 'YYYY-MM-01'): un mes sin transferencias, ya usando la app, cuenta como cero; uno anterior a la app, no.
+ */
+export function medianaTransferencias(
+  transferencias: { fecha: string; monto: number }[],
+  hoy: Mes,
+  primerMes: string | null,
+): { mediana: number | null; meses: number } {
+  if (primerMes === null) return { mediana: null, meses: 0 };
+  const cerrados = Array.from({ length: 3 }, (_, i) => claveMes(moverMes(hoy, -(i + 1)))).filter((m) => m >= primerMes);
+  if (cerrados.length === 0) return { mediana: null, meses: 0 };
+  const totales = cerrados.map((m) => transferencias.filter((t) => t.fecha.slice(0, 7) + '-01' === m).reduce((s, t) => s + t.monto, 0));
+  return { mediana: medianaDe(totales), meses: cerrados.length };
 }
 
 export type GastoPiso = { monto: number; tipo: 'fijo_obligatorio' | 'variable_necesario' | 'discrecional'; fecha: string; mes_ipc: string };
