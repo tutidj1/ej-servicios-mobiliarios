@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Delete, Trash2, X } from 'lucide-react';
 import { useCasa } from '@/lib/casa/sesion';
+import IngresosMes from './IngresosMes';
 import {
   diaCorto, digitosACentavos, fechaLocalISO, formatearCentavos, formatearDigitos, haceDias, mesDe,
   moverMes, nombreMes, rangoMes, sumarCentavos, type Mes,
@@ -193,6 +194,8 @@ export default function GastosPantalla() {
           ))}
         </ul>
       </section>
+
+      <IngresosMes mes={mes} />
 
       {/* Aviso con deshacer */}
       {aviso && (
