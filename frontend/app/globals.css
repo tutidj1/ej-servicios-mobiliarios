@@ -81,3 +81,12 @@ main > section:not(#inicio) {
 html.lenis, html.lenis body { height: auto; }
 html.lenis, html.lenis body { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
+
+/* EJ Casa: sacudida suave al equivocarse de PIN */
+@keyframes sacudir {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
