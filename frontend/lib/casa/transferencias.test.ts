@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { costoPorHijo, delMes, recibidoYQueda, type Transferencia } from './transferencias';
+import { costoPorHijo, delMes, recibidoYQueda, separarPendientes, type Transferencia } from './transferencias';
 
 const T = (id: string, hijo: string, quien: string, monto: number, fecha = '2026-11-03'): Transferencia => ({ id, hijo_id: hijo, pagador_id: quien, monto, fecha, nota: '' });
 const hijos = [
@@ -47,6 +47,16 @@ describe('lo que le queda al hijo', () => {
   it('recibido menos gastado', () => {
     expect(recibidoYQueda(10_000_000, 3_500_000)).toEqual({ recibido: 10_000_000, gastado: 3_500_000, queda: 6_500_000 });
     expect(recibidoYQueda(1_000_000, 1_500_000).queda).toBe(-500_000);
+  });
+
+  it('separa lo pendiente de confirmar de lo confirmado', () => {
+    const r = separarPendientes([
+      { ...T('a', 'x', 'p', 1), confirmada_el: '2026-11-04T10:00:00Z' },
+      { ...T('b', 'x', 'p', 2), confirmada_el: null },
+      T('c', 'x', 'p', 3),
+    ]);
+    expect(r.confirmadas.map((t) => t.id)).toEqual(['a']);
+    expect(r.pendientes.map((t) => t.id)).toEqual(['b', 'c']);
   });
 
   it('transferencias del mes, la más nueva primero', () => {

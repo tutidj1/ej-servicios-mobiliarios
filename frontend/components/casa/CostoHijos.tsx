@@ -29,7 +29,7 @@ export default function CostoHijos() {
     const { desde, hasta } = rangoMes(mes);
     const [h, t, o, p, c] = await Promise.all([
       cliente.from('hijos').select('id, nombre, persona_id').order('nombre'),
-      cliente.from('transferencias_hijos').select('id, hijo_id, pagador_id, monto, fecha, nota').gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
+      cliente.from('transferencias_hijos').select('id, hijo_id, pagador_id, monto, fecha, nota, confirmada_el').gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
       cliente.from('obligaciones').select('id, concepto, monto_estimado, recurrencia, hijo_id').not('hijo_id', 'is', null),
       cliente.from('personas').select('id, nombre, hogar_id'),
       cliente.from('categorias').select('id').eq('nombre', 'Transferencias a los hijos').maybeSingle(),
@@ -131,7 +131,14 @@ export default function CostoHijos() {
                 <span className="w-12 shrink-0 text-xs text-casa-suave">{diaCorto(t.fecha)}</span>
                 <span className="min-w-0 flex-1 truncate text-casa-texto">{hijos.find((h) => h.id === t.hijo_id)?.nombre}{t.nota ? ` · ${t.nota}` : ''}</span>
                 <span className="font-semibold text-casa-texto">{formatearCentavos(t.monto)}</span>
-                <button type="button" aria-label="Borrar transferencia" onClick={() => (borrando === t.id ? void borrar(t.id) : setBorrando(t.id))} className={`rounded-lg p-2 ${borrando === t.id ? 'text-casa-error' : 'text-casa-suave'}`}><Trash2 size={16} /></button>
+                {t.confirmada_el ? (
+                  <span className="w-24 shrink-0 text-right text-xs font-semibold text-casa-acento">Confirmada</span>
+                ) : (
+                  <>
+                    <span className="shrink-0 text-xs text-casa-alerta">Pendiente</span>
+                    <button type="button" aria-label="Borrar transferencia" onClick={() => (borrando === t.id ? void borrar(t.id) : setBorrando(t.id))} className={`rounded-lg p-2 ${borrando === t.id ? 'text-casa-error' : 'text-casa-suave'}`}><Trash2 size={16} /></button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -139,7 +146,7 @@ export default function CostoHijos() {
       )}
 
       <p className="text-xs leading-relaxed text-casa-suave">
-        Las transferencias las ven los dos adultos, con quién las hizo. Cada hijo ve solo las suyas. Lo demás de tus gastos sigue siendo privado.
+        Las transferencias las ven los dos adultos, con quién las hizo. Cada hijo ve solo las suyas y las confirma cuando le llegan; después ya no se pueden cambiar. Lo demás de tus gastos sigue siendo privado.
       </p>
 
       {abierto && <FormularioTransferencia hijos={hijos} alCerrar={() => setAbierto(false)} alGuardar={registrar} />}

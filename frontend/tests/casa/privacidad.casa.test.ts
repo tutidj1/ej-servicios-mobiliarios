@@ -487,6 +487,52 @@ describe('Transferencias a los hijos: los adultos ven todas, cada hijo solo las 
     }
   });
 
+  it('el hijo confirma lo que le transfirieron: se crea SU ingreso, una sola vez, y la transferencia queda confirmada', async () => {
+    const antes = await ok(C.cliente.from('ingresos').select('id, transferencia_id'), 'ingresos de C');
+    expect(antes.some((i: { transferencia_id: string | null }) => i.transferencia_id === ids.transferencia.A)).toBe(false);
+
+    const r = await C.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.A });
+    expect(r.error).toBeNull();
+
+    const ing = await ok(C.cliente.from('ingresos').select('monto, esperado_o_real, transferencia_id').eq('transferencia_id', ids.transferencia.A), 'ingreso de C');
+    expect(ing).toEqual([{ monto: 6000000, esperado_o_real: 'real', transferencia_id: ids.transferencia.A }]);
+
+    // Los adultos ven que quedó confirmada; el ingreso es privado de C (A no lo ve)
+    const vista = await ok(A.cliente.from('transferencias_hijos').select('confirmada_el').eq('id', ids.transferencia.A).single(), 'confirmada para A');
+    expect(vista.confirmada_el).not.toBeNull();
+    expect(await ok(A.cliente.from('ingresos').select('id').eq('transferencia_id', ids.transferencia.A), 'ingresos de A')).toHaveLength(0);
+
+    // No se confirma dos veces ni se duplica el ingreso
+    const otra = await C.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.A });
+    expect(otra.error).not.toBeNull();
+    expect(await ok(C.cliente.from('ingresos').select('id').eq('transferencia_id', ids.transferencia.A), 'sin duplicado')).toHaveLength(1);
+  });
+
+  it('una transferencia confirmada ya no se edita ni se borra (el adulto que la hizo tampoco)', async () => {
+    const upd = await A.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const del = await A.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+    expect(del.data ?? []).toHaveLength(0);
+    const intacta = await ok(servicio.from('transferencias_hijos').select('monto').eq('id', ids.transferencia.A).single(), 'intacta');
+    expect(intacta.monto).toBe(6000000);
+  });
+
+  it('solo el hijo a quien le transfirieron puede confirmar: ni los adultos, ni otro hijo, ni otro hogar, ni anon', async () => {
+    for (const p of [A, B, E, D]) {
+      const r = await p.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.B });
+      expect(r.error, 'confirmar ajena').not.toBeNull();
+    }
+    const anonimo = await anon.rpc('confirmar_transferencia', { p_id: ids.transferencia.B });
+    expect(anonimo.error).not.toBeNull();
+    const sigue = await ok(servicio.from('transferencias_hijos').select('confirmada_el').eq('id', ids.transferencia.B).single(), 'sigue pendiente');
+    expect(sigue.confirmada_el).toBeNull();
+  });
+
+  it('nadie puede fijar a mano el vínculo de un ingreso con una transferencia', async () => {
+    const r = await C.cliente.from('ingresos').insert({ persona_id: C.id, monto: 100, fecha: hoy, esperado_o_real: 'real', transferencia_id: ids.transferencia.B });
+    expect(r.error).not.toBeNull();
+  });
+
   it('no se puede transferir a un hijo de otro hogar', async () => {
     const hijoAjeno = await ok(servicio.from('hijos').insert({ hogar_id: hogar2, nombre: MARCA + '-ajeno' }).select('id').single(), 'hijo ajeno');
     const r = await A.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijoAjeno.id, pagador_id: A.id, monto: 100, fecha: hoy });

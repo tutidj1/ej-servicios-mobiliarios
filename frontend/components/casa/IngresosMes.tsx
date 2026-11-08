@@ -6,7 +6,7 @@ import { useCasa } from '@/lib/casa/sesion';
 import { digitosACentavos, diaCorto, fechaLocalISO, formatearCentavos, nombreMes, rangoMes, sumarCentavos, type Mes } from '@/lib/casa/dinero';
 import { BotonPrincipal, CampoDigitos, Chips, Hoja } from './ui';
 
-type Ingreso = { id: string; monto: number; fecha: string; esperado_o_real: 'esperado' | 'real' };
+type Ingreso = { id: string; monto: number; fecha: string; esperado_o_real: 'esperado' | 'real'; transferencia_id: string | null };
 
 /** Lo que entró en el mes. Privado: lo ve solo su dueño. */
 export default function IngresosMes({ mes }: { mes: Mes }) {
@@ -21,7 +21,7 @@ export default function IngresosMes({ mes }: { mes: Mes }) {
   const cargar = useCallback(async () => {
     if (!cliente) return;
     const { desde, hasta } = rangoMes(mes);
-    const { data, error: e } = await cliente.from('ingresos').select('id, monto, fecha, esperado_o_real').gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false });
+    const { data, error: e } = await cliente.from('ingresos').select('id, monto, fecha, esperado_o_real, transferencia_id').gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false });
     if (e) { setError('No se pudieron cargar tus ingresos.'); return; }
     setError(null);
     setFilas((data ?? []) as Ingreso[]);
@@ -66,9 +66,9 @@ export default function IngresosMes({ mes }: { mes: Mes }) {
           {filas.map((f) => (
             <li key={f.id} className="flex items-center gap-3 px-4 py-3">
               <span className="w-12 shrink-0 text-xs text-casa-suave">{diaCorto(f.fecha)}</span>
-              <span className="flex-1 text-sm text-casa-texto">{f.esperado_o_real === 'real' ? 'Cobrado' : 'Esperado'}</span>
+              <span className="flex-1 text-sm text-casa-texto">{f.transferencia_id ? 'Transferencia confirmada' : f.esperado_o_real === 'real' ? 'Cobrado' : 'Esperado'}</span>
               <span className="text-sm font-semibold text-casa-texto">{formatearCentavos(f.monto)}</span>
-              <button type="button" aria-label="Borrar ingreso" onClick={() => (borrando === f.id ? void borrar(f.id) : setBorrando(f.id))} className={`rounded-lg p-2 ${borrando === f.id ? 'text-casa-error' : 'text-casa-suave'}`}><Trash2 size={16} /></button>
+              {!f.transferencia_id && <button type="button" aria-label="Borrar ingreso" onClick={() => (borrando === f.id ? void borrar(f.id) : setBorrando(f.id))} className={`rounded-lg p-2 ${borrando === f.id ? 'text-casa-error' : 'text-casa-suave'}`}><Trash2 size={16} /></button>}
             </li>
           ))}
         </ul>

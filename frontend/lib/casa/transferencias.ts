@@ -7,7 +7,7 @@
  */
 import { equivalenteMensual, type OblPiso } from './piso';
 
-export type Transferencia = { id: string; hijo_id: string; pagador_id: string; monto: number; fecha: string; nota: string };
+export type Transferencia = { id: string; hijo_id: string; pagador_id: string; monto: number; fecha: string; nota: string; confirmada_el?: string | null };
 export type HijoFila = { id: string; nombre: string; persona_id: string | null };
 export type OblHijo = OblPiso & { id: string; concepto: string };
 
@@ -45,6 +45,14 @@ export function costoPorHijo(hijos: HijoFila[], transferencias: Transferencia[],
 /** Para el hijo: lo que le transfirieron, lo que gastó y lo que le queda de eso. */
 export function recibidoYQueda(recibido: number, gastado: number): { recibido: number; gastado: number; queda: number } {
   return { recibido, gastado, queda: recibido - gastado };
+}
+
+/** Lo que el hijo todavía tiene que confirmar y lo ya confirmado (esto último es lo que cuenta como su ingreso). */
+export function separarPendientes(transferencias: Transferencia[]): { pendientes: Transferencia[]; confirmadas: Transferencia[] } {
+  return {
+    pendientes: transferencias.filter((t) => !t.confirmada_el),
+    confirmadas: transferencias.filter((t) => !!t.confirmada_el),
+  };
 }
 
 /** Transferencias del mes ('YYYY-MM'), de la más nueva a la más vieja. */
