@@ -110,7 +110,7 @@ export default function PisoInicio() {
           </div>
           <p className="mt-3 text-xs leading-relaxed text-casa-suave">
             Sale de los montos estimados de cada obligación. No tiene adentro ningún gasto personal, y por eso lo ven los dos.
-            No incluye las transferencias a los hijos, que hoy son gastos personales de cada uno.
+            Las transferencias a los hijos se ven más abajo y todavía no suman al piso.
           </p>
         </section>
       )}

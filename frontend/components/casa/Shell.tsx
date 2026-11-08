@@ -26,6 +26,8 @@ function activa(ruta: string, href: string) {
 export default function Shell({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
   const { bloquear, persona } = useCasa();
+  // Obligaciones y lo compartido son de los adultos: los hijos y la administración técnica no tienen esa sección
+  const secciones = persona?.rol === 'adulto' ? SECCIONES : SECCIONES.filter((s) => s.href !== '/casa/obligaciones');
   const actual = [...SECCIONES, AJUSTES, OBJETIVOS, IPC].find((s) => activa(ruta, s.href)) ?? SECCIONES[0];
 
   return (
@@ -37,7 +39,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <p className="mt-1 text-sm text-casa-suave">{persona?.nombre}</p>
         </div>
         <nav className="flex flex-1 flex-col gap-1" aria-label="Secciones">
-          {[...SECCIONES, AJUSTES].map((s) => {
+          {[...secciones, AJUSTES].map((s) => {
             const Icono = s.icono;
             const on = activa(ruta, s.href);
             return (
@@ -82,8 +84,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Secciones"
       >
-        <ul className="mx-auto grid max-w-xl grid-cols-5">
-          {SECCIONES.map((s) => {
+        <ul className="mx-auto grid max-w-xl" style={{ gridTemplateColumns: `repeat(${secciones.length}, minmax(0, 1fr))` }}>
+          {secciones.map((s) => {
             const Icono = s.icono;
             const on = activa(ruta, s.href);
             return (

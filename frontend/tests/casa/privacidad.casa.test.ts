@@ -28,7 +28,7 @@ const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 
 const TODAS = [
   'hogar', 'personas', 'hijos', 'categorias', 'gastos', 'ingresos', 'obligaciones', 'obligacion_instancias',
   'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos',
-  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones',
+  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones', 'transferencias_hijos',
 ] as const;
 
 type Persona = { id: string; email: string; password: string; cliente: SupabaseClient; token: string };
@@ -39,7 +39,8 @@ const anon = createClient(cfg.url, cfg.anon, sinSesion);
 
 let hogar1 = '';
 let hogar2 = '';
-let A: Persona, B: Persona, C: Persona, D: Persona; // A y B adultos del hogar 1 C admin técnico, D de otro hogar
+let A: Persona, B: Persona, C: Persona, D: Persona, E: Persona; // A y B adultos del hogar 1; C admin técnico (y a la vez hijo); D de otro hogar; E hijo
+let hijo1 = '', hijo2 = '', hijo3 = '';
 let categoria = '';
 const ids: Record<string, Record<'A' | 'B', string>> = {};
 const hoy = new Date().toISOString().slice(0, 10);
@@ -114,6 +115,7 @@ beforeAll(async () => {
   B = await crearPersona('b', hogar1, 'adulto');
   C = await crearPersona('c-admin', hogar1, 'admin_tecnico');
   D = await crearPersona('d-otro-hogar', hogar2, 'adulto');
+  E = await crearPersona('e-hijo', hogar1, 'hijo');
 
   categoria = (await ok(servicio.from('categorias').select('id').limit(1).single(), 'categorias')).id;
   await sembrarPrivados('A', A);
@@ -124,6 +126,14 @@ beforeAll(async () => {
   ids.obligacion = { A: ob.id, B: ob.id };
   const liq = await ok(servicio.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: A.id, receptor_id: B.id, monto: 1234500, fecha: hoy }).select('id').single(), 'liquidaciones');
   ids.liquidacion = { A: liq.id, B: liq.id };
+  const nuevoHijo = async (n: string, persona: string | null) => (await ok(servicio.from('hijos').insert({ hogar_id: hogar1, nombre: MARCA + '-' + n, persona_id: persona }).select('id').single(), 'hijos')).id;
+  hijo1 = await nuevoHijo('h1', C.id); // C (admin técnico) es a la vez hijo
+  hijo2 = await nuevoHijo('h2', null);
+  hijo3 = await nuevoHijo('h3', E.id);
+  const tr = (hijo: string, quien: Persona, monto: number) => servicio.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo, pagador_id: quien.id, monto, fecha: hoy, nota: 'SECRETO-TRANSFERENCIA' }).select('id').single();
+  ids.transferencia = { A: (await ok(tr(hijo1, A, 6000000), 'transf')).id, B: (await ok(tr(hijo1, B, 4000000), 'transf')).id };
+  await ok(tr(hijo2, A, 5000000), 'transf');
+  await ok(tr(hijo3, A, 3000000), 'transf');
   await ok(servicio.from('obligacion_instancias').insert({ obligacion_id: ob.id, periodo: mes, estado: 'pendiente' }).select('id').single(), 'instancias');
   await ok(servicio.from('auditoria').insert({ actor_id: A.id, accion: MARCA, tabla: 'gastos' }).select('id').single(), 'auditoria');
 }, 120_000);
@@ -328,11 +338,25 @@ describe('Administración: el admin técnico no tiene camino a lo privado', () =
 
 describe('Compartido: solo dentro del hogar', () => {
   it('los adultos del hogar ven las obligaciones y sus instancias', async () => {
-    for (const p of [A, B, C]) {
+    for (const p of [A, B]) {
       const o = await ok(p.cliente.from('obligaciones').select('id'), 'obligaciones');
       expect(o.map((f: { id: string }) => f.id)).toContain(ids.obligacion.A);
       const i = await ok(p.cliente.from('obligacion_instancias').select('obligacion_id'), 'instancias');
       expect(i.map((f: { obligacion_id: string }) => f.obligacion_id)).toContain(ids.obligacion.A);
+    }
+  });
+
+  it('la administración técnica y los hijos NO ven nada de lo compartido de los adultos', async () => {
+    for (const p of [C, E]) {
+      for (const t of ['obligaciones', 'obligacion_instancias', 'liquidaciones']) {
+        expect(await ok(p.cliente.from(t).select('*'), t), t).toHaveLength(0);
+        const cruda = await rest(t, p.token);
+        expect(cruda.filas, t).toHaveLength(0);
+      }
+      const ins = await p.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual' });
+      expect(ins.error).not.toBeNull();
+      const upd = await p.cliente.from('obligaciones').update({ concepto: 'HACKEADO' }).eq('id', ids.obligacion.A).select();
+      expect(upd.data ?? []).toHaveLength(0);
     }
   });
 
@@ -366,7 +390,7 @@ describe('Compartido: solo dentro del hogar', () => {
 
 describe('Cobertura y saldos: liquidaciones solo dentro del hogar', () => {
   it('los adultos del hogar las ven; una persona de otro hogar no ve ni inserta', async () => {
-    for (const p of [A, B, C]) {
+    for (const p of [A, B]) {
       const filas = await ok(p.cliente.from('liquidaciones').select('id'), 'liquidaciones');
       expect(filas.map((x: { id: string }) => x.id)).toContain(ids.liquidacion.A);
     }
@@ -389,6 +413,85 @@ describe('Cobertura y saldos: liquidaciones solo dentro del hogar', () => {
   it('no se puede poner como responsable de una instancia a alguien de otro hogar', async () => {
     const r = await A.cliente.from('obligacion_instancias').update({ responsable_id: D.id }).eq('obligacion_id', ids.obligacion.A).select();
     expect(r.error ?? (r.data?.length ? null : 'sin filas')).toBeTruthy();
+  });
+});
+
+describe('Transferencias a los hijos: los adultos ven todas, cada hijo solo las suyas', () => {
+  const ids_ = (filas: { id: string }[]) => filas.map((f) => f.id);
+
+  it('A y B (adultos) ven todas, con quién las hizo', async () => {
+    for (const p of [A, B]) {
+      const filas = await ok(p.cliente.from('transferencias_hijos').select('id, pagador_id, monto'), 'transferencias');
+      expect(filas).toHaveLength(4);
+      expect(ids_(filas)).toContain(ids.transferencia.A);
+      expect(ids_(filas)).toContain(ids.transferencia.B);
+    }
+  });
+
+  it('C (admin técnico y a la vez hijo) ve SOLO las que le hicieron a él: ni las de los hermanos ni nada más', async () => {
+    const filas = await ok(C.cliente.from('transferencias_hijos').select('id, hijo_id, monto'), 'transferencias de C');
+    expect(filas).toHaveLength(2);
+    expect(filas.every((f: { hijo_id: string }) => f.hijo_id === hijo1)).toBe(true);
+    const cruda = await rest('transferencias_hijos', C.token);
+    expect(cruda.filas).toHaveLength(2);
+  });
+
+  it('E (hijo) ve solo la suya', async () => {
+    const filas = await ok(E.cliente.from('transferencias_hijos').select('hijo_id, monto'), 'transferencias de E');
+    expect(filas).toEqual([{ hijo_id: hijo3, monto: 3000000 }]);
+  });
+
+  it('cada hijo ve únicamente su propia fila de hijos', async () => {
+    expect((await ok(C.cliente.from('hijos').select('id'), 'hijos de C')).map((f: { id: string }) => f.id)).toEqual([hijo1]);
+    expect((await ok(E.cliente.from('hijos').select('id'), 'hijos de E')).map((f: { id: string }) => f.id)).toEqual([hijo3]);
+    expect(await ok(A.cliente.from('hijos').select('id'), 'hijos de A')).toHaveLength(3);
+    const edit = await E.cliente.from('hijos').update({ nombre: 'HACKEADO' }).eq('id', hijo3).select();
+    expect(edit.data ?? []).toHaveLength(0);
+  });
+
+  it('el hijo puede ver los nombres de su hogar (para saber quién le transfirió) pero nada financiero de ellos', async () => {
+    const personas = await ok(E.cliente.from('personas').select('id, nombre, rol'), 'personas de E');
+    expect(personas.map((p: { id: string }) => p.id)).toEqual(expect.arrayContaining([A.id, B.id]));
+    // y ninguna otra tabla se abre por eso
+    for (const t of ['gastos', 'ingresos', 'deudas', 'inversiones', 'obligaciones']) {
+      expect(await ok(E.cliente.from(t).select('id'), t), t).toHaveLength(0);
+    }
+  });
+
+  it('otro hogar no ve nada', async () => {
+    expect(await ok(D.cliente.from('transferencias_hijos').select('id'), 'transferencias de D')).toHaveLength(0);
+    expect(await ok(D.cliente.from('hijos').select('id'), 'hijos de D')).toHaveLength(0);
+  });
+
+  it('un adulto solo carga transferencias a su nombre; no cambia ni borra las del otro', async () => {
+    const aNombreDeOtro = await A.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo2, pagador_id: B.id, monto: 100, fecha: hoy });
+    expect(aNombreDeOtro.error).not.toBeNull();
+    const propia = await B.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo2, pagador_id: B.id, monto: 100, fecha: hoy }).select('id').single();
+    expect(propia.error).toBeNull();
+    const upd = await B.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const del = await B.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+    expect(del.data ?? []).toHaveLength(0);
+    const intacta = await ok(servicio.from('transferencias_hijos').select('monto').eq('id', ids.transferencia.A).single(), 'intacta');
+    expect(intacta.monto).toBe(6000000);
+  });
+
+  it('C, E y otro hogar no pueden cargar ni cambiar transferencias', async () => {
+    for (const p of [C, E, D]) {
+      const r = await p.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo1, pagador_id: p.id, monto: 100, fecha: hoy });
+      expect(r.error, 'insertar').not.toBeNull();
+      const u = await p.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+      expect(u.data ?? [], 'update').toHaveLength(0);
+      const d = await p.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+      expect(d.data ?? [], 'delete').toHaveLength(0);
+    }
+  });
+
+  it('no se puede transferir a un hijo de otro hogar', async () => {
+    const hijoAjeno = await ok(servicio.from('hijos').insert({ hogar_id: hogar2, nombre: MARCA + '-ajeno' }).select('id').single(), 'hijo ajeno');
+    const r = await A.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijoAjeno.id, pagador_id: A.id, monto: 100, fecha: hoy });
+    expect(r.error).not.toBeNull();
+    await servicio.from('hijos').delete().eq('id', hijoAjeno.id);
   });
 });
 
