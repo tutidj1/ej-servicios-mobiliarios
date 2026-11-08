@@ -6,7 +6,6 @@
 --   Privado       persona_id = auth.uid()                      gastos, ingresos, deudas, deuda_pagos,
 --                                                              inversiones, inversion_movimientos, reglas_categoria
 --   Compartido    pertenencia al hogar (adultos / admin técnico) obligaciones, obligacion_instancias, hijos
---   Admin EJ      hogar + personas.acceso_objetivos            objetivos, objetivo_movimientos
 --   Administración: el rol admin_tecnico administra personas, categorias e ipc,
 --                   y NO tiene ninguna política que le abra datos privados.
 --   Auditoría     lectura para todos; escritura solo desde el servidor (sin permiso de escritura para usuarios)
@@ -29,14 +28,6 @@ language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.personas where id = (select auth.uid()) and rol = 'admin_tecnico')
 $$;
 
-create or replace function casa_aux.tengo_objetivos() returns boolean
-language sql stable security definer set search_path = '' as $$
-  select exists (
-    select 1 from public.personas
-    where id = (select auth.uid()) and rol <> 'hijo' and acceso_objetivos
-  )
-$$;
-
 create or replace function casa_aux.persona_es_de_mi_hogar(p uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select p is null or exists (
@@ -48,13 +39,6 @@ create or replace function casa_aux.obligacion_es_de_mi_hogar(o uuid) returns bo
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.obligaciones where id = o and hogar_id = casa_aux.mi_hogar()
-  )
-$$;
-
-create or replace function casa_aux.objetivo_es_de_mi_hogar(o uuid) returns boolean
-language sql stable security definer set search_path = '' as $$
-  select exists (
-    select 1 from public.objetivos where id = o and hogar_id = casa_aux.mi_hogar()
   )
 $$;
 
@@ -109,8 +93,6 @@ alter table public.obligaciones           enable row level security;
 alter table public.obligacion_instancias  enable row level security;
 alter table public.deudas                 enable row level security;
 alter table public.deuda_pagos            enable row level security;
-alter table public.objetivos              enable row level security;
-alter table public.objetivo_movimientos   enable row level security;
 alter table public.inversiones            enable row level security;
 alter table public.inversion_movimientos  enable row level security;
 alter table public.ipc                    enable row level security;
@@ -127,8 +109,6 @@ alter table public.obligaciones           force row level security;
 alter table public.obligacion_instancias  force row level security;
 alter table public.deudas                 force row level security;
 alter table public.deuda_pagos            force row level security;
-alter table public.objetivos              force row level security;
-alter table public.objetivo_movimientos   force row level security;
 alter table public.inversiones            force row level security;
 alter table public.inversion_movimientos  force row level security;
 alter table public.ipc                    force row level security;
@@ -198,27 +178,12 @@ create policy hijos_del_hogar on public.hijos
   with check (hogar_id = casa_aux.mi_hogar());
 
 -- ---------------------------------------------------------------------------------------------
--- ADMIN EJ · objetivos (hogar + acceso_objetivos)
--- ---------------------------------------------------------------------------------------------
-grant select, insert, update, delete on public.objetivos, public.objetivo_movimientos to authenticated;
-
-create policy objetivos_con_acceso on public.objetivos
-  for all to authenticated
-  using (hogar_id = casa_aux.mi_hogar() and casa_aux.tengo_objetivos())
-  with check (hogar_id = casa_aux.mi_hogar() and casa_aux.tengo_objetivos());
-
-create policy objetivo_movimientos_con_acceso on public.objetivo_movimientos
-  for all to authenticated
-  using (casa_aux.tengo_objetivos() and casa_aux.objetivo_es_de_mi_hogar(objetivo_id))
-  with check (casa_aux.tengo_objetivos() and casa_aux.objetivo_es_de_mi_hogar(objetivo_id));
-
--- ---------------------------------------------------------------------------------------------
 -- ADMINISTRACIÓN · usuarios, categorías, IPC
 -- personas: todos ven a los de su hogar (nombre y rol); solo el admin técnico modifica, y solo
 -- nombre/rol/acceso. Crear y borrar personas se hace desde el servidor al dar de alta cuentas.
 -- ---------------------------------------------------------------------------------------------
 grant select on public.personas to authenticated;
-grant update (nombre, rol, acceso_objetivos) on public.personas to authenticated;
+grant update (nombre, rol) on public.personas to authenticated;
 grant select on public.hogar to authenticated;
 
 create policy personas_lectura on public.personas

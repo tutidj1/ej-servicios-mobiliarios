@@ -27,7 +27,7 @@ const DOMINIO = 'privacidad.casa.test';
 const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos', 'reglas_categoria'] as const;
 const TODAS = [
   'hogar', 'personas', 'hijos', 'categorias', 'gastos', 'ingresos', 'obligaciones', 'obligacion_instancias',
-  'deudas', 'deuda_pagos', 'objetivos', 'objetivo_movimientos', 'inversiones', 'inversion_movimientos',
+  'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos',
   'ipc', 'reglas_categoria', 'auditoria',
 ] as const;
 
@@ -39,18 +39,18 @@ const anon = createClient(cfg.url, cfg.anon, sinSesion);
 
 let hogar1 = '';
 let hogar2 = '';
-let A: Persona, B: Persona, C: Persona, D: Persona; // A y B adultos del hogar 1 (A con objetivos), C admin técnico, D de otro hogar
+let A: Persona, B: Persona, C: Persona, D: Persona; // A y B adultos del hogar 1 C admin técnico, D de otro hogar
 let categoria = '';
 const ids: Record<string, Record<'A' | 'B', string>> = {};
 const hoy = new Date().toISOString().slice(0, 10);
 const mes = hoy.slice(0, 8) + '01';
 
-async function crearPersona(nombre: string, hogar: string, rol: string, objetivos = false): Promise<Persona> {
+async function crearPersona(nombre: string, hogar: string, rol: string): Promise<Persona> {
   const email = `${MARCA}-${nombre}-${randomUUID().slice(0, 8)}@${DOMINIO}`;
   const password = randomUUID() + randomUUID();
   const { data, error } = await servicio.auth.admin.createUser({ email, password, email_confirm: true });
   if (error || !data.user) throw new Error('No se pudo crear usuario de prueba: ' + error?.message);
-  const ins = await servicio.from('personas').insert({ id: data.user.id, hogar_id: hogar, nombre: `${MARCA}-${nombre}`, rol, acceso_objetivos: objetivos });
+  const ins = await servicio.from('personas').insert({ id: data.user.id, hogar_id: hogar, nombre: `${MARCA}-${nombre}`, rol });
   if (ins.error) throw new Error('personas: ' + ins.error.message);
   const cliente = createClient(cfg.url, cfg.anon, sinSesion);
   const s = await cliente.auth.signInWithPassword({ email, password });
@@ -71,7 +71,6 @@ async function limpiar() {
   const { data: hogares } = await servicio.from('hogar').select('id').like('nombre', `${MARCA}%`);
   for (const h of hogares ?? []) {
     await servicio.from('obligaciones').delete().eq('hogar_id', h.id);
-    await servicio.from('objetivos').delete().eq('hogar_id', h.id);
     await servicio.from('hijos').delete().eq('hogar_id', h.id);
     await servicio.from('hogar').delete().eq('id', h.id);
   }
@@ -108,10 +107,10 @@ beforeAll(async () => {
 
   hogar1 = (await ok(servicio.from('hogar').insert({ nombre: `${MARCA}-1` }).select('id').single(), 'hogar1')).id;
   hogar2 = (await ok(servicio.from('hogar').insert({ nombre: `${MARCA}-2` }).select('id').single(), 'hogar2')).id;
-  A = await crearPersona('a', hogar1, 'adulto', true);
-  B = await crearPersona('b', hogar1, 'adulto', false);
-  C = await crearPersona('c-admin', hogar1, 'admin_tecnico', false);
-  D = await crearPersona('d-otro-hogar', hogar2, 'adulto', true);
+  A = await crearPersona('a', hogar1, 'adulto');
+  B = await crearPersona('b', hogar1, 'adulto');
+  C = await crearPersona('c-admin', hogar1, 'admin_tecnico');
+  D = await crearPersona('d-otro-hogar', hogar2, 'adulto');
 
   categoria = (await ok(servicio.from('categorias').select('id').limit(1).single(), 'categorias')).id;
   await sembrarPrivados('A', A);
@@ -121,9 +120,6 @@ beforeAll(async () => {
   const ob = await ok(servicio.from('obligaciones').insert({ hogar_id: hogar1, concepto: `${MARCA}-luz`, monto_estimado: 8500000, dia_vencimiento: 10, recurrencia: 'mensual', responsable_id: A.id }).select('id').single(), 'obligaciones');
   ids.obligacion = { A: ob.id, B: ob.id };
   await ok(servicio.from('obligacion_instancias').insert({ obligacion_id: ob.id, periodo: mes, estado: 'pendiente' }).select('id').single(), 'instancias');
-  const obj = await ok(servicio.from('objetivos').insert({ hogar_id: hogar1, nombre: `${MARCA}-colchon`, meta: 100000, moneda: 'USD', multiplo_piso: 1 }).select('id').single(), 'objetivos');
-  ids.objetivo = { A: obj.id, B: obj.id };
-  await ok(servicio.from('objetivo_movimientos').insert({ objetivo_id: obj.id, monto: 5000, moneda: 'USD', tc_del_dia: 140000, tipo: 'aporte', fecha: hoy }).select('id').single(), 'objetivo_movimientos');
   await ok(servicio.from('auditoria').insert({ actor_id: A.id, accion: MARCA, tabla: 'gastos' }).select('id').single(), 'auditoria');
 }, 120_000);
 
@@ -272,7 +268,7 @@ describe('Administración: el admin técnico no tiene camino a lo privado', () =
       `select tablename, policyname, qual, with_check from pg_policies
        where schemaname = 'public' and tablename = any($1)`, [PRIVADAS]);
     for (const p of rows) {
-      expect(`${p.qual} ${p.with_check}`, `${p.tablename}.${p.policyname}`).not.toMatch(/admin|rol|acceso_objetivos/i);
+      expect(`${p.qual} ${p.with_check}`, `${p.tablename}.${p.policyname}`).not.toMatch(/admin|rol/i);
     }
   });
 
@@ -297,13 +293,11 @@ describe('Administración: el admin técnico no tiene camino a lo privado', () =
     expect(delIpcC.data ?? []).toHaveLength(1);
   });
 
-  it('un adulto no puede ascenderse a admin técnico ni darse acceso a objetivos', async () => {
+  it('un adulto no puede ascenderse a admin técnico', async () => {
     const r1 = await B.cliente.from('personas').update({ rol: 'admin_tecnico' }).eq('id', B.id).select();
     expect(r1.error ?? (r1.data?.length ? null : 'sin filas')).toBeTruthy();
-    const r2 = await B.cliente.from('personas').update({ acceso_objetivos: true }).eq('id', B.id).select();
-    expect(r2.error ?? (r2.data?.length ? null : 'sin filas')).toBeTruthy();
-    const queda = await ok(servicio.from('personas').select('rol, acceso_objetivos').eq('id', B.id).single(), 'B');
-    expect(queda).toEqual({ rol: 'adulto', acceso_objetivos: false });
+    const queda = await ok(servicio.from('personas').select('rol').eq('id', B.id).single(), 'B');
+    expect(queda).toEqual({ rol: 'adulto' });
   });
 
   it('nadie puede cambiarse de hogar ni crear/borrar personas por la API', async () => {
@@ -316,10 +310,10 @@ describe('Administración: el admin técnico no tiene camino a lo privado', () =
   });
 
   it('el admin técnico sí puede ajustar el rol de alguien de su hogar', async () => {
-    const r = await C.cliente.from('personas').update({ acceso_objetivos: true }).eq('id', B.id).select();
+    const r = await C.cliente.from('personas').update({ nombre: `${MARCA}-b-renombrado` }).eq('id', B.id).select();
     expect(r.error).toBeNull();
     expect(r.data).toHaveLength(1);
-    await servicio.from('personas').update({ acceso_objetivos: false }).eq('id', B.id);
+    await servicio.from('personas').update({ nombre: `${MARCA}-b` }).eq('id', B.id);
   });
 });
 
@@ -340,11 +334,10 @@ describe('Compartido: solo dentro del hogar', () => {
   });
 
   it('una persona de OTRO hogar no ve ni toca nada del hogar 1', async () => {
-    for (const t of ['obligaciones', 'obligacion_instancias', 'objetivos', 'objetivo_movimientos', 'hijos', 'personas']) {
+    for (const t of ['obligaciones', 'obligacion_instancias', 'hijos', 'personas']) {
       const filas = await ok(D.cliente.from(t).select('*'), t);
       const texto = JSON.stringify(filas);
       expect(texto, t).not.toContain(MARCA + '-luz');
-      expect(texto, t).not.toContain(MARCA + '-colchon');
       expect(texto, t).not.toContain(A.id);
       expect(texto, t).not.toContain(B.id);
     }
@@ -359,21 +352,6 @@ describe('Compartido: solo dentro del hogar', () => {
   it('no se puede asignar como responsable a alguien de otro hogar', async () => {
     const r = await A.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual', responsable_id: D.id });
     expect(r.error).not.toBeNull();
-  });
-});
-
-describe('Admin EJ: objetivos solo con acceso', () => {
-  it('A (con acceso) los ve; B y C (sin acceso) no; D (otro hogar) no', async () => {
-    const a = await ok(A.cliente.from('objetivos').select('id'), 'A objetivos');
-    expect(a.map((f: { id: string }) => f.id)).toContain(ids.objetivo.A);
-    const am = await ok(A.cliente.from('objetivo_movimientos').select('id'), 'A movimientos');
-    expect(am.length).toBeGreaterThan(0);
-    for (const p of [B, C, D]) {
-      expect(await ok(p.cliente.from('objetivos').select('id'), 'objetivos')).toHaveLength(0);
-      expect(await ok(p.cliente.from('objetivo_movimientos').select('id'), 'objetivo_movimientos')).toHaveLength(0);
-    }
-    const ins = await B.cliente.from('objetivos').insert({ hogar_id: hogar1, nombre: 'x', meta: 1, moneda: 'ARS' });
-    expect(ins.error).not.toBeNull();
   });
 });
 
@@ -450,7 +428,7 @@ describe('Estructura: nadie aflojó la base', () => {
     const c = await bd.query(
       `select column_name from information_schema.column_privileges
         where table_schema = 'public' and table_name = 'personas' and grantee = 'authenticated' and privilege_type = 'UPDATE'`);
-    expect(c.rows.map((r) => r.column_name).sort()).toEqual(['acceso_objetivos', 'nombre', 'rol']);
+    expect(c.rows.map((r) => r.column_name).sort()).toEqual(['nombre', 'rol']);
   });
 
   it('el esquema de ayudas (casa_aux) no está expuesto por la API', async () => {

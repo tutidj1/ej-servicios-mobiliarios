@@ -49,7 +49,7 @@ for (const p of cfg.personas) {
     user = r.data.user;
   }
   ids[p.clave] = user.id;
-  await ok(sb.from('personas').upsert({ id: user.id, hogar_id: hogar.id, nombre: p.nombre, rol: p.rol, acceso_objetivos: !!p.acceso_objetivos }), 'persona ' + p.nombre);
+  await ok(sb.from('personas').upsert({ id: user.id, hogar_id: hogar.id, nombre: p.nombre, rol: p.rol }), 'persona ' + p.nombre);
   console.log('lista       ', p.nombre, '·', p.rol);
 }
 

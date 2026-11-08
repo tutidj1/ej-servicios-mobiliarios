@@ -15,15 +15,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearClienteCasa, descartarCliente } from './cliente';
 import {
-  activarBiometria, borrarBoveda, cambiarPin as cambiarPinBoveda, crearBoveda, desbloquearConBiometria,
+  activarBiometria, borrarBoveda, borrarSiTokenIgual, cambiarPin as cambiarPinBoveda, crearBoveda, desbloquearConBiometria,
   desbloquearConPin, ErrorBoveda, guardarToken, leerBoveda, quitarBiometria,
 } from './boveda';
 import { biometriaDisponible } from './biometria';
+import { clasificarErrorRefresh } from './refresh';
 
 export const MINUTOS_INACTIVIDAD = 5;
 const INACTIVIDAD_MS = MINUTOS_INACTIVIDAD * 60 * 1000;
 
-export type PersonaCasa = { id: string; nombre: string; rol: 'adulto' | 'admin_tecnico' | 'hijo'; acceso_objetivos: boolean };
+export type PersonaCasa = { id: string; nombre: string; rol: 'adulto' | 'admin_tecnico' | 'hijo' };
 
 type Fase = 'cargando' | 'sin_boveda' | 'configurar_pin' | 'bloqueada' | 'abierta';
 
@@ -107,7 +108,7 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
   }, []);
 
   const cargarPersona = useCallback(async (c: SupabaseClient, id: string): Promise<PersonaCasa> => {
-    const { data, error } = await c.from('personas').select('id, nombre, rol, acceso_objetivos').eq('id', id).single();
+    const { data, error } = await c.from('personas').select('id, nombre, rol').eq('id', id).single();
     if (error || !data) throw new Error('No se pudo cargar tu perfil.');
     return data as PersonaCasa;
   }, []);
@@ -163,18 +164,16 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
   }, [abrirSesion]);
 
   // ---- desbloqueo ----
-  const entrarConToken = useCallback(async (refreshToken: string, clave: CryptoKey, personaId: string) => {
+  const entrarConToken = useCallback(async (refreshToken: string, clave: CryptoKey, personaId: string, ctUsado: string) => {
     const c = crearClienteCasa();
     const { data, error } = await c.auth.refreshSession({ refresh_token: refreshToken });
-    if (error && (error.name === 'AuthRetryableFetchError' || !('status' in error) || !error.status || error.status >= 500)) {
-      // Sin conexión o servidor caído: la bóveda queda intacta y se puede reintentar.
-      descartarCliente(c);
-      throw new Error('SIN_RED');
-    }
     if (error || !data.session) {
       descartarCliente(c);
-      // El servidor dice que el token ya no sirve (vencido o revocado): hay que pedir una invitación nueva.
-      await borrarBoveda().catch(() => {});
+      // La bóveda se borra SOLO si el servidor respondió explícitamente que el token es inválido o venció.
+      // Sin red, timeouts, 5xx, 429 o cualquier otra cosa: queda intacta y se reintenta.
+      if (clasificarErrorRefresh(error) !== 'invalido') throw new Error('SIN_RED');
+      const borrada = await borrarSiTokenIgual(ctUsado).catch(() => false);
+      if (!borrada) throw new Error('SIN_RED'); // otra pestaña ya la renovó: no se toca
       setNombre(null);
       setTieneBiometria(false);
       setAviso('Tu acceso en este dispositivo venció. Pedí una invitación nueva para volver a entrar.');
@@ -189,7 +188,7 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
   const desbloquearPin = useCallback(async (pin: string) => {
     try {
       const b = await desbloquearConPin(pin);
-      const ok = await entrarConToken(b.refreshToken, b.claveDatos, b.registro.personaId);
+      const ok = await entrarConToken(b.refreshToken, b.claveDatos, b.registro.personaId, b.registro.token.ct);
       return { ok };
     } catch (e) {
       if (e instanceof Error && e.message === 'SIN_RED') return { ok: false, sinRed: true };
@@ -208,7 +207,7 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
   const desbloquearBiometria = useCallback(async () => {
     try {
       const b = await desbloquearConBiometria();
-      return await entrarConToken(b.refreshToken, b.claveDatos, b.registro.personaId);
+      return await entrarConToken(b.refreshToken, b.claveDatos, b.registro.personaId, b.registro.token.ct);
     } catch {
       return false; // cancelada o fallida: sigue disponible el PIN
     }

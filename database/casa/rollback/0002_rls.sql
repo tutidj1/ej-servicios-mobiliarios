@@ -10,8 +10,6 @@ drop policy if exists reglas_categoria_solo_dueno on public.reglas_categoria;
 drop policy if exists obligaciones_del_hogar on public.obligaciones;
 drop policy if exists obligacion_instancias_del_hogar on public.obligacion_instancias;
 drop policy if exists hijos_del_hogar on public.hijos;
-drop policy if exists objetivos_con_acceso on public.objetivos;
-drop policy if exists objetivo_movimientos_con_acceso on public.objetivo_movimientos;
 drop policy if exists personas_lectura on public.personas;
 drop policy if exists personas_admin on public.personas;
 drop policy if exists hogar_propio on public.hogar;

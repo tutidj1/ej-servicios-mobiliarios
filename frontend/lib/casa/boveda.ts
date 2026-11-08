@@ -207,5 +207,17 @@ export async function cambiarPin(
   });
 }
 
+/**
+ * Borra la bóveda SOLO si todavía guarda el mismo token que acaba de ser rechazado.
+ * Si otra pestaña ya lo renovó y guardó uno nuevo, esa bóveda sirve y no se toca.
+ */
+export async function borrarSiTokenIgual(ctUsado: string, almacen: AlmacenBoveda = almacenIndexedDb): Promise<boolean> {
+  const reg = await almacen.leer();
+  if (!reg) return false;
+  if (reg.token.ct !== ctUsado) return false;
+  await almacen.borrar();
+  return true;
+}
+
 export const leerBoveda = (almacen: AlmacenBoveda = almacenIndexedDb) => almacen.leer();
 export const borrarBoveda = (almacen: AlmacenBoveda = almacenIndexedDb) => almacen.borrar();
