@@ -38,7 +38,7 @@ type Contexto = {
   aviso: string | null;
   canjearInvitacion(tokenHash: string): Promise<void>;
   crearPin(pin: string): Promise<void>;
-  desbloquearPin(pin: string): Promise<{ ok: boolean; restantes?: number }>;
+  desbloquearPin(pin: string): Promise<{ ok: boolean; restantes?: number; sinRed?: boolean }>;
   desbloquearBiometria(): Promise<boolean>;
   bloquear(): void;
   salirDeEsteDispositivo(): Promise<void>;
@@ -154,7 +154,9 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
     if (!pend) throw new Error('Falta la invitación.');
     // Si había una bóveda de otra cuenta en este dispositivo, se reemplaza.
     await borrarBoveda().catch(() => {});
-    const { claveDatos } = await crearBoveda({ personaId: pend.personaId, nombre: pend.nombre, refreshToken: pend.refreshToken, pin });
+    // El cliente pudo renovar el token mientras se elegía el PIN: se guarda el más reciente.
+    const ultimo = (await pend.cliente.auth.getSession()).data.session?.refresh_token ?? pend.refreshToken;
+    const { claveDatos } = await crearBoveda({ personaId: pend.personaId, nombre: pend.nombre, refreshToken: ultimo, pin });
     pendienteRef.current = null;
     setTieneBiometria(false);
     await abrirSesion(pend.cliente, claveDatos, pend.personaId);
@@ -164,9 +166,14 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
   const entrarConToken = useCallback(async (refreshToken: string, clave: CryptoKey, personaId: string) => {
     const c = crearClienteCasa();
     const { data, error } = await c.auth.refreshSession({ refresh_token: refreshToken });
+    if (error && (error.name === 'AuthRetryableFetchError' || !('status' in error) || !error.status || error.status >= 500)) {
+      // Sin conexión o servidor caído: la bóveda queda intacta y se puede reintentar.
+      descartarCliente(c);
+      throw new Error('SIN_RED');
+    }
     if (error || !data.session) {
       descartarCliente(c);
-      // El token ya no sirve (vencido o revocado): hay que pedir una invitación nueva.
+      // El servidor dice que el token ya no sirve (vencido o revocado): hay que pedir una invitación nueva.
       await borrarBoveda().catch(() => {});
       setNombre(null);
       setTieneBiometria(false);
@@ -185,6 +192,7 @@ export function ProveedorCasa({ children }: { children: ReactNode }) {
       const ok = await entrarConToken(b.refreshToken, b.claveDatos, b.registro.personaId);
       return { ok };
     } catch (e) {
+      if (e instanceof Error && e.message === 'SIN_RED') return { ok: false, sinRed: true };
       if (e instanceof ErrorBoveda && e.codigo === 'PIN_INCORRECTO') return { ok: false, restantes: e.restantes };
       if (e instanceof ErrorBoveda && e.codigo === 'BOVEDA_BORRADA') {
         setNombre(null);

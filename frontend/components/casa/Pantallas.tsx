@@ -47,8 +47,12 @@ export function PantallaPin() {
     const r = await desbloquearPin(valor);
     setTrabajando(false);
     if (r.ok) return;
-    setError(true);
     setPin('');
+    if (r.sinRed) {
+      setMensaje('Sin conexión: no pudimos abrir tu sesión. Tu PIN no se descontó; probá de nuevo cuando tengas internet.');
+      return;
+    }
+    setError(true);
     window.setTimeout(() => setError(false), 400);
     if (r.restantes !== undefined) {
       setMensaje(r.restantes === 1 ? 'PIN incorrecto. Te queda 1 intento antes de que se borre el acceso.' : `PIN incorrecto. Te quedan ${r.restantes} intentos.`);
