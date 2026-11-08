@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Manrope } from 'next/font/google';
-import './globals.css';
+import '../globals.css';
 import Script from 'next/script';
 import MedirWhatsapp from '@/components/MedirWhatsapp';
 import ScrollSuave from "@/components/ScrollSuave";

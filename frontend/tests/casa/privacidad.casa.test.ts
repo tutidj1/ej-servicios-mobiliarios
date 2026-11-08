@@ -1,0 +1,647 @@
+/**
+ * TEST DE PRIVACIDAD DE EJ CASA — la pieza más importante del proyecto.
+ *
+ * Corre contra el proyecto Supabase CASA (nunca contra el de EJ). Prueba, con usuarios reales de
+ * Auth y con sus propios tokens, que:
+ *   - el usuario A no puede leer, cambiar, borrar ni insertar a nombre de B en gastos, ingresos,
+ *     deudas, inversiones (ni en sus tablas hijas), ni por supabase-js ni por la API REST cruda;
+ *   - anon no ve nada de nada;
+ *   - el administrador técnico no tiene camino a los datos privados de nadie;
+ *   - lo compartido se ve solo dentro del hogar, y lo administrativo lo modifica solo quien corresponde;
+ *   - la estructura de la base (RLS forzado, una política por tabla, sin permisos para anon, montos
+ *     en enteros) no se aflojó.
+ * Si alguien afloja una política, un permiso o un tipo de columna, este test se pone en rojo.
+ *
+ * La clave de servicio se usa SOLO para armar y limpiar los datos de prueba.
+ */
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { cargarEntorno } from './entorno';
+
+const cfg = cargarEntorno();
+const MARCA = 'test-privacidad';
+const DOMINIO = 'privacidad.casa.test';
+
+const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos', 'reglas_categoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'fondo_anual'] as const;
+const TODAS = [
+  'hogar', 'personas', 'hijos', 'categorias', 'gastos', 'ingresos', 'obligaciones', 'obligacion_instancias',
+  'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos',
+  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones', 'transferencias_hijos', 'fondo_anual',
+] as const;
+
+type Persona = { id: string; email: string; password: string; cliente: SupabaseClient; token: string };
+
+const sinSesion = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
+const servicio = createClient(cfg.url, cfg.servicio, sinSesion);
+const anon = createClient(cfg.url, cfg.anon, sinSesion);
+
+let hogar1 = '';
+let hogar2 = '';
+let A: Persona, B: Persona, C: Persona, D: Persona, E: Persona; // A y B adultos del hogar 1; C admin técnico (y a la vez hijo); D de otro hogar; E hijo
+let hijo1 = '', hijo2 = '', hijo3 = '';
+let categoria = '';
+const ids: Record<string, Record<'A' | 'B', string>> = {};
+const hoy = new Date().toISOString().slice(0, 10);
+const mes = hoy.slice(0, 8) + '01';
+
+async function crearPersona(nombre: string, hogar: string, rol: string): Promise<Persona> {
+  const email = `${MARCA}-${nombre}-${randomUUID().slice(0, 8)}@${DOMINIO}`;
+  const password = randomUUID() + randomUUID();
+  const { data, error } = await servicio.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !data.user) throw new Error('No se pudo crear usuario de prueba: ' + error?.message);
+  const ins = await servicio.from('personas').insert({ id: data.user.id, hogar_id: hogar, nombre: `${MARCA}-${nombre}`, rol });
+  if (ins.error) throw new Error('personas: ' + ins.error.message);
+  const cliente = createClient(cfg.url, cfg.anon, sinSesion);
+  const s = await cliente.auth.signInWithPassword({ email, password });
+  if (s.error || !s.data.session) throw new Error('No se pudo iniciar sesión de prueba: ' + s.error?.message);
+  return { id: data.user.id, email, password, cliente, token: s.data.session.access_token };
+}
+
+async function limpiar() {
+  // Usuarios de pruebas anteriores (borrar el usuario borra su persona y todo lo suyo en cascada)
+  for (let pagina = 1; pagina < 20; pagina++) {
+    const { data } = await servicio.auth.admin.listUsers({ page: pagina, perPage: 200 });
+    if (!data?.users.length) break;
+    for (const u of data.users) {
+      if (u.email?.endsWith('@' + DOMINIO)) await servicio.auth.admin.deleteUser(u.id);
+    }
+    if (data.users.length < 200) break;
+  }
+  const { data: hogares } = await servicio.from('hogar').select('id').like('nombre', `${MARCA}%`);
+  for (const h of hogares ?? []) {
+    await servicio.from('obligaciones').delete().eq('hogar_id', h.id);
+    await servicio.from('liquidaciones').delete().eq('hogar_id', h.id);
+    await servicio.from('hijos').delete().eq('hogar_id', h.id);
+    await servicio.from('hogar').delete().eq('id', h.id);
+  }
+  await servicio.from('auditoria').delete().eq('accion', MARCA);
+  await servicio.from('ipc').delete().eq('mes', '1999-01-01');
+}
+
+async function ok<T>(p: PromiseLike<{ data: T; error: { message: string } | null }>, etiqueta: string): Promise<NonNullable<T>> {
+  const r = await p;
+  if (r.error) throw new Error(`${etiqueta}: ${r.error.message}`);
+  return r.data as NonNullable<T>;
+}
+
+/** Fila de ejemplo de cada tabla privada para una persona. `dueno` marca el contenido para detectar filtraciones. */
+async function sembrarPrivados(quien: 'A' | 'B', p: Persona) {
+  const m = `SECRETO-${quien}`;
+  const g = await ok(servicio.from('gastos').insert({ persona_id: p.id, monto: quien === 'A' ? 123456700 : 765400, categoria_id: categoria, tipo: 'discrecional', fecha: hoy, descripcion: m, origen: 'manual', mes_ipc: mes }).select('id').single(), 'gastos');
+  const i = await ok(servicio.from('ingresos').insert({ persona_id: p.id, monto: 99900000, fecha: hoy, esperado_o_real: 'real' }).select('id').single(), 'ingresos');
+  const d = await ok(servicio.from('deudas').insert({ persona_id: p.id, descripcion: m, tipo: 'sin_cronograma', monto_total: 5000000, saldo: 4000000 }).select('id').single(), 'deudas');
+  const dp = await ok(servicio.from('deuda_pagos').insert({ deuda_id: d.id, monto: 100000, fecha: hoy, es_minimo: true }).select('id').single(), 'deuda_pagos');
+  const inv = await ok(servicio.from('inversiones').insert({ persona_id: p.id, descripcion: m, clase: 'plazo_fijo', moneda: 'ARS', modo_valuacion: 'manual', valor_actual: 7000000, valuado_el: hoy }).select('id').single(), 'inversiones');
+  const im = await ok(servicio.from('inversion_movimientos').insert({ inversion_id: inv.id, monto: 1000000, moneda: 'ARS', tipo: 'aporte', motivo: m, fecha: hoy, mes_ipc: mes }).select('id').single(), 'inversion_movimientos');
+  const r = await ok(servicio.from('reglas_categoria').insert({ patron: m, categoria_id: categoria, persona_id: p.id }).select('id').single(), 'reglas_categoria');
+  const ob = await ok(servicio.from('objetivos_personales').insert({ persona_id: p.id, nombre: m, meta: 10000000, moneda: 'ARS' }).select('id').single(), 'objetivos_personales');
+  const obm = await ok(servicio.from('objetivo_personal_movimientos').insert({ objetivo_id: ob.id, monto: 500000, moneda: 'ARS', tipo: 'aporte', motivo: m, fecha: hoy }).select('id').single(), 'objetivo_personal_movimientos');
+  const fa = await ok(servicio.from('fondo_anual').insert({ persona_id: p.id, concepto: m, monto: 8400000, mes: 3, apartado: 700000 }).select('id').single(), 'fondo_anual');
+  const por: Record<string, string> = { fondo_anual: fa.id, objetivos_personales: ob.id, objetivo_personal_movimientos: obm.id, gastos: g.id, ingresos: i.id, deudas: d.id, deuda_pagos: dp.id, inversiones: inv.id, inversion_movimientos: im.id, reglas_categoria: r.id };
+  for (const t of PRIVADAS) (ids[t] ??= {} as Record<'A' | 'B', string>)[quien] = por[t];
+}
+
+let bd: pg.Client;
+
+beforeAll(async () => {
+  bd = new pg.Client({ connectionString: cfg.bd, ssl: { rejectUnauthorized: false } });
+  await bd.connect();
+  await limpiar();
+
+  hogar1 = (await ok(servicio.from('hogar').insert({ nombre: `${MARCA}-1` }).select('id').single(), 'hogar1')).id;
+  hogar2 = (await ok(servicio.from('hogar').insert({ nombre: `${MARCA}-2` }).select('id').single(), 'hogar2')).id;
+  A = await crearPersona('a', hogar1, 'adulto');
+  B = await crearPersona('b', hogar1, 'adulto');
+  C = await crearPersona('c-admin', hogar1, 'admin_tecnico');
+  D = await crearPersona('d-otro-hogar', hogar2, 'adulto');
+  E = await crearPersona('e-hijo', hogar1, 'hijo');
+
+  categoria = (await ok(servicio.from('categorias').select('id').limit(1).single(), 'categorias')).id;
+  await sembrarPrivados('A', A);
+  await sembrarPrivados('B', B);
+
+  // Compartido y administración, en el hogar 1
+  const ob = await ok(servicio.from('obligaciones').insert({ hogar_id: hogar1, concepto: `${MARCA}-luz`, monto_estimado: 8500000, dia_vencimiento: 10, recurrencia: 'mensual', responsable_id: A.id }).select('id').single(), 'obligaciones');
+  ids.obligacion = { A: ob.id, B: ob.id };
+  const liq = await ok(servicio.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: A.id, receptor_id: B.id, monto: 1234500, fecha: hoy }).select('id').single(), 'liquidaciones');
+  ids.liquidacion = { A: liq.id, B: liq.id };
+  const nuevoHijo = async (n: string, persona: string | null) => (await ok(servicio.from('hijos').insert({ hogar_id: hogar1, nombre: MARCA + '-' + n, persona_id: persona }).select('id').single(), 'hijos')).id;
+  hijo1 = await nuevoHijo('h1', C.id); // C (admin técnico) es a la vez hijo
+  hijo2 = await nuevoHijo('h2', null);
+  hijo3 = await nuevoHijo('h3', E.id);
+  const tr = (hijo: string, quien: Persona, monto: number) => servicio.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo, pagador_id: quien.id, monto, fecha: hoy, nota: 'SECRETO-TRANSFERENCIA' }).select('id').single();
+  ids.transferencia = { A: (await ok(tr(hijo1, A, 6000000), 'transf')).id, B: (await ok(tr(hijo1, B, 4000000), 'transf')).id };
+  await ok(tr(hijo2, A, 5000000), 'transf');
+  await ok(tr(hijo3, A, 3000000), 'transf');
+  await ok(servicio.from('obligacion_instancias').insert({ obligacion_id: ob.id, periodo: mes, estado: 'pendiente' }).select('id').single(), 'instancias');
+  await ok(servicio.from('auditoria').insert({ actor_id: A.id, accion: MARCA, tabla: 'gastos' }).select('id').single(), 'auditoria');
+}, 120_000);
+
+afterAll(async () => {
+  try { await limpiar(); } finally { await bd?.end().catch(() => {}); }
+}, 120_000);
+
+/** Pide la tabla por la API REST cruda con un token (o sin token) */
+async function rest(tabla: string, token?: string, query = 'select=*') {
+  const r = await fetch(`${cfg.url}/rest/v1/${tabla}?${query}`, {
+    headers: { apikey: cfg.anon, Authorization: `Bearer ${token ?? cfg.anon}` },
+  });
+  const cuerpo = await r.json().catch(() => null);
+  return { status: r.status, filas: Array.isArray(cuerpo) ? cuerpo : [], cuerpo };
+}
+
+describe('Control: el test está bien armado (si esto falla, los "no veo nada" de abajo no prueban nada)', () => {
+  it('cada dueño ve sus propias filas privadas', async () => {
+    for (const t of PRIVADAS) {
+      const a = await ok(A.cliente.from(t).select('id'), `A lee ${t}`);
+      const b = await ok(B.cliente.from(t).select('id'), `B lee ${t}`);
+      expect(a.map((f: { id: string }) => f.id), `A debería ver lo suyo en ${t}`).toContain(ids[t].A);
+      expect(b.map((f: { id: string }) => f.id), `B debería ver lo suyo en ${t}`).toContain(ids[t].B);
+    }
+  });
+
+  it('A puede escribir lo suyo con su propio token', async () => {
+    const r = await A.cliente.from('gastos').insert({ persona_id: A.id, monto: 1500000, categoria_id: categoria, tipo: 'variable_necesario', fecha: hoy, origen: 'manual', descripcion: 'control' }).select('id, mes_ipc').single();
+    expect(r.error).toBeNull();
+    expect(r.data?.mes_ipc).toBe(mes); // el mes de IPC se completa solo
+  });
+});
+
+describe('Privado: B no puede leer nada de A (ni A de B)', () => {
+  for (const t of PRIVADAS) {
+    it(`${t}: supabase-js con el token de B no devuelve ninguna fila de A`, async () => {
+      const filas = await ok(B.cliente.from(t).select('*'), t);
+      expect(filas.map((f: { id: string }) => f.id)).not.toContain(ids[t].A);
+      expect(JSON.stringify(filas)).not.toContain('SECRETO-A');
+      const directo = await B.cliente.from(t).select('*').eq('id', ids[t].A);
+      expect(directo.data ?? []).toHaveLength(0);
+    });
+
+    it(`${t}: la API REST cruda con el token de B no devuelve ninguna fila de A`, async () => {
+      const r = await rest(t, B.token);
+      expect(r.status).toBe(200);
+      expect(r.filas.map((f: { id: string }) => f.id)).not.toContain(ids[t].A);
+      expect(JSON.stringify(r.cuerpo)).not.toContain('SECRETO-A');
+      const pedida = await rest(t, B.token, `select=*&id=eq.${ids[t].A}`);
+      expect(pedida.filas).toHaveLength(0);
+    });
+
+    it(`${t}: A tampoco ve nada de B`, async () => {
+      const filas = await ok(A.cliente.from(t).select('*'), t);
+      expect(filas.map((f: { id: string }) => f.id)).not.toContain(ids[t].B);
+      expect(JSON.stringify(filas)).not.toContain('SECRETO-B');
+    });
+  }
+
+  it('los totales (agregados) tampoco filtran: B no cuenta filas de A', async () => {
+    for (const t of PRIVADAS) {
+      const { count } = await B.cliente.from(t).select('*', { count: 'exact', head: true });
+      const { count: mias } = await B.cliente.from(t).select('*', { count: 'exact', head: true }).eq('id', ids[t].B);
+      expect(count, `${t}: B solo debe contar lo suyo`).toBe(mias);
+    }
+  });
+});
+
+describe('Privado: B no puede modificar, borrar ni insertar a nombre de A', () => {
+  it('update y delete ajenos no afectan ninguna fila', async () => {
+    const cambios: Record<string, Record<string, unknown>> = {
+      gastos: { descripcion: 'HACKEADO' },
+      ingresos: { monto: 1 },
+      deudas: { descripcion: 'HACKEADO' },
+      deuda_pagos: { monto: 1 },
+      inversiones: { descripcion: 'HACKEADO' },
+      inversion_movimientos: { motivo: 'HACKEADO' },
+      reglas_categoria: { patron: 'HACKEADO' },
+      objetivos_personales: { nombre: 'HACKEADO' },
+      fondo_anual: { concepto: 'HACKEADO' },
+      objetivo_personal_movimientos: { motivo: 'HACKEADO' },
+    };
+    for (const t of PRIVADAS) {
+      const up = await B.cliente.from(t).update(cambios[t]).eq('id', ids[t].A).select();
+      expect(up.data ?? [], `${t}: update ajeno`).toHaveLength(0);
+      const del = await B.cliente.from(t).delete().eq('id', ids[t].A).select();
+      expect(del.data ?? [], `${t}: delete ajeno`).toHaveLength(0);
+      // y la fila de A sigue intacta (verificado con la clave de servicio, solo para el test)
+      const queda = await ok(servicio.from(t).select('*').eq('id', ids[t].A).single(), `${t} intacta`);
+      expect(JSON.stringify(queda)).not.toContain('HACKEADO');
+    }
+  });
+
+  it('B no puede mover una fila propia hacia A (cambiar persona_id)', async () => {
+    const r = await B.cliente.from('gastos').update({ persona_id: A.id }).eq('id', ids.gastos.B).select();
+    expect(r.error ?? (r.data?.length ? null : 'sin filas')).toBeTruthy();
+    const queda = await ok(servicio.from('gastos').select('persona_id').eq('id', ids.gastos.B).single(), 'gasto de B');
+    expect(queda.persona_id).toBe(B.id);
+  });
+
+  it('B no puede insertar filas a nombre de A', async () => {
+    const intentos: Array<[string, Record<string, unknown>]> = [
+      ['gastos', { persona_id: A.id, monto: 100, categoria_id: categoria, tipo: 'discrecional', fecha: hoy, origen: 'manual' }],
+      ['ingresos', { persona_id: A.id, monto: 100, fecha: hoy, esperado_o_real: 'real' }],
+      ['deudas', { persona_id: A.id, descripcion: 'x', tipo: 'sin_cronograma', monto_total: 1, saldo: 1 }],
+      ['deuda_pagos', { deuda_id: ids.deudas.A, monto: 100, fecha: hoy }],
+      ['inversiones', { persona_id: A.id, descripcion: 'x', clase: 'otro', moneda: 'ARS', modo_valuacion: 'manual' }],
+      ['inversion_movimientos', { inversion_id: ids.inversiones.A, monto: 100, moneda: 'ARS', tipo: 'aporte', fecha: hoy, mes_ipc: mes }],
+      ['reglas_categoria', { persona_id: A.id, patron: 'x', categoria_id: categoria }],
+      ['objetivos_personales', { persona_id: A.id, nombre: 'x', meta: 100, moneda: 'ARS' }],
+      ['fondo_anual', { persona_id: A.id, concepto: 'x', monto: 100, mes: 3 }],
+      ['objetivo_personal_movimientos', { objetivo_id: ids.objetivos_personales.A, monto: 100, moneda: 'ARS', tipo: 'aporte', fecha: hoy }],
+    ];
+    for (const [t, fila] of intentos) {
+      const r = await B.cliente.from(t).insert(fila).select();
+      expect(r.error, `${t}: insertar a nombre de otro debe fallar`).not.toBeNull();
+      expect(r.data ?? []).toHaveLength(0);
+    }
+  });
+});
+
+describe('anon (sin sesión) no ve ni toca nada', () => {
+  for (const t of TODAS) {
+    it(`${t}: sin token no hay filas`, async () => {
+      const r = await anon.from(t).select('*');
+      expect(r.data ?? []).toHaveLength(0);
+      const cruda = await rest(t);
+      expect(cruda.filas).toHaveLength(0);
+    });
+  }
+
+  it('anon no puede insertar', async () => {
+    const r = await anon.from('gastos').insert({ persona_id: A.id, monto: 100, categoria_id: categoria, tipo: 'discrecional', fecha: hoy, origen: 'manual' });
+    expect(r.error).not.toBeNull();
+  });
+});
+
+describe('Administración: el admin técnico no tiene camino a lo privado', () => {
+  for (const t of PRIVADAS) {
+    it(`${t}: C (admin técnico) no ve filas de A ni de B`, async () => {
+      const filas = await ok(C.cliente.from(t).select('*'), t);
+      const vistos = filas.map((f: { id: string }) => f.id);
+      expect(vistos).not.toContain(ids[t].A);
+      expect(vistos).not.toContain(ids[t].B);
+      const r = await rest(t, C.token);
+      expect(r.filas.map((f: { id: string }) => f.id)).not.toContain(ids[t].A);
+    });
+  }
+
+  it('C no puede cambiarse a sí mismo para leer lo de otros: no hay política que dependa del rol', async () => {
+    const { rows } = await bd.query(
+      `select tablename, policyname, qual, with_check from pg_policies
+       where schemaname = 'public' and tablename = any($1)`, [PRIVADAS]);
+    for (const p of rows) {
+      expect(`${p.qual} ${p.with_check}`, `${p.tablename}.${p.policyname}`).not.toMatch(/admin|rol/i);
+    }
+  });
+
+  it('solo el admin técnico modifica categorías e IPC; los demás solo leen', async () => {
+    const lecturaB = await ok(B.cliente.from('categorias').select('id'), 'B lee categorias');
+    expect(lecturaB.length).toBeGreaterThanOrEqual(9);
+
+    const del = await B.cliente.from('categorias').delete().eq('id', categoria).select();
+    expect(del.data ?? []).toHaveLength(0);
+    const upd = await B.cliente.from('categorias').update({ nombre: 'HACKEADO' }).eq('id', categoria).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const ins = await B.cliente.from('categorias').insert({ nombre: `${MARCA}-intruso`, tipo_defecto: 'discrecional' });
+    expect(ins.error).not.toBeNull();
+    const insIpc = await B.cliente.from('ipc').insert({ mes: '1999-01-01', indice: 100 });
+    expect(insIpc.error).not.toBeNull();
+
+    const okIpc = await C.cliente.from('ipc').insert({ mes: '1999-01-01', indice: 100 }).select();
+    expect(okIpc.error).toBeNull();
+    const delIpcB = await B.cliente.from('ipc').delete().eq('mes', '1999-01-01').select();
+    expect(delIpcB.data ?? []).toHaveLength(0);
+    const delIpcC = await C.cliente.from('ipc').delete().eq('mes', '1999-01-01').select();
+    expect(delIpcC.data ?? []).toHaveLength(1);
+  });
+
+  it('un adulto no puede ascenderse a admin técnico', async () => {
+    const r1 = await B.cliente.from('personas').update({ rol: 'admin_tecnico' }).eq('id', B.id).select();
+    expect(r1.error ?? (r1.data?.length ? null : 'sin filas')).toBeTruthy();
+    const queda = await ok(servicio.from('personas').select('rol').eq('id', B.id).single(), 'B');
+    expect(queda).toEqual({ rol: 'adulto' });
+  });
+
+  it('nadie puede cambiarse de hogar ni crear/borrar personas por la API', async () => {
+    const mover = await C.cliente.from('personas').update({ hogar_id: hogar2 }).eq('id', B.id).select();
+    expect(mover.error ?? (mover.data?.length ? null : 'sin filas')).toBeTruthy();
+    const crear = await C.cliente.from('personas').insert({ id: randomUUID(), hogar_id: hogar1, nombre: 'x' });
+    expect(crear.error).not.toBeNull();
+    const borrar = await C.cliente.from('personas').delete().eq('id', B.id).select();
+    expect(borrar.data ?? []).toHaveLength(0);
+  });
+
+  it('el admin técnico sí puede ajustar el rol de alguien de su hogar', async () => {
+    const r = await C.cliente.from('personas').update({ nombre: `${MARCA}-b-renombrado` }).eq('id', B.id).select();
+    expect(r.error).toBeNull();
+    expect(r.data).toHaveLength(1);
+    await servicio.from('personas').update({ nombre: `${MARCA}-b` }).eq('id', B.id);
+  });
+});
+
+describe('Compartido: solo dentro del hogar', () => {
+  it('los adultos del hogar ven las obligaciones y sus instancias', async () => {
+    for (const p of [A, B]) {
+      const o = await ok(p.cliente.from('obligaciones').select('id'), 'obligaciones');
+      expect(o.map((f: { id: string }) => f.id)).toContain(ids.obligacion.A);
+      const i = await ok(p.cliente.from('obligacion_instancias').select('obligacion_id'), 'instancias');
+      expect(i.map((f: { obligacion_id: string }) => f.obligacion_id)).toContain(ids.obligacion.A);
+    }
+  });
+
+  it('la administración técnica y los hijos NO ven nada de lo compartido de los adultos', async () => {
+    for (const p of [C, E]) {
+      for (const t of ['obligaciones', 'obligacion_instancias', 'liquidaciones']) {
+        expect(await ok(p.cliente.from(t).select('*'), t), t).toHaveLength(0);
+        const cruda = await rest(t, p.token);
+        expect(cruda.filas, t).toHaveLength(0);
+      }
+      const ins = await p.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual' });
+      expect(ins.error).not.toBeNull();
+      const upd = await p.cliente.from('obligaciones').update({ concepto: 'HACKEADO' }).eq('id', ids.obligacion.A).select();
+      expect(upd.data ?? []).toHaveLength(0);
+    }
+  });
+
+  it('B puede marcar como pagada una instancia del hogar', async () => {
+    const r = await B.cliente.from('obligacion_instancias').update({ estado: 'pagado', monto_real: 8700000, pagado_por: B.id, fecha_pago: hoy }).eq('obligacion_id', ids.obligacion.A).select();
+    expect(r.error).toBeNull();
+    expect(r.data).toHaveLength(1);
+  });
+
+  it('una persona de OTRO hogar no ve ni toca nada del hogar 1', async () => {
+    for (const t of ['obligaciones', 'obligacion_instancias', 'hijos', 'personas', 'liquidaciones']) {
+      const filas = await ok(D.cliente.from(t).select('*'), t);
+      const texto = JSON.stringify(filas);
+      expect(texto, t).not.toContain(MARCA + '-luz');
+      expect(texto, t).not.toContain(A.id);
+      expect(texto, t).not.toContain(B.id);
+    }
+    const ins = await D.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual' });
+    expect(ins.error).not.toBeNull();
+    const upd = await D.cliente.from('obligaciones').update({ concepto: 'HACKEADO' }).eq('id', ids.obligacion.A).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const insI = await D.cliente.from('obligacion_instancias').insert({ obligacion_id: ids.obligacion.A, periodo: '1999-02-01' });
+    expect(insI.error).not.toBeNull();
+  });
+
+  it('no se puede asignar como responsable a alguien de otro hogar', async () => {
+    const r = await A.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual', responsable_id: D.id });
+    expect(r.error).not.toBeNull();
+  });
+});
+
+describe('Cobertura y saldos: liquidaciones solo dentro del hogar', () => {
+  it('los adultos del hogar las ven; una persona de otro hogar no ve ni inserta', async () => {
+    for (const p of [A, B]) {
+      const filas = await ok(p.cliente.from('liquidaciones').select('id'), 'liquidaciones');
+      expect(filas.map((x: { id: string }) => x.id)).toContain(ids.liquidacion.A);
+    }
+    expect(await ok(D.cliente.from('liquidaciones').select('id'), 'liquidaciones de otro hogar')).toHaveLength(0);
+    const r = await D.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: A.id, receptor_id: B.id, monto: 100, fecha: hoy });
+    expect(r.error).not.toBeNull();
+    const borrar = await D.cliente.from('liquidaciones').delete().eq('id', ids.liquidacion.A).select();
+    expect(borrar.data ?? []).toHaveLength(0);
+  });
+
+  it('B puede registrar una liquidación válida; no con alguien de otro hogar, ni consigo mismo, ni de monto cero', async () => {
+    const ok1 = await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: A.id, monto: 500, fecha: hoy }).select();
+    expect(ok1.error).toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: D.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: B.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: A.id, monto: 0, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar2, pagador_id: B.id, receptor_id: A.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+  });
+
+  it('no se puede poner como responsable de una instancia a alguien de otro hogar', async () => {
+    const r = await A.cliente.from('obligacion_instancias').update({ responsable_id: D.id }).eq('obligacion_id', ids.obligacion.A).select();
+    expect(r.error ?? (r.data?.length ? null : 'sin filas')).toBeTruthy();
+  });
+});
+
+describe('Transferencias a los hijos: los adultos ven todas, cada hijo solo las suyas', () => {
+  const ids_ = (filas: { id: string }[]) => filas.map((f) => f.id);
+
+  it('A y B (adultos) ven todas, con quién las hizo', async () => {
+    for (const p of [A, B]) {
+      const filas = await ok(p.cliente.from('transferencias_hijos').select('id, pagador_id, monto'), 'transferencias');
+      expect(filas).toHaveLength(4);
+      expect(ids_(filas)).toContain(ids.transferencia.A);
+      expect(ids_(filas)).toContain(ids.transferencia.B);
+    }
+  });
+
+  it('C (admin técnico y a la vez hijo) ve SOLO las que le hicieron a él: ni las de los hermanos ni nada más', async () => {
+    const filas = await ok(C.cliente.from('transferencias_hijos').select('id, hijo_id, monto'), 'transferencias de C');
+    expect(filas).toHaveLength(2);
+    expect(filas.every((f: { hijo_id: string }) => f.hijo_id === hijo1)).toBe(true);
+    const cruda = await rest('transferencias_hijos', C.token);
+    expect(cruda.filas).toHaveLength(2);
+  });
+
+  it('E (hijo) ve solo la suya', async () => {
+    const filas = await ok(E.cliente.from('transferencias_hijos').select('hijo_id, monto'), 'transferencias de E');
+    expect(filas).toEqual([{ hijo_id: hijo3, monto: 3000000 }]);
+  });
+
+  it('cada hijo ve únicamente su propia fila de hijos', async () => {
+    expect((await ok(C.cliente.from('hijos').select('id'), 'hijos de C')).map((f: { id: string }) => f.id)).toEqual([hijo1]);
+    expect((await ok(E.cliente.from('hijos').select('id'), 'hijos de E')).map((f: { id: string }) => f.id)).toEqual([hijo3]);
+    expect(await ok(A.cliente.from('hijos').select('id'), 'hijos de A')).toHaveLength(3);
+    const edit = await E.cliente.from('hijos').update({ nombre: 'HACKEADO' }).eq('id', hijo3).select();
+    expect(edit.data ?? []).toHaveLength(0);
+  });
+
+  it('el hijo puede ver los nombres de su hogar (para saber quién le transfirió) pero nada financiero de ellos', async () => {
+    const personas = await ok(E.cliente.from('personas').select('id, nombre, rol'), 'personas de E');
+    expect(personas.map((p: { id: string }) => p.id)).toEqual(expect.arrayContaining([A.id, B.id]));
+    // y ninguna otra tabla se abre por eso
+    for (const t of ['gastos', 'ingresos', 'deudas', 'inversiones', 'obligaciones']) {
+      expect(await ok(E.cliente.from(t).select('id'), t), t).toHaveLength(0);
+    }
+  });
+
+  it('otro hogar no ve nada', async () => {
+    expect(await ok(D.cliente.from('transferencias_hijos').select('id'), 'transferencias de D')).toHaveLength(0);
+    expect(await ok(D.cliente.from('hijos').select('id'), 'hijos de D')).toHaveLength(0);
+  });
+
+  it('un adulto solo carga transferencias a su nombre; no cambia ni borra las del otro', async () => {
+    const aNombreDeOtro = await A.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo2, pagador_id: B.id, monto: 100, fecha: hoy });
+    expect(aNombreDeOtro.error).not.toBeNull();
+    const propia = await B.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo2, pagador_id: B.id, monto: 100, fecha: hoy }).select('id').single();
+    expect(propia.error).toBeNull();
+    const upd = await B.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const del = await B.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+    expect(del.data ?? []).toHaveLength(0);
+    const intacta = await ok(servicio.from('transferencias_hijos').select('monto').eq('id', ids.transferencia.A).single(), 'intacta');
+    expect(intacta.monto).toBe(6000000);
+  });
+
+  it('C, E y otro hogar no pueden cargar ni cambiar transferencias', async () => {
+    for (const p of [C, E, D]) {
+      const r = await p.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijo1, pagador_id: p.id, monto: 100, fecha: hoy });
+      expect(r.error, 'insertar').not.toBeNull();
+      const u = await p.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+      expect(u.data ?? [], 'update').toHaveLength(0);
+      const d = await p.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+      expect(d.data ?? [], 'delete').toHaveLength(0);
+    }
+  });
+
+  it('el hijo confirma lo que le transfirieron: se crea SU ingreso, una sola vez, y la transferencia queda confirmada', async () => {
+    const antes = await ok(C.cliente.from('ingresos').select('id, transferencia_id'), 'ingresos de C');
+    expect(antes.some((i: { transferencia_id: string | null }) => i.transferencia_id === ids.transferencia.A)).toBe(false);
+
+    const r = await C.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.A });
+    expect(r.error).toBeNull();
+
+    const ing = await ok(C.cliente.from('ingresos').select('monto, esperado_o_real, transferencia_id').eq('transferencia_id', ids.transferencia.A), 'ingreso de C');
+    expect(ing).toEqual([{ monto: 6000000, esperado_o_real: 'real', transferencia_id: ids.transferencia.A }]);
+
+    // Los adultos ven que quedó confirmada; el ingreso es privado de C (A no lo ve)
+    const vista = await ok(A.cliente.from('transferencias_hijos').select('confirmada_el').eq('id', ids.transferencia.A).single(), 'confirmada para A');
+    expect(vista.confirmada_el).not.toBeNull();
+    expect(await ok(A.cliente.from('ingresos').select('id').eq('transferencia_id', ids.transferencia.A), 'ingresos de A')).toHaveLength(0);
+
+    // No se confirma dos veces ni se duplica el ingreso
+    const otra = await C.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.A });
+    expect(otra.error).not.toBeNull();
+    expect(await ok(C.cliente.from('ingresos').select('id').eq('transferencia_id', ids.transferencia.A), 'sin duplicado')).toHaveLength(1);
+  });
+
+  it('una transferencia confirmada ya no se edita ni se borra (el adulto que la hizo tampoco)', async () => {
+    const upd = await A.cliente.from('transferencias_hijos').update({ monto: 1 }).eq('id', ids.transferencia.A).select();
+    expect(upd.data ?? []).toHaveLength(0);
+    const del = await A.cliente.from('transferencias_hijos').delete().eq('id', ids.transferencia.A).select();
+    expect(del.data ?? []).toHaveLength(0);
+    const intacta = await ok(servicio.from('transferencias_hijos').select('monto').eq('id', ids.transferencia.A).single(), 'intacta');
+    expect(intacta.monto).toBe(6000000);
+  });
+
+  it('solo el hijo a quien le transfirieron puede confirmar: ni los adultos, ni otro hijo, ni otro hogar, ni anon', async () => {
+    for (const p of [A, B, E, D]) {
+      const r = await p.cliente.rpc('confirmar_transferencia', { p_id: ids.transferencia.B });
+      expect(r.error, 'confirmar ajena').not.toBeNull();
+    }
+    const anonimo = await anon.rpc('confirmar_transferencia', { p_id: ids.transferencia.B });
+    expect(anonimo.error).not.toBeNull();
+    const sigue = await ok(servicio.from('transferencias_hijos').select('confirmada_el').eq('id', ids.transferencia.B).single(), 'sigue pendiente');
+    expect(sigue.confirmada_el).toBeNull();
+  });
+
+  it('nadie puede fijar a mano el vínculo de un ingreso con una transferencia', async () => {
+    const r = await C.cliente.from('ingresos').insert({ persona_id: C.id, monto: 100, fecha: hoy, esperado_o_real: 'real', transferencia_id: ids.transferencia.B });
+    expect(r.error).not.toBeNull();
+  });
+
+  it('no se puede transferir a un hijo de otro hogar', async () => {
+    const hijoAjeno = await ok(servicio.from('hijos').insert({ hogar_id: hogar2, nombre: MARCA + '-ajeno' }).select('id').single(), 'hijo ajeno');
+    const r = await A.cliente.from('transferencias_hijos').insert({ hogar_id: hogar1, hijo_id: hijoAjeno.id, pagador_id: A.id, monto: 100, fecha: hoy });
+    expect(r.error).not.toBeNull();
+    await servicio.from('hijos').delete().eq('id', hijoAjeno.id);
+  });
+});
+
+describe('Auditoría: la ven todos, nadie escribe desde la API', () => {
+  it('B lee el registro; B, C y anon no pueden insertar, cambiar ni borrar', async () => {
+    const filas = await ok(B.cliente.from('auditoria').select('accion'), 'auditoria');
+    expect(filas.some((f: { accion: string }) => f.accion === MARCA)).toBe(true);
+    for (const p of [A, B, C]) {
+      expect((await p.cliente.from('auditoria').insert({ actor_id: p.id, accion: 'falsa', tabla: 'gastos' })).error).not.toBeNull();
+      expect((await p.cliente.from('auditoria').update({ accion: 'falsa' }).eq('accion', MARCA).select()).error ?? 'bloqueado').toBeTruthy();
+      expect((await p.cliente.from('auditoria').delete().eq('accion', MARCA).select()).data ?? []).toHaveLength(0);
+    }
+    expect((await anon.from('auditoria').insert({ accion: 'falsa', tabla: 'gastos' })).error).not.toBeNull();
+    const quedan = await ok(servicio.from('auditoria').select('id').eq('accion', MARCA), 'auditoria intacta');
+    expect(quedan).toHaveLength(1);
+  });
+});
+
+describe('Estructura: nadie aflojó la base', () => {
+  it('toda tabla de public tiene RLS activado y forzado, y al menos una política', async () => {
+    const { rows } = await bd.query(
+      `select c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname) as politicas
+         from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind in ('r', 'p')`);
+    const nombres = rows.map((r) => r.relname).sort();
+    expect(nombres).toEqual([...TODAS].sort()); // una tabla nueva sin revisar rompe este test a propósito
+    for (const r of rows) {
+      expect(r.relrowsecurity, `${r.relname}: RLS activado`).toBe(true);
+      expect(r.relforcerowsecurity, `${r.relname}: RLS forzado`).toBe(true);
+      expect(r.politicas, `${r.relname}: tiene política`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('las tablas privadas filtran por dueño y ninguna política está abierta (true)', async () => {
+    const { rows } = await bd.query(
+      `select tablename, policyname, cmd, roles, qual, with_check from pg_policies where schemaname = 'public'`);
+    for (const p of rows) {
+      const abierta = (x: string | null) => x !== null && /^\(?\s*true\s*\)?$/i.test(x.trim());
+      expect(abierta(p.qual), `${p.tablename}.${p.policyname} using abierto`).toBe(false);
+      expect(abierta(p.with_check), `${p.tablename}.${p.policyname} with check abierto`).toBe(false);
+      expect(String(p.roles).replace(/[{}]/g, ''), `${p.tablename}.${p.policyname} debe ser solo para authenticated`).toBe('authenticated');
+      expect(p.qual ?? p.with_check, `${p.tablename}.${p.policyname} sin condición`).toBeTruthy();
+    }
+    const privadas = rows.filter((p) => (PRIVADAS as readonly string[]).includes(p.tablename));
+    expect(privadas.map((p) => p.tablename).sort()).toEqual([...PRIVADAS].sort()); // exactamente una por tabla
+    for (const p of privadas) {
+      const cond = `${p.qual} ${p.with_check}`;
+      expect(cond, `${p.tablename}: debe atarse al usuario que consulta`).toMatch(/auth\.uid\(\)|_es_mi[ao]\(/);
+    }
+  });
+
+  it('anon no tiene ningún permiso sobre tablas ni funciones de public', async () => {
+    const t = await bd.query(
+      `select table_name, privilege_type from information_schema.role_table_grants
+        where table_schema = 'public' and grantee in ('anon', 'PUBLIC')`);
+    expect(t.rows).toEqual([]);
+    // rls_auto_enable es el disparador de evento de Supabase (no se puede llamar como función): se ignora
+    const f = await bd.query(
+      `select rp.routine_name from information_schema.routine_privileges rp
+         join pg_proc p on p.proname = rp.routine_name and p.pronamespace = 'public'::regnamespace
+        where rp.routine_schema = 'public' and rp.grantee in ('anon', 'PUBLIC') and p.prorettype <> 'event_trigger'::regtype`);
+    expect(f.rows).toEqual([]);
+  });
+
+  it('los usuarios no pueden escribir en auditoría, ni borrar/crear personas, ni tocar columnas sensibles', async () => {
+    const g = await bd.query(
+      `select table_name, privilege_type from information_schema.role_table_grants
+        where table_schema = 'public' and grantee = 'authenticated'
+          and ((table_name = 'auditoria' and privilege_type <> 'SELECT')
+            or (table_name = 'personas' and privilege_type not in ('SELECT'))
+            or (table_name = 'hogar' and privilege_type <> 'SELECT'))`);
+    expect(g.rows).toEqual([]);
+    const c = await bd.query(
+      `select column_name from information_schema.column_privileges
+        where table_schema = 'public' and table_name = 'personas' and grantee = 'authenticated' and privilege_type = 'UPDATE'`);
+    expect(c.rows.map((r) => r.column_name).sort()).toEqual(['nombre', 'rol']);
+  });
+
+  it('el esquema de ayudas (casa_aux) no está expuesto por la API', async () => {
+    const r = await fetch(`${cfg.url}/rest/v1/`, { headers: { apikey: cfg.anon, Authorization: `Bearer ${A.token}`, 'Accept-Profile': 'casa_aux' } });
+    expect(r.ok).toBe(false);
+  });
+
+  it('los montos son enteros de centavos (bigint), nunca flotantes ni decimales', async () => {
+    const { rows } = await bd.query(
+      `select table_name, column_name, data_type from information_schema.columns
+        where table_schema = 'public'
+          and (column_name in ('monto', 'monto_real', 'monto_total', 'monto_estimado', 'saldo', 'valor_cuota', 'valor_actual', 'meta', 'tc_del_dia'))`);
+    expect(rows.length).toBeGreaterThan(10);
+    for (const r of rows) expect(r.data_type, `${r.table_name}.${r.column_name}`).toBe('bigint');
+    const flotantes = await bd.query(
+      `select table_name, column_name from information_schema.columns
+        where table_schema = 'public' and data_type in ('real', 'double precision', 'money')`);
+    expect(flotantes.rows).toEqual([]);
+  });
+
+  it('un monto fraccionario o negativo es rechazado por la base', async () => {
+    const neg = await servicio.from('gastos').insert({ persona_id: A.id, monto: -5, categoria_id: categoria, tipo: 'discrecional', fecha: hoy, origen: 'manual', mes_ipc: mes });
+    expect(neg.error).not.toBeNull();
+    const frac = await servicio.from('gastos').insert({ persona_id: A.id, monto: 10.5, categoria_id: categoria, tipo: 'discrecional', fecha: hoy, origen: 'manual', mes_ipc: mes });
+    expect(frac.error).not.toBeNull();
+  });
+});

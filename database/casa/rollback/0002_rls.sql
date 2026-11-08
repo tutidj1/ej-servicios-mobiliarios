@@ -1,0 +1,22 @@
+drop trigger if exists gastos_mes_ipc on public.gastos;
+drop trigger if exists inversion_mov_mes_ipc on public.inversion_movimientos;
+drop policy if exists gastos_solo_dueno on public.gastos;
+drop policy if exists ingresos_solo_dueno on public.ingresos;
+drop policy if exists deudas_solo_dueno on public.deudas;
+drop policy if exists deuda_pagos_solo_dueno on public.deuda_pagos;
+drop policy if exists inversiones_solo_dueno on public.inversiones;
+drop policy if exists inversion_movimientos_solo_dueno on public.inversion_movimientos;
+drop policy if exists reglas_categoria_solo_dueno on public.reglas_categoria;
+drop policy if exists obligaciones_del_hogar on public.obligaciones;
+drop policy if exists obligacion_instancias_del_hogar on public.obligacion_instancias;
+drop policy if exists hijos_del_hogar on public.hijos;
+drop policy if exists personas_lectura on public.personas;
+drop policy if exists personas_admin on public.personas;
+drop policy if exists hogar_propio on public.hogar;
+drop policy if exists categorias_lectura on public.categorias;
+drop policy if exists categorias_admin on public.categorias;
+drop policy if exists ipc_lectura on public.ipc;
+drop policy if exists ipc_admin on public.ipc;
+drop policy if exists auditoria_lectura on public.auditoria;
+-- Las tablas quedan con RLS activo y sin permisos para anon/authenticated (cerradas).
+drop schema if exists casa_aux cascade;

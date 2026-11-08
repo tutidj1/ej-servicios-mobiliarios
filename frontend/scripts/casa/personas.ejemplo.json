@@ -1,0 +1,12 @@
+{
+  "hogar": "Familia",
+  "personas": [
+    { "clave": "persona1", "nombre": "Nombre", "email": "persona1@usuarios.casa.test", "rol": "adulto" },
+    { "clave": "persona2", "nombre": "Nombre", "email": "persona2@usuarios.casa.test", "rol": "adulto" },
+    { "clave": "admin", "nombre": "Nombre", "email": "admin@usuarios.casa.test", "rol": "admin_tecnico" }
+  ],
+  "hijos": [
+    { "nombre": "Hijo uno", "persona": "admin" },
+    { "nombre": "Hijo dos", "persona": null }
+  ]
+}
