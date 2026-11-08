@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { CalendarDays, ChevronRight, ClipboardList, Mic, PartyPopper, Truck, Undo2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fechaLarga, hoyArgentina, sumarDias } from '@/lib/gestion/calculos';
+import ObjetivosEmpresa from './ObjetivosEmpresa';
+import ObligacionesEmpresa from './ObligacionesEmpresa';
 
 interface Movimiento {
   id: string;
@@ -127,6 +129,10 @@ export default function InicioAdmin({
           ))}
         </ul>
       </section>
+
+      {/* Plata de la empresa: se muestran solo si la migración 0014 está aplicada */}
+      <ObligacionesEmpresa />
+      <ObjetivosEmpresa />
     </div>
   );
 }

@@ -12,7 +12,8 @@
     "casa:migrar": "node scripts/casa/migrar.mjs",
     "casa:test": "vitest run --config vitest.casa.config.ts",
     "casa:alta": "node scripts/casa/alta-personas.mjs",
-    "casa:invitar": "node scripts/casa/invitar.mjs"
+    "casa:invitar": "node scripts/casa/invitar.mjs",
+    "test:db:empresa": "node tests/db/probar-empresa.mjs ../database/migrations"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
