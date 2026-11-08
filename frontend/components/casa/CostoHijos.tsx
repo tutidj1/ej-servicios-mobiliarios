@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useCasa } from '@/lib/casa/sesion';
-import { diaCorto, digitosACentavos, fechaLocalISO, formatearCentavos, mesDe, nombreMes, rangoMes } from '@/lib/casa/dinero';
+import { diaCorto, digitosACentavos, fechaLocalISO, formatearCentavos, mesDe, moverMes, nombreMes, rangoMes, type Mes } from '@/lib/casa/dinero';
 import { costoPorHijo, type HijoFila, type OblHijo, type Transferencia } from '@/lib/casa/transferencias';
 import { BotonPrincipal, CampoDigitos, CampoTexto, Chips, Hoja } from './ui';
 
@@ -20,7 +20,9 @@ export default function CostoHijos() {
   const [error, setError] = useState<string | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [borrando, setBorrando] = useState<string | null>(null);
-  const mes = useMemo(() => mesDe(new Date()), []);
+  const mesActual = useMemo(() => mesDe(new Date()), []);
+  const [mes, setMes] = useState<Mes>(mesActual);
+  const esActual = mes.anio === mesActual.anio && mes.mes === mesActual.mes;
   const hogarId = personas.find((p) => p.id === persona?.id)?.hogar_id ?? null;
   const nombre = (id: string) => personas.find((p) => p.id === id)?.nombre ?? 'Alguien';
 
@@ -82,11 +84,15 @@ export default function CostoHijos() {
   return (
     <section aria-label="Costo de los hijos" className="space-y-4">
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="font-playfair text-lg text-casa-texto">Los hijos este mes</p>
-          <p className="text-xs capitalize text-casa-suave">{nombreMes(mes)}</p>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setMes((m) => moverMes(m, -1))} aria-label="Mes anterior" className="rounded-xl p-2 text-casa-suave active:bg-casa-panel"><ChevronLeft size={20} /></button>
+          <div className="text-center">
+            <p className="font-playfair text-lg text-casa-texto">{esActual ? 'Los hijos este mes' : 'Los hijos'}</p>
+            <p className="text-xs capitalize text-casa-suave">{nombreMes(mes)}</p>
+          </div>
+          <button type="button" disabled={esActual} onClick={() => setMes((m) => moverMes(m, 1))} aria-label="Mes siguiente" className="rounded-xl p-2 text-casa-suave active:bg-casa-panel disabled:opacity-30"><ChevronRight size={20} /></button>
         </div>
-        {hijos.length > 0 && (
+        {esActual && hijos.length > 0 && (
           <button type="button" onClick={() => setAbierto(true)} className="flex items-center gap-1.5 rounded-xl bg-casa-acento px-3.5 py-2 text-sm font-bold text-casa-fondo"><Plus size={16} /> Transferencia</button>
         )}
       </div>
@@ -124,7 +130,7 @@ export default function CostoHijos() {
 
       {mias.length > 0 && (
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wider text-casa-suave">Tus transferencias del mes</p>
+          <p className="mb-2 text-xs uppercase tracking-wider text-casa-suave">Tus transferencias de {esActual ? 'este mes' : nombreMes(mes)}</p>
           <ul className="divide-y divide-casa-borde overflow-hidden rounded-2xl border border-casa-borde bg-casa-panel">
             {mias.map((t) => (
               <li key={t.id} className="flex items-center gap-3 px-4 py-3 text-sm">
