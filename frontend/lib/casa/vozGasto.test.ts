@@ -127,3 +127,39 @@ describe('corregir un monto ("no, 20")', () => {
     expect(corregirMonto('no es eso', 4_500_000)).toBeNull();
   });
 });
+
+import { palabraClave, VECES_PARA_APLICAR } from './vozGasto';
+import { normalizar } from '../gestion/voz';
+
+describe('reglas aprendidas', () => {
+  const clave = (t: string) => palabraClave(normalizar(t).split(' '));
+
+  it('la palabra clave es el comercio o concepto, no los números ni el relleno', () => {
+    expect(clave('gasté quince lucas en Carrefour')).toBe('carrefour');
+    expect(clave('45 mil de nafta ayer')).toBe('nafta');
+    expect(clave('el 3 pagué 20 lucas de farmacia')).toBe('farmacia');
+    expect(clave('gasté 15 mil')).toBeNull();
+  });
+
+  it('una regla con menos de tres confirmaciones no se aplica; con tres, la categoría sale sola', () => {
+    const pocas = p('quince lucas en la dietética', { reglas: [{ patron: 'dietetica', categoria: 'Comida y supermercado', veces: 2 }] });
+    expect(pocas.categoria).toBeNull();
+    expect(pocas.categoriaAprendida).toBe(false);
+
+    const aplicada = p('quince lucas en la dietética', { reglas: [{ patron: 'dietetica', categoria: 'Comida y supermercado', veces: VECES_PARA_APLICAR }] });
+    expect(aplicada.categoria).toBe('Comida y supermercado');
+    expect(aplicada.categoriaAprendida).toBe(true);
+  });
+
+  it('lo aprendido manda sobre las palabras sueltas de siempre', () => {
+    // "super" suele ser comida, pero esta persona confirmó 3 veces que "farmacia" va a Hogar (ejemplo ficticio)
+    const r = p('20 lucas de farmacia', { reglas: [{ patron: 'farmacia', categoria: 'Hogar y mantenimiento', veces: 3 }] });
+    expect(r.categoria).toBe('Hogar y mantenimiento');
+  });
+
+  it('otra palabra no se contagia', () => {
+    const r = p('quince lucas en el súper', { reglas: [{ patron: 'carrefour', categoria: 'Salud y farmacia', veces: 5 }] });
+    expect(r.categoria).toBe('Comida y supermercado');
+    expect(r.categoriaAprendida).toBe(false);
+  });
+});

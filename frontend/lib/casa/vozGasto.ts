@@ -8,7 +8,14 @@ import { extraerNumeros, normalizar } from '../gestion/voz';
 
 export type ObligacionVoz = { concepto: string; monto_estimado: number }; // monto en centavos
 
+/** Regla aprendida: tras 3 confirmaciones de la misma categoría para una palabra, se aplica sola. */
+export type ReglaAprendida = { patron: string; categoria: string; veces: number };
+
+export const VECES_PARA_APLICAR = 3;
+
 export type ContextoVoz = {
+  /** Reglas aprendidas de esta persona (privadas). */
+  reglas?: ReglaAprendida[];
   /** Obligaciones de la casa (solo las ven los adultos): sirven para resolver "pagué la luz, 85". */
   obligaciones?: ObligacionVoz[];
   /** Nombres de los hijos, para reconocer "le transferí a ..." sin dejar nombres escritos en el código. */
@@ -25,6 +32,10 @@ export type ResultadoVoz = {
   resueltoPorEstimado: string | null;
   /** Nombre exacto de la categoría, o null si no se pudo saber (se pregunta). */
   categoria: string | null;
+  /** La categoría salió de una regla que la persona ya confirmó varias veces. */
+  categoriaAprendida: boolean;
+  /** La palabra que identifica el comercio o el concepto ("carrefour"), para aprender de las correcciones. */
+  palabraClave: string | null;
   fecha: string; // YYYY-MM-DD
   descripcion: string;
   /** Dijo que le transfirió a un hijo: eso se carga con el botón de transferencias, no como un gasto suelto. */
@@ -120,6 +131,28 @@ function obligacionMencionada(partes: string[], obls: ObligacionVoz[]): Obligaci
   return null;
 }
 
+const NO_ES_CLAVE = new Set([
+  'gaste', 'gastamos', 'pague', 'pagamos', 'compre', 'compramos', 'carga', 'carge', 'anota', 'anotame', 'registra', 'puse', 'aboné', 'abone',
+  'en', 'el', 'la', 'los', 'las', 'de', 'del', 'un', 'una', 'unos', 'unas', 'por', 'con', 'y', 'a', 'al', 'se', 'me', 'le', 'lo', 'que', 'fue', 'mi', 'mis', 'para', 'sobre',
+  'ayer', 'hoy', 'anteayer', 'antes', 'antier', 'manana', 'pesos', 'peso', 'mangos', 'mango', 'plata', 'lucas', 'luca', 'mil', 'palo', 'palos', 'millon', 'millones', 'medio', 'media',
+  'cuenta', 'gasto', 'compra', 'pago', 'cargo', 'fui', 'estuve', 'hice', 'cosas', 'cosa', 'algo',
+]);
+
+/**
+ * La palabra que identifica el comercio o el concepto ("carrefour", "farmacia"): la primera que no es un número,
+ * una fecha ni una palabra de relleno. Sirve para aprender de las correcciones. Null si no hay una clara.
+ */
+export function palabraClave(partes: string[]): string | null {
+  const fuera = new Set<number>();
+  for (const c of corridas(partes)) for (let i = c.desde; i <= c.hasta; i++) fuera.add(i);
+  for (let i = 0; i < partes.length; i++) {
+    const t = partes[i];
+    if (fuera.has(i) || NO_ES_CLAVE.has(t) || t.length < 4 || /\d/.test(t) || MESES.includes(t)) continue;
+    return t;
+  }
+  return null;
+}
+
 export function parsearGasto(texto: string, hoy: string, ctx: ContextoVoz = {}): ResultadoVoz {
   const partes = normalizar(texto).split(' ').filter(Boolean);
   const base: ResultadoVoz = {
@@ -128,6 +161,8 @@ export function parsearGasto(texto: string, hoy: string, ctx: ContextoVoz = {}):
     montoAmbiguo: null,
     resueltoPorEstimado: null,
     categoria: null,
+    categoriaAprendida: false,
+    palabraClave: palabraClave(partes),
     fecha: fechaDe(partes, hoy),
     descripcion: texto.trim().slice(0, 80),
     esTransferenciaAHijo: false,
@@ -140,7 +175,14 @@ export function parsearGasto(texto: string, hoy: string, ctx: ContextoVoz = {}):
     base.esTransferenciaAHijo = true;
     base.categoria = 'Transferencias a los hijos';
   } else {
-    base.categoria = categoriaDe(partes);
+    // Lo que la persona ya confirmó varias veces manda sobre las palabras sueltas
+    const aprendida = (ctx.reglas ?? []).find((r) => r.patron === base.palabraClave && r.veces >= VECES_PARA_APLICAR);
+    if (aprendida) {
+      base.categoria = aprendida.categoria;
+      base.categoriaAprendida = true;
+    } else {
+      base.categoria = categoriaDe(partes);
+    }
   }
 
   // Monto

@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Send } from 'lucide-react';
 import { useCasa } from '@/lib/casa/sesion';
 import { diaCorto, fechaLocalISO, formatearCentavos } from '@/lib/casa/dinero';
-import { corregirMonto, parsearGasto, type ContextoVoz, type ResultadoVoz } from '@/lib/casa/vozGasto';
+import { corregirMonto, parsearGasto, type ContextoVoz, type ReglaAprendida, type ResultadoVoz } from '@/lib/casa/vozGasto';
+
+type ReglaFila = { id: string; patron: string; categoria_id: string; veces: number };
+type Entrada = { texto: string; resultado: string };
 
 type Categoria = { id: string; nombre: string; tipo_defecto: 'fijo_obligatorio' | 'variable_necesario' | 'discrecional' };
 
@@ -46,6 +49,8 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ctx, setCtx] = useState<ContextoVoz>({});
+  const [reglas, setReglas] = useState<ReglaFila[]>([]);
+  const [historial, setHistorial] = useState<Entrada[]>([]);
   const rec = useRef<Reconocedor | null>(null);
 
   useEffect(() => { setHayVoz(crearReconocedor() !== null); }, []);
@@ -62,8 +67,20 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
     }));
   }, [cliente]);
 
+  const cargarReglas = useCallback(async () => {
+    if (!cliente) return;
+    const { data } = await cliente.from('reglas_categoria').select('id, patron, categoria_id, veces');
+    setReglas((data ?? []) as ReglaFila[]);
+  }, [cliente]);
+
+  useEffect(() => { void cargarReglas(); }, [cargarReglas]);
+
+  const reglasConNombre: ReglaAprendida[] = reglas
+    .map((r) => ({ patron: r.patron, categoria: categorias.find((c) => c.id === r.categoria_id)?.nombre ?? '', veces: r.veces }))
+    .filter((r) => r.categoria);
+
   const procesar = useCallback((frase: string, desde: 'voz' | 'web') => {
-    const r = parsearGasto(frase, fechaLocalISO(new Date()), ctx);
+    const r = parsearGasto(frase, fechaLocalISO(new Date()), { ...ctx, reglas: reglasConNombre });
     setRes(r);
     setMonto(r.monto);
     setOrigen(desde);
@@ -71,7 +88,7 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
     setError(null);
     setMensaje(null);
     setCategoriaId(categorias.find((c) => c.nombre === r.categoria)?.id ?? null);
-  }, [ctx, categorias]);
+  }, [ctx, categorias, reglasConNombre]);
 
   const escuchar = () => {
     if (escuchando) { rec.current?.stop(); return; }
@@ -102,7 +119,22 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
       descripcion: res.descripcion, origen,
     });
     if (e) { setError('No se pudo guardar el gasto. Probá de nuevo.'); return; }
-    setMensaje(`Guardado ${formatearCentavos(monto)} en ${cat.nombre}`);
+    // Aprender: si la persona eligió una categoría distinta de la que se había adivinado, cuenta como una corrección
+    const sugerida = categorias.find((c) => c.nombre === res.categoria)?.id ?? null;
+    if (res.palabraClave && !res.esTransferenciaAHijo && cat.id !== sugerida) {
+      const existente = reglas.find((x) => x.patron === res.palabraClave);
+      if (existente && existente.categoria_id === cat.id) {
+        await cliente.from('reglas_categoria').update({ veces: existente.veces + 1 }).eq('id', existente.id);
+      } else if (existente) {
+        await cliente.from('reglas_categoria').update({ categoria_id: cat.id, veces: 1 }).eq('id', existente.id);
+      } else {
+        await cliente.from('reglas_categoria').insert({ persona_id: persona.id, patron: res.palabraClave, categoria_id: cat.id, veces: 1 });
+      }
+      await cargarReglas();
+    }
+    const resumen = `${formatearCentavos(monto)} en ${cat.nombre}`;
+    setMensaje(`Guardado ${resumen}`);
+    setHistorial((h) => [{ texto: res.texto, resultado: resumen }, ...h].slice(0, 4));
     setRes(null); setTexto(''); setMonto(null); setCategoriaId(null);
     await alGuardar();
   };
@@ -146,6 +178,16 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
 
       {hayVoz && <p className="mt-2 text-[0.7rem] leading-snug text-casa-suave">Ojo: al hablar, el navegador puede enviar el audio a su servicio de voz (Google, en Chrome) para pasarlo a texto. Nosotros no lo guardamos. Si preferís que no salga de tu teléfono, escribilo.</p>}
 
+      {historial.length > 0 && (
+        <ul className="mt-3 space-y-1.5" aria-label="Lo que cargaste recién">
+          {historial.map((h, i) => (
+            <li key={i} className="flex items-baseline justify-between gap-3 rounded-xl bg-casa-fondo px-3 py-2 text-xs">
+              <span className="min-w-0 truncate text-casa-suave">“{h.texto}”</span>
+              <span className="shrink-0 font-semibold text-casa-acento">{h.resultado}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {error && <p className="mt-3 text-sm text-casa-error" role="alert">{error}</p>}
       {mensaje && <p className="mt-3 text-sm font-semibold text-casa-acento" role="status">{mensaje}</p>}
 
@@ -178,7 +220,7 @@ export default function VozGasto({ categorias, alGuardar }: { categorias: Catego
               <p className="text-xs text-casa-suave">{res.fecha === fechaLocalISO(new Date()) ? 'Hoy' : diaCorto(res.fecha)}</p>
 
               <div>
-                <p className="mb-2 text-xs uppercase tracking-wider text-casa-suave">{categoriaId ? 'Categoría (tocá para cambiarla)' : '¿En qué categoría?'}</p>
+                <p className="mb-2 text-xs uppercase tracking-wider text-casa-suave">{categoriaId ? (res.categoriaAprendida ? 'Categoría (ya la usaste así: tocá para cambiarla)' : 'Categoría (tocá para cambiarla)') : '¿En qué categoría?'}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {categorias.map((c) => (
                     <button key={c.id} type="button" onClick={() => setCategoriaId(c.id)} className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold ${categoriaId === c.id ? 'border-casa-acento bg-casa-acento/15 text-casa-acento' : 'border-casa-borde text-casa-texto'}`}>{c.nombre}</button>
