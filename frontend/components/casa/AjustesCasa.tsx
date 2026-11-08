@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Fingerprint, KeyRound, Lock, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Download, Fingerprint, KeyRound, Lock, LogOut, TrendingUp } from 'lucide-react';
 import { MINUTOS_INACTIVIDAD, useCasa } from '@/lib/casa/sesion';
 import { pinDebil, pinValido } from '@/lib/casa/cifrado';
 import Teclado from './Teclado';
@@ -28,6 +29,7 @@ function Fila({ icono: Icono, titulo, texto, onClick, peligro }: { icono: typeof
 
 export default function AjustesCasa() {
   const { persona, tieneBiometria, biometriaPosible, bloquear, salirDeEsteDispositivo, activarHuella, quitarHuella, cambiarPin } = useCasa();
+  const router = useRouter();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [instalar, setInstalar] = useState<PromptInstalacion | null>(null);
   const [esIos, setEsIos] = useState(false);
@@ -78,6 +80,7 @@ export default function AjustesCasa() {
         <p className="text-xs text-casa-suave">{persona ? ROLES[persona.rol] : ''}</p>
       </div>
 
+      <Fila icono={TrendingUp} titulo="Índice de precios (IPC)" texto="Para comparar meses en pesos de hoy y medir el rendimiento real." onClick={() => router.push('/casa/ipc')} />
       <Fila icono={Lock} titulo="Bloquear ahora" texto={`Se bloquea sola a los ${MINUTOS_INACTIVIDAD} minutos sin tocar la pantalla.`} onClick={bloquear} />
 
       {biometriaPosible && !tieneBiometria && (

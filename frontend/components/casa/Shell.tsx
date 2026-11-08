@@ -16,6 +16,7 @@ export const SECCIONES: Seccion[] = [
 ];
 
 const AJUSTES: Seccion = { href: '/casa/ajustes', titulo: 'Ajustes', corto: 'Ajustes', icono: Settings };
+const IPC: Seccion = { href: '/casa/ipc', titulo: 'Índice de precios', corto: 'IPC', icono: TrendingUp };
 const OBJETIVOS: Seccion = { href: '/casa/objetivos', titulo: 'Mis objetivos', corto: 'Objetivos', icono: Home };
 
 function activa(ruta: string, href: string) {
@@ -25,7 +26,7 @@ function activa(ruta: string, href: string) {
 export default function Shell({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
   const { bloquear, persona } = useCasa();
-  const actual = [...SECCIONES, AJUSTES, OBJETIVOS].find((s) => activa(ruta, s.href)) ?? SECCIONES[0];
+  const actual = [...SECCIONES, AJUSTES, OBJETIVOS, IPC].find((s) => activa(ruta, s.href)) ?? SECCIONES[0];
 
   return (
     <div className="min-h-[100dvh] md:pl-60">

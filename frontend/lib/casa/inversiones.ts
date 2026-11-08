@@ -70,10 +70,13 @@ export function netoAjustadoPorIpc(
   const meses = Object.keys(ipc).sort();
   if (meses.length === 0) return { faltan: ['(no hay IPC cargado)'] };
   const actual = meses[meses.length - 1];
-  const faltan = Array.from(new Set(movs.map((m) => m.mes_ipc))).filter((m) => ipc[m] === undefined).sort();
+  // El IPC de un mes se publica a mitad del mes siguiente: un movimiento más nuevo que el último índice
+  // cargado se toma al último disponible (sin ajuste), en vez de dejar el rendimiento real en blanco.
+  const mesDe = (m: string) => (m > actual ? actual : m);
+  const faltan = Array.from(new Set(movs.map((m) => mesDe(m.mes_ipc)))).filter((m) => ipc[m] === undefined).sort();
   if (faltan.length) return { faltan };
   const base = movs.reduce((t, m) => {
-    const ajustado = Math.round((m.monto * ipc[actual]) / ipc[m.mes_ipc]);
+    const ajustado = Math.round((m.monto * ipc[actual]) / ipc[mesDe(m.mes_ipc)]);
     return t + (m.tipo === 'aporte' ? ajustado : -ajustado);
   }, 0);
   return { base, mesReferencia: actual };

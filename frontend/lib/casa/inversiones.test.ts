@@ -37,6 +37,11 @@ describe('inversiones', () => {
     expect(netoAjustadoPorIpc([{ monto: 100, tipo: 'aporte', mes_ipc: '2026-03-01' }], {})).toEqual({ faltan: ['(no hay IPC cargado)'] });
   });
 
+  it('un movimiento más nuevo que el último IPC cargado se toma sin ajuste', () => {
+    const r = netoAjustadoPorIpc([{ monto: 500, tipo: 'aporte', mes_ipc: '2026-11-01' }], { '2026-01-01': 100, '2026-10-01': 130 });
+    expect(r).toEqual({ base: 500, mesReferencia: '2026-10-01' });
+  });
+
   it('retiros restan, ajustados también', () => {
     const r = netoAjustadoPorIpc(
       [{ monto: 200, tipo: 'aporte', mes_ipc: '2026-01-01' }, { monto: 100, tipo: 'retiro', mes_ipc: '2026-01-01' }],
