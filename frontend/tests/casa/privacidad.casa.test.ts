@@ -24,11 +24,11 @@ const cfg = cargarEntorno();
 const MARCA = 'test-privacidad';
 const DOMINIO = 'privacidad.casa.test';
 
-const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos', 'reglas_categoria', 'objetivos_personales', 'objetivo_personal_movimientos'] as const;
+const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos', 'reglas_categoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'fondo_anual'] as const;
 const TODAS = [
   'hogar', 'personas', 'hijos', 'categorias', 'gastos', 'ingresos', 'obligaciones', 'obligacion_instancias',
   'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos',
-  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones', 'transferencias_hijos',
+  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones', 'transferencias_hijos', 'fondo_anual',
 ] as const;
 
 type Persona = { id: string; email: string; password: string; cliente: SupabaseClient; token: string };
@@ -98,7 +98,8 @@ async function sembrarPrivados(quien: 'A' | 'B', p: Persona) {
   const r = await ok(servicio.from('reglas_categoria').insert({ patron: m, categoria_id: categoria, persona_id: p.id }).select('id').single(), 'reglas_categoria');
   const ob = await ok(servicio.from('objetivos_personales').insert({ persona_id: p.id, nombre: m, meta: 10000000, moneda: 'ARS' }).select('id').single(), 'objetivos_personales');
   const obm = await ok(servicio.from('objetivo_personal_movimientos').insert({ objetivo_id: ob.id, monto: 500000, moneda: 'ARS', tipo: 'aporte', motivo: m, fecha: hoy }).select('id').single(), 'objetivo_personal_movimientos');
-  const por: Record<string, string> = { objetivos_personales: ob.id, objetivo_personal_movimientos: obm.id, gastos: g.id, ingresos: i.id, deudas: d.id, deuda_pagos: dp.id, inversiones: inv.id, inversion_movimientos: im.id, reglas_categoria: r.id };
+  const fa = await ok(servicio.from('fondo_anual').insert({ persona_id: p.id, concepto: m, monto: 8400000, mes: 3, apartado: 700000 }).select('id').single(), 'fondo_anual');
+  const por: Record<string, string> = { fondo_anual: fa.id, objetivos_personales: ob.id, objetivo_personal_movimientos: obm.id, gastos: g.id, ingresos: i.id, deudas: d.id, deuda_pagos: dp.id, inversiones: inv.id, inversion_movimientos: im.id, reglas_categoria: r.id };
   for (const t of PRIVADAS) (ids[t] ??= {} as Record<'A' | 'B', string>)[quien] = por[t];
 }
 
@@ -214,6 +215,7 @@ describe('Privado: B no puede modificar, borrar ni insertar a nombre de A', () =
       inversion_movimientos: { motivo: 'HACKEADO' },
       reglas_categoria: { patron: 'HACKEADO' },
       objetivos_personales: { nombre: 'HACKEADO' },
+      fondo_anual: { concepto: 'HACKEADO' },
       objetivo_personal_movimientos: { motivo: 'HACKEADO' },
     };
     for (const t of PRIVADAS) {
@@ -244,6 +246,7 @@ describe('Privado: B no puede modificar, borrar ni insertar a nombre de A', () =
       ['inversion_movimientos', { inversion_id: ids.inversiones.A, monto: 100, moneda: 'ARS', tipo: 'aporte', fecha: hoy, mes_ipc: mes }],
       ['reglas_categoria', { persona_id: A.id, patron: 'x', categoria_id: categoria }],
       ['objetivos_personales', { persona_id: A.id, nombre: 'x', meta: 100, moneda: 'ARS' }],
+      ['fondo_anual', { persona_id: A.id, concepto: 'x', monto: 100, mes: 3 }],
       ['objetivo_personal_movimientos', { objetivo_id: ids.objetivos_personales.A, monto: 100, moneda: 'ARS', tipo: 'aporte', fecha: hoy }],
     ];
     for (const [t, fila] of intentos) {

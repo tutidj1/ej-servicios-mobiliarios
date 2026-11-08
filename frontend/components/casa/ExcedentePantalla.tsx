@@ -10,6 +10,7 @@ import {
   asignadoDetalle, calcularExcedente, consecuenciaDeudas, ingresoDelMes, reglaDifundida, repartir, type IngresoMes,
 } from '@/lib/casa/excedente';
 import type { OblPiso } from '@/lib/casa/piso';
+import { resumenFondo, type ItemFondo } from '@/lib/casa/fondo';
 
 function Renglon({ etiqueta, monto, resta }: { etiqueta: string; monto: number; resta?: boolean }) {
   return (
@@ -37,6 +38,7 @@ export default function ExcedentePantalla() {
   const [deudas, setDeudas] = useState<Deuda[]>([]);
   const [pagos, setPagos] = useState<{ deuda_id: string; monto: number }[]>([]);
   const [ipc, setIpc] = useState<Record<string, number>>({});
+  const [fondo, setFondo] = useState<ItemFondo[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [destinos, setDestinos] = useState({ deuda: 0, ahorro: 0 });
@@ -59,13 +61,14 @@ export default function ExcedentePantalla() {
     const desde6 = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-01`;
     const hace90 = new Date(); hace90.setDate(hace90.getDate() - 90);
     const h90 = `${hace90.getFullYear()}-${String(hace90.getMonth() + 1).padStart(2, '0')}-${String(hace90.getDate()).padStart(2, '0')}`;
-    const [i, o, g, d, p, c] = await Promise.all([
+    const [i, o, g, d, p, c, fa] = await Promise.all([
       cliente.from('ingresos').select('monto, esperado_o_real').gte('fecha', desde).lt('fecha', hasta),
       cliente.from('obligaciones').select('monto_estimado, recurrencia, hijo_id, responsable_id'),
       cliente.from('gastos').select('monto, tipo, fecha, mes_ipc').gte('fecha', desde6).limit(5000),
       cliente.from('deudas').select('id, descripcion, tipo, monto_total, saldo, valor_cuota, cuotas_total, cuotas_pagas, tasa, mes_fin'),
       cliente.from('deuda_pagos').select('deuda_id, monto').gte('fecha', h90),
       cliente.from('ipc').select('mes, indice'),
+      cliente.from('fondo_anual').select('id, concepto, monto, mes, apartado, pagado_anio'),
     ]);
     if (i.error || o.error || g.error || d.error || p.error) { setError('No se pudo calcular el excedente.'); return; }
     setError(null);
@@ -73,6 +76,7 @@ export default function ExcedentePantalla() {
     setObls((o.data ?? []) as OblPiso[]);
     setGastos((g.data ?? []) as GastoPiso[]);
     setDeudas((d.data ?? []) as Deuda[]);
+    setFondo((fa.data ?? []) as ItemFondo[]);
     setPagos((p.data ?? []) as { deuda_id: string; monto: number }[]);
     setIpc(Object.fromEntries(((c.data ?? []) as { mes: string; indice: number | string }[]).map((r) => [r.mes, Number(r.indice)])));
   }, [cliente, mes]);
@@ -86,7 +90,9 @@ export default function ExcedentePantalla() {
   const asig = persona ? asignadoDetalle(obls, persona.id) : { mensuales: 0, anuales: 0 };
   const personal = pisoPersonal(gastos, mes, ipc);
   const cuotas = comprometidoMensual(deudas);
-  const exc = calcularExcedente({ ingreso, asignadas: asig.mensuales, anuales: asig.anuales, pisoPersonal: personal.mediana ?? 0, cuotas });
+  const fondoPorMes = resumenFondo(fondo, mes).porMes;
+  const anuales = asig.anuales + fondoPorMes;
+  const exc = calcularExcedente({ ingreso, asignadas: asig.mensuales, anuales, pisoPersonal: personal.mediana ?? 0, cuotas });
   const reparto = repartir(exc, destinos.deuda, destinos.ahorro);
   const regla = reglaDifundida(ingreso);
 
@@ -128,7 +134,10 @@ export default function ExcedentePantalla() {
           <Renglon etiqueta="Obligaciones que tenés a cargo" monto={asig.mensuales} resta />
           <Renglon etiqueta="Tu piso personal" monto={personal.mediana ?? 0} resta />
           <Renglon etiqueta="Cuotas del mes" monto={cuotas} resta />
-          <Renglon etiqueta="Provisión de gastos anuales (1/12)" monto={asig.anuales} resta />
+          <div className="py-2">
+            <Renglon etiqueta="Provisión de gastos anuales (1/12)" monto={anuales} resta />
+            <p className="-mt-1 pb-1 text-xs text-casa-suave">Tu fondo de gastos anuales ({formatearCentavos(fondoPorMes)}) más las obligaciones anuales que tenés a cargo ({formatearCentavos(asig.anuales)}).</p>
+          </div>
         </div>
         {personal.mediana === null && (
           <p className="pb-2 text-xs text-casa-suave">Tu piso personal todavía no se puede calcular: necesita al menos un mes cerrado con gastos cargados.</p>
