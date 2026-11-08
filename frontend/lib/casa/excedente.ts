@@ -8,6 +8,7 @@
  * La app hace la cuenta y muestra la consecuencia; qué conviene hacer con esa plata no lo decide ella.
  */
 import { moverMes, type Mes } from './dinero';
+import { simularDeuda } from './deudas';
 import { equivalenteMensual, type OblPiso } from './piso';
 
 export type IngresoMes = { monto: number; esperado_o_real: 'esperado' | 'real' };
@@ -71,4 +72,34 @@ export function salidaDeudas(saldoTotal: number, ritmoActual: number, extra: num
   if (saldoTotal <= 0 || porMes <= 0) return null;
   const meses = Math.ceil(saldoTotal / porMes);
   return { meses, mesFin: moverMes(hoy, meses) };
+}
+
+export type DeudaSinCronograma = { saldo: number; tasa: number | null; ritmo: number };
+
+export type ConsecuenciaDeudas = {
+  /** Mes en que termina la última de las deudas (null si alguna no tiene fecha: sin pagos o el pago no cubre el interés). */
+  mesFin: Mes | null;
+  meses: number | null;
+  interesTotal: number;
+  /** Alguna deuda no tiene fecha de salida con lo que paga hoy. */
+  sinFecha: boolean;
+};
+
+/**
+ * Consecuencia de sumar `extra` por mes a las deudas sin cronograma: lo extra se reparte en proporción al saldo de cada una
+ * (una regla simple y a la vista, no un consejo), sobre lo que ya paga cada una por mes. El interés usa la tasa mensual
+ * cargada en cada deuda; las que no tienen tasa no suman interés.
+ */
+export function consecuenciaDeudas(deudas: DeudaSinCronograma[], extra: number, hoy: Mes): ConsecuenciaDeudas {
+  const saldoTotal = deudas.reduce((t, d) => t + d.saldo, 0);
+  let interesTotal = 0, sinFecha = false, meses = 0;
+  for (const d of deudas) {
+    const parte = saldoTotal > 0 ? Math.round((extra * d.saldo) / saldoTotal) : 0;
+    const r = simularDeuda(d.saldo, d.tasa, d.ritmo + parte, hoy);
+    if (!r || r.sinFin) { sinFecha = true; continue; }
+    interesTotal += r.totalInteres;
+    meses = Math.max(meses, r.meses);
+  }
+  const hay = !sinFecha && deudas.length > 0;
+  return { mesFin: hay ? moverMes(hoy, meses) : null, meses: hay ? meses : null, interesTotal, sinFecha };
 }

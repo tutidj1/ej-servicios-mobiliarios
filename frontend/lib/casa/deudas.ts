@@ -90,3 +90,42 @@ export function ritmoSinCronograma(saldo: number, pagos: PagoDeuda[], hoy: Date)
   const base: Mes = { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 };
   return { promedioMensual: promedio, mesFin: moverMes(base, meses) };
 }
+
+/**
+ * Tasa de interés MENSUAL en %, hasta 4 decimales, mayor que 0 y hasta 100. Acepta "3,5" o "3.5".
+ * Null si no es un número válido.
+ */
+export function parseTasaMensual(texto: string): number | null {
+  const t = texto.trim().replace(',', '.');
+  if (!/^\d{1,3}(\.\d{1,4})?$/.test(t)) return null;
+  const n = Number(t);
+  return n > 0 && n <= 100 ? n : null;
+}
+
+export type SimulacionDeuda =
+  | { sinFin: false; meses: number; totalInteres: number; totalPagado: number; mesFin: Mes }
+  | { sinFin: true; interesPrimerMes: number };
+
+/**
+ * Pagando `pagoMensual` por mes con interés mensual `tasaMensualPct` (sobre el saldo), cuándo terminás y cuánto
+ * pagás de interés en total. Mes a mes, en centavos enteros. Es aritmética, no un consejo.
+ * Si el pago no cubre ni el interés del mes, la deuda nunca baja: se devuelve `sinFin`.
+ * Los pagos empiezan el mes que viene (misma convención que la fecha de salida sin interés).
+ */
+export function simularDeuda(saldo: number, tasaMensualPct: number | null, pagoMensual: number, hoy: Mes): SimulacionDeuda | null {
+  if (saldo <= 0 || pagoMensual <= 0) return null;
+  const t = tasaMensualPct ?? 0;
+  let s = saldo, interesTotal = 0, pagado = 0, n = 0;
+  while (s > 0 && n < 600) {
+    const i = Math.round((s * t) / 100);
+    if (n === 0 && t > 0 && pagoMensual <= i) return { sinFin: true, interesPrimerMes: i };
+    s += i;
+    interesTotal += i;
+    const p = Math.min(pagoMensual, s);
+    s -= p;
+    pagado += p;
+    n++;
+  }
+  if (s > 0) return { sinFin: true, interesPrimerMes: Math.round((s * t) / 100) };
+  return { sinFin: false, meses: n, totalInteres: interesTotal, totalPagado: pagado, mesFin: moverMes(hoy, n) };
+}

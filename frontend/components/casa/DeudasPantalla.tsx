@@ -7,8 +7,8 @@ import {
   digitosACentavos, fechaLocalISO, formatearCentavos, haceDias, mesDe, nombreMes,
 } from '@/lib/casa/dinero';
 import {
-  claveMes, comprometidoMensual, cuotasRestantes, liberaciones, mesFinCronograma, porcentajePagado,
-  proyeccionCuotas, ritmoSinCronograma, ultimaCuota, type Deuda, type PagoDeuda, type TipoDeuda,
+  claveMes, comprometidoMensual, cuotasRestantes, liberaciones, mesFinCronograma, parseTasaMensual, porcentajePagado,
+  proyeccionCuotas, ritmoSinCronograma, simularDeuda, ultimaCuota, type Deuda, type PagoDeuda, type TipoDeuda,
 } from '@/lib/casa/deudas';
 import { Barra, BotonPrincipal, CampoDigitos, CampoTexto, Chips, Hoja } from './ui';
 
@@ -70,6 +70,14 @@ export default function DeudasPantalla() {
     if (upd.error) setError('El pago se registró pero no se pudo actualizar el saldo. Avisale a Tomás.');
     setPagando(null);
     await cargar();
+  };
+
+  const guardarTasa = async (d: Deuda, tasa: number | null) => {
+    if (!cliente) return;
+    const r = await cliente.from('deudas').update({ tasa }).eq('id', d.id);
+    if (r.error) { setError('No se pudo guardar la tasa.'); return; }
+    await cargar();
+    setDetalle((x) => (x && x.id === d.id ? { ...x, tasa } : x));
   };
 
   const borrar = async (d: Deuda) => {
@@ -187,6 +195,15 @@ export default function DeudasPantalla() {
             {detalle.saldo > 0 && detalle.tipo === 'sin_cronograma' && (
               <BotonPrincipal onClick={() => { setPagando(detalle); setDetalle(null); }}>Registrar un pago</BotonPrincipal>
             )}
+            {detalle.saldo > 0 && detalle.tipo === 'sin_cronograma' && (
+              <SimuladorInteres
+                key={detalle.id}
+                deuda={detalle}
+                ritmo={ritmoSinCronograma(detalle.saldo, pagos.filter((p) => p.deuda_id === detalle.id), hoy)?.promedioMensual ?? 0}
+                mesHoy={mesHoy}
+                alGuardarTasa={(t) => guardarTasa(detalle, t)}
+              />
+            )}
             <BorrarConfirmado alBorrar={() => void borrar(detalle)} />
           </div>
         </Hoja>
@@ -208,7 +225,7 @@ function BorrarConfirmado({ alBorrar }: { alBorrar: () => void }) {
 
 type NuevaDeuda = {
   descripcion: string; tipo: TipoDeuda; monto_total: number; saldo: number;
-  valor_cuota: number | null; cuotas_total: number | null; cuotas_pagas: number | null; mes_fin: string | null;
+  valor_cuota: number | null; cuotas_total: number | null; cuotas_pagas: number | null; mes_fin: string | null; tasa: number | null;
 };
 
 function FormularioDeuda({ alCerrar, alGuardar }: { alCerrar: () => void; alGuardar: (n: NuevaDeuda) => Promise<void> }) {
@@ -219,6 +236,7 @@ function FormularioDeuda({ alCerrar, alGuardar }: { alCerrar: () => void; alGuar
   const [pagas, setPagas] = useState('');
   const [original, setOriginal] = useState('');
   const [saldo, setSaldo] = useState('');
+  const [tasaTxt, setTasaTxt] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const guardar = async () => {
@@ -233,14 +251,16 @@ function FormularioDeuda({ alCerrar, alGuardar }: { alCerrar: () => void; alGuar
       const fin = mesFinCronograma(mesDe(new Date()), restantes);
       return alGuardar({
         descripcion: descripcion.trim(), tipo, valor_cuota: valor, cuotas_total: cantidad, cuotas_pagas: hechas,
-        monto_total: valor * cantidad, saldo: valor * restantes, mes_fin: fin ? claveMes(fin) : null,
+        monto_total: valor * cantidad, saldo: valor * restantes, mes_fin: fin ? claveMes(fin) : null, tasa: null,
       });
     }
     const orig = digitosACentavos(original);
     const act = saldo ? digitosACentavos(saldo) : orig;
     if (orig === null || act === null) return setError('Completá el monto original y el saldo actual.');
     if (act > orig) return setError('El saldo no puede ser mayor al monto original.');
-    return alGuardar({ descripcion: descripcion.trim(), tipo, monto_total: orig, saldo: act, valor_cuota: null, cuotas_total: null, cuotas_pagas: null, mes_fin: null });
+    const tasa = tasaTxt.trim() ? parseTasaMensual(tasaTxt) : null;
+    if (tasaTxt.trim() && tasa === null) return setError('La tasa no es válida. Ponela en % mensual, con coma para los decimales (por ejemplo 3,5).');
+    return alGuardar({ descripcion: descripcion.trim(), tipo, monto_total: orig, saldo: act, valor_cuota: null, cuotas_total: null, cuotas_pagas: null, mes_fin: null, tasa });
   };
 
   return (
@@ -264,6 +284,7 @@ function FormularioDeuda({ alCerrar, alGuardar }: { alCerrar: () => void; alGuar
           <>
             <CampoDigitos etiqueta="Monto original" valor={original} onChange={setOriginal} />
             <CampoDigitos etiqueta="Saldo actual" valor={saldo} onChange={setSaldo} ayuda="Si lo dejás vacío, es igual al monto original." />
+            <CampoTexto etiqueta="Interés mensual en % (opcional)" valor={tasaTxt} onChange={setTasaTxt} placeholder="3,5" />
           </>
         )}
         {error && <p className="text-sm text-casa-error" role="alert">{error}</p>}
@@ -288,5 +309,48 @@ function FormularioPago({ deuda, alCerrar, alPagar }: { deuda: Deuda; alCerrar: 
         <BotonPrincipal deshabilitado={centavos === null} onClick={() => centavos !== null && void alPagar(deuda, centavos, minimo)}>Registrar pago</BotonPrincipal>
       </div>
     </Hoja>
+  );
+}
+
+/** Para una deuda sin cronograma: pagando $X por mes, cuándo terminás y cuánto pagás de interés (tasa mensual). */
+function SimuladorInteres({ deuda, ritmo, mesHoy, alGuardarTasa }: {
+  deuda: Deuda; ritmo: number; mesHoy: ReturnType<typeof mesDe>; alGuardarTasa: (t: number | null) => Promise<void>;
+}) {
+  const [tasaTxt, setTasaTxt] = useState(deuda.tasa ? String(deuda.tasa).replace('.', ',') : '');
+  const [pagoTxt, setPagoTxt] = useState(ritmo > 0 ? String(Math.round(ritmo / 100)) : '');
+  const [errorTasa, setErrorTasa] = useState<string | null>(null);
+  const tasa = deuda.tasa;
+  const pago = digitosACentavos(pagoTxt);
+  const sim = pago !== null ? simularDeuda(deuda.saldo, tasa, pago, mesHoy) : null;
+
+  const guardar = async () => {
+    if (!tasaTxt.trim()) { setErrorTasa(null); return alGuardarTasa(null); }
+    const t = parseTasaMensual(tasaTxt);
+    if (t === null) return setErrorTasa('La tasa no es válida. Ponela en % mensual, con coma para los decimales.');
+    setErrorTasa(null);
+    await alGuardarTasa(t);
+  };
+
+  return (
+    <div className="space-y-3 border-t border-casa-borde pt-4">
+      <p className="text-xs uppercase tracking-wider text-casa-suave">Cuándo terminás</p>
+      <div className="flex items-end gap-2">
+        <div className="flex-1"><CampoTexto etiqueta="Interés mensual en %" valor={tasaTxt} onChange={setTasaTxt} placeholder="Sin interés" /></div>
+        <button type="button" onClick={() => void guardar()} className="mb-0.5 rounded-xl border border-casa-borde px-4 py-3 text-sm font-semibold text-casa-texto">Guardar</button>
+      </div>
+      {errorTasa && <p className="text-sm text-casa-error" role="alert">{errorTasa}</p>}
+      <CampoDigitos etiqueta="Pagando por mes" valor={pagoTxt} onChange={setPagoTxt} ayuda={ritmo > 0 ? `Lo que venís pagando: ${formatearCentavos(ritmo)} por mes (últimos 3 meses).` : 'Todavía no hay pagos en los últimos 3 meses.'} />
+      {sim && sim.sinFin && (
+        <p className="rounded-xl border border-casa-alerta/40 bg-casa-alerta/10 p-3 text-sm text-casa-alerta">
+          Con ese monto la deuda no baja: el interés de un mes ({formatearCentavos(sim.interesPrimerMes)}) es igual o mayor que lo que pagás.
+        </p>
+      )}
+      {sim && !sim.sinFin && (
+        <p className="rounded-xl border border-casa-borde bg-casa-fondo p-3 text-sm text-casa-texto">
+          Terminás en <strong className="capitalize">{nombreMes(sim.mesFin)}</strong> ({sim.meses} {sim.meses === 1 ? 'mes' : 'meses'}).
+          {tasa ? <> Pagás {formatearCentavos(sim.totalInteres)} de interés en total, o sea {formatearCentavos(sim.totalPagado)} por una deuda de {formatearCentavos(deuda.saldo)}.</> : ' Sin interés cargado, no se suma ninguno.'}
+        </p>
+      )}
+    </div>
   );
 }

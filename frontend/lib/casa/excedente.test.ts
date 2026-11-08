@@ -61,3 +61,29 @@ describe('excedente', () => {
     expect(salidaDeudas(0, 3_000_000, 0, hoy)).toBeNull();
   });
 });
+
+import { consecuenciaDeudas } from './excedente';
+
+describe('consecuencia de sumar plata a las deudas', () => {
+  const HOY_M = { anio: 2026, mes: 11 };
+
+  it('con más por mes, la fecha se adelanta y el interés total baja', () => {
+    const deudas = [{ saldo: 30_000_000, tasa: 3, ritmo: 3_000_000 }];
+    const base = consecuenciaDeudas(deudas, 0, HOY_M);
+    const conExtra = consecuenciaDeudas(deudas, 4_000_000, HOY_M);
+    expect(base.sinFecha).toBe(false);
+    expect(conExtra.meses!).toBeLessThan(base.meses!);
+    expect(conExtra.interesTotal).toBeLessThan(base.interesTotal);
+  });
+
+  it('lo extra se reparte en proporción al saldo y las deudas sin tasa no suman interés', () => {
+    const r = consecuenciaDeudas([{ saldo: 20_000_000, tasa: null, ritmo: 0 }, { saldo: 10_000_000, tasa: null, ritmo: 0 }], 3_000_000, HOY_M);
+    // 2.000.000 y 1.000.000 por mes: ambas en 10 meses
+    expect(r).toEqual({ mesFin: { anio: 2027, mes: 9 }, meses: 10, interesTotal: 0, sinFecha: false });
+  });
+
+  it('una deuda sin pagos ni extra deja el resultado sin fecha; sin deudas tampoco hay fecha', () => {
+    expect(consecuenciaDeudas([{ saldo: 10_000_000, tasa: 2, ritmo: 0 }], 0, HOY_M).sinFecha).toBe(true);
+    expect(consecuenciaDeudas([], 5_000_000, HOY_M)).toEqual({ mesFin: null, meses: null, interesTotal: 0, sinFecha: false });
+  });
+});

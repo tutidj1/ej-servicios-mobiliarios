@@ -63,3 +63,50 @@ describe('deudas y cuotas', () => {
     expect(ritmoSinCronograma(0, pagos, hoy)).toBeNull();
   });
 });
+
+import { parseTasaMensual, simularDeuda } from './deudas';
+
+describe('interés de las deudas (tasa mensual)', () => {
+  const HOY_M = { anio: 2026, mes: 11 };
+
+  it('lee la tasa mensual', () => {
+    expect(parseTasaMensual('3,5')).toBe(3.5);
+    expect(parseTasaMensual('3.5')).toBe(3.5);
+    expect(parseTasaMensual(' 12 ')).toBe(12);
+    expect(parseTasaMensual('0,0001')).toBe(0.0001);
+    for (const x of ['', '0', '-1', 'abc', '101', '1,23456', '1,2,3']) expect(parseTasaMensual(x), x).toBeNull();
+  });
+
+  it('sin interés es pagar el saldo en cuotas iguales', () => {
+    const r = simularDeuda(30_000_000, null, 10_000_000, HOY_M);
+    expect(r).toEqual({ sinFin: false, meses: 3, totalInteres: 0, totalPagado: 30_000_000, mesFin: { anio: 2027, mes: 2 } });
+  });
+
+  it('con interés: cálculo mes a mes, y lo pagado = saldo + interés', () => {
+    // Saldo $100.000, 10% mensual, pago $60.000: mes1 interés 10.000 → 110.000-60.000=50.000; mes2 interés 5.000 → 55.000-55.000(último pago)=0
+    const r = simularDeuda(10_000_000, 10, 6_000_000, HOY_M);
+    expect(r).toEqual({ sinFin: false, meses: 2, totalInteres: 1_500_000, totalPagado: 11_500_000, mesFin: { anio: 2027, mes: 1 } });
+    if (!r?.sinFin) expect(r!.totalPagado).toBe(10_000_000 + r!.totalInteres);
+  });
+
+  it('pagar más por mes adelanta la fecha y baja el interés total', () => {
+    const poco = simularDeuda(60_000_000, 5, 4_000_000, HOY_M);
+    const mas = simularDeuda(60_000_000, 5, 8_000_000, HOY_M);
+    expect(poco && !poco.sinFin && mas && !mas.sinFin).toBe(true);
+    if (poco && !poco.sinFin && mas && !mas.sinFin) {
+      expect(mas.meses).toBeLessThan(poco.meses);
+      expect(mas.totalInteres).toBeLessThan(poco.totalInteres);
+    }
+  });
+
+  it('si el pago no cubre ni el interés del mes, la deuda nunca baja', () => {
+    // 5% de $1.000.000 = $50.000 de interés por mes; pagando $50.000 no se avanza
+    expect(simularDeuda(100_000_000, 5, 5_000_000, HOY_M)).toEqual({ sinFin: true, interesPrimerMes: 5_000_000 });
+    expect(simularDeuda(100_000_000, 5, 4_000_000, HOY_M)).toEqual({ sinFin: true, interesPrimerMes: 5_000_000 });
+  });
+
+  it('sin saldo o sin pago no hay simulación', () => {
+    expect(simularDeuda(0, 5, 1_000_000, HOY_M)).toBeNull();
+    expect(simularDeuda(1_000_000, 5, 0, HOY_M)).toBeNull();
+  });
+});

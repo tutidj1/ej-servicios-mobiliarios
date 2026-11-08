@@ -7,7 +7,7 @@ import { formatearCentavos, mesDe, nombreMes, rangoMes } from '@/lib/casa/dinero
 import { comprometidoMensual, type Deuda } from '@/lib/casa/deudas';
 import { pisoPersonal, type GastoPiso } from '@/lib/casa/piso';
 import {
-  asignadoDetalle, calcularExcedente, ingresoDelMes, reglaDifundida, repartir, salidaDeudas, type IngresoMes,
+  asignadoDetalle, calcularExcedente, consecuenciaDeudas, ingresoDelMes, reglaDifundida, repartir, type IngresoMes,
 } from '@/lib/casa/excedente';
 import type { OblPiso } from '@/lib/casa/piso';
 
@@ -90,13 +90,17 @@ export default function ExcedentePantalla() {
   const reparto = repartir(exc, destinos.deuda, destinos.ahorro);
   const regla = reglaDifundida(ingreso);
 
-  // Consecuencia en vivo: deudas sin cronograma
+  // Consecuencia en vivo: deudas sin cronograma (con la tasa mensual cargada en cada una, si la tiene)
   const sinCrono = deudas.filter((x) => x.tipo === 'sin_cronograma' && x.saldo > 0);
   const saldoSin = sinCrono.reduce((t, x) => t + x.saldo, 0);
-  const ids = new Set(sinCrono.map((x) => x.id));
-  const ritmo = Math.round(pagos.filter((x) => ids.has(x.deuda_id)).reduce((t, x) => t + x.monto, 0) / 3);
-  const hoy = salidaDeudas(saldoSin, ritmo, 0, mes);
-  const conExtra = salidaDeudas(saldoSin, ritmo, reparto.deuda, mes);
+  const aConsiderar = sinCrono.map((x) => ({
+    saldo: x.saldo,
+    tasa: x.tasa,
+    ritmo: Math.round(pagos.filter((p) => p.deuda_id === x.id).reduce((t, p) => t + p.monto, 0) / 3),
+  }));
+  const hoy = consecuenciaDeudas(aConsiderar, 0, mes);
+  const conExtra = consecuenciaDeudas(aConsiderar, reparto.deuda, mes);
+  const hayTasa = sinCrono.some((x) => x.tasa);
 
   return (
     <div className="space-y-6">
@@ -156,15 +160,25 @@ export default function ExcedentePantalla() {
 
           <div className="space-y-2 rounded-2xl border border-casa-borde bg-casa-panel p-4 text-sm text-casa-texto">
             {saldoSin > 0 ? (
-              <p>
-                Deudas sin cronograma: te quedan {formatearCentavos(saldoSin)}.{' '}
-                {hoy ? <>Al ritmo de los últimos 3 meses terminás en <span className="capitalize">{nombreMes(hoy.mesFin)}</span>.</> : 'Sin pagos en los últimos 3 meses no hay fecha de salida.'}{' '}
-                {reparto.deuda > 0 && conExtra && <>Sumando {formatearCentavos(reparto.deuda)} por mes, terminás en <strong className="capitalize">{nombreMes(conExtra.mesFin)}</strong>{hoy && conExtra.meses < hoy.meses ? ` (${hoy.meses - conExtra.meses} ${hoy.meses - conExtra.meses === 1 ? 'mes' : 'meses'} antes)` : ''}.</>}
-              </p>
+              <>
+                <p>
+                  Deudas sin cronograma: te quedan {formatearCentavos(saldoSin)}.{' '}
+                  {hoy.mesFin
+                    ? <>Al ritmo de los últimos 3 meses terminás en <span className="capitalize">{nombreMes(hoy.mesFin)}</span>{hayTasa ? ` y pagás ${formatearCentavos(hoy.interesTotal)} de interés` : ''}.</>
+                    : 'Sin pagos suficientes en los últimos 3 meses no hay fecha de salida para todas.'}
+                </p>
+                {reparto.deuda > 0 && conExtra.mesFin && (
+                  <p>
+                    Sumando {formatearCentavos(reparto.deuda)} por mes (repartido según el saldo de cada una), terminás en <strong className="capitalize">{nombreMes(conExtra.mesFin)}</strong>
+                    {hoy.meses !== null && conExtra.meses !== null && conExtra.meses < hoy.meses ? ` (${hoy.meses - conExtra.meses} ${hoy.meses - conExtra.meses === 1 ? 'mes' : 'meses'} antes)` : ''}
+                    {hayTasa ? <>; el interés total {hoy.sinFecha ? 'sería' : 'pasa de ' + formatearCentavos(hoy.interesTotal) + ' a'} {formatearCentavos(conExtra.interesTotal)}.</> : '.'}
+                  </p>
+                )}
+              </>
             ) : (
               <p>No tenés deudas sin cronograma cargadas. Las cuotas siguen su calendario (ver Deudas).</p>
             )}
-            <p className="text-xs text-casa-suave">No incluye intereses: no hay una tasa cargada para las deudas.</p>
+            <p className="text-xs text-casa-suave">{hayTasa ? 'El interés usa la tasa mensual cargada en cada deuda; las que no tienen tasa no suman interés.' : 'No incluye intereses: ninguna deuda tiene una tasa mensual cargada (se carga en Deudas).'}</p>
           </div>
 
           {ingreso > 0 && (
