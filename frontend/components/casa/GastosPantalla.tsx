@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Delete, Trash2, X } from 'lucide-react';
 import { useCasa } from '@/lib/casa/sesion';
 import IngresosMes from './IngresosMes';
+import VozGasto from './VozGasto';
 import {
   diaCorto, digitosACentavos, fechaLocalISO, formatearCentavos, formatearDigitos, haceDias, mesDe,
   moverMes, nombreMes, rangoMes, sumarCentavos, type Mes,
@@ -107,6 +108,9 @@ export default function GastosPantalla() {
 
   return (
     <div className="space-y-6">
+      {/* Por voz o texto libre */}
+      <VozGasto categorias={categorias} alGuardar={cargarGastos} />
+
       {/* Carga */}
       <section aria-label="Cargar un gasto" className="rounded-3xl border border-casa-borde bg-casa-panel p-4">
         <div className="mb-1 flex items-end justify-between">
