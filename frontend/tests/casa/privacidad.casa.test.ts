@@ -28,7 +28,7 @@ const PRIVADAS = ['gastos', 'ingresos', 'deudas', 'deuda_pagos', 'inversiones', 
 const TODAS = [
   'hogar', 'personas', 'hijos', 'categorias', 'gastos', 'ingresos', 'obligaciones', 'obligacion_instancias',
   'deudas', 'deuda_pagos', 'inversiones', 'inversion_movimientos',
-  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos',
+  'ipc', 'reglas_categoria', 'auditoria', 'objetivos_personales', 'objetivo_personal_movimientos', 'liquidaciones',
 ] as const;
 
 type Persona = { id: string; email: string; password: string; cliente: SupabaseClient; token: string };
@@ -71,6 +71,7 @@ async function limpiar() {
   const { data: hogares } = await servicio.from('hogar').select('id').like('nombre', `${MARCA}%`);
   for (const h of hogares ?? []) {
     await servicio.from('obligaciones').delete().eq('hogar_id', h.id);
+    await servicio.from('liquidaciones').delete().eq('hogar_id', h.id);
     await servicio.from('hijos').delete().eq('hogar_id', h.id);
     await servicio.from('hogar').delete().eq('id', h.id);
   }
@@ -121,6 +122,8 @@ beforeAll(async () => {
   // Compartido y administración, en el hogar 1
   const ob = await ok(servicio.from('obligaciones').insert({ hogar_id: hogar1, concepto: `${MARCA}-luz`, monto_estimado: 8500000, dia_vencimiento: 10, recurrencia: 'mensual', responsable_id: A.id }).select('id').single(), 'obligaciones');
   ids.obligacion = { A: ob.id, B: ob.id };
+  const liq = await ok(servicio.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: A.id, receptor_id: B.id, monto: 1234500, fecha: hoy }).select('id').single(), 'liquidaciones');
+  ids.liquidacion = { A: liq.id, B: liq.id };
   await ok(servicio.from('obligacion_instancias').insert({ obligacion_id: ob.id, periodo: mes, estado: 'pendiente' }).select('id').single(), 'instancias');
   await ok(servicio.from('auditoria').insert({ actor_id: A.id, accion: MARCA, tabla: 'gastos' }).select('id').single(), 'auditoria');
 }, 120_000);
@@ -340,7 +343,7 @@ describe('Compartido: solo dentro del hogar', () => {
   });
 
   it('una persona de OTRO hogar no ve ni toca nada del hogar 1', async () => {
-    for (const t of ['obligaciones', 'obligacion_instancias', 'hijos', 'personas']) {
+    for (const t of ['obligaciones', 'obligacion_instancias', 'hijos', 'personas', 'liquidaciones']) {
       const filas = await ok(D.cliente.from(t).select('*'), t);
       const texto = JSON.stringify(filas);
       expect(texto, t).not.toContain(MARCA + '-luz');
@@ -358,6 +361,34 @@ describe('Compartido: solo dentro del hogar', () => {
   it('no se puede asignar como responsable a alguien de otro hogar', async () => {
     const r = await A.cliente.from('obligaciones').insert({ hogar_id: hogar1, concepto: 'x', monto_estimado: 1, dia_vencimiento: 1, recurrencia: 'mensual', responsable_id: D.id });
     expect(r.error).not.toBeNull();
+  });
+});
+
+describe('Cobertura y saldos: liquidaciones solo dentro del hogar', () => {
+  it('los adultos del hogar las ven; una persona de otro hogar no ve ni inserta', async () => {
+    for (const p of [A, B, C]) {
+      const filas = await ok(p.cliente.from('liquidaciones').select('id'), 'liquidaciones');
+      expect(filas.map((x: { id: string }) => x.id)).toContain(ids.liquidacion.A);
+    }
+    expect(await ok(D.cliente.from('liquidaciones').select('id'), 'liquidaciones de otro hogar')).toHaveLength(0);
+    const r = await D.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: A.id, receptor_id: B.id, monto: 100, fecha: hoy });
+    expect(r.error).not.toBeNull();
+    const borrar = await D.cliente.from('liquidaciones').delete().eq('id', ids.liquidacion.A).select();
+    expect(borrar.data ?? []).toHaveLength(0);
+  });
+
+  it('B puede registrar una liquidación válida; no con alguien de otro hogar, ni consigo mismo, ni de monto cero', async () => {
+    const ok1 = await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: A.id, monto: 500, fecha: hoy }).select();
+    expect(ok1.error).toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: D.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: B.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar1, pagador_id: B.id, receptor_id: A.id, monto: 0, fecha: hoy })).error).not.toBeNull();
+    expect((await B.cliente.from('liquidaciones').insert({ hogar_id: hogar2, pagador_id: B.id, receptor_id: A.id, monto: 500, fecha: hoy })).error).not.toBeNull();
+  });
+
+  it('no se puede poner como responsable de una instancia a alguien de otro hogar', async () => {
+    const r = await A.cliente.from('obligacion_instancias').update({ responsable_id: D.id }).eq('obligacion_id', ids.obligacion.A).select();
+    expect(r.error ?? (r.data?.length ? null : 'sin filas')).toBeTruthy();
   });
 });
 

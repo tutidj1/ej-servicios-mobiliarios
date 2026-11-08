@@ -1,5 +1,5 @@
-import ObligacionesPantalla from '@/components/casa/ObligacionesPantalla';
+import ObligacionesHogar from '@/components/casa/ObligacionesHogar';
 
 export default function Pagina() {
-  return <ObligacionesPantalla />;
+  return <ObligacionesHogar />;
 }

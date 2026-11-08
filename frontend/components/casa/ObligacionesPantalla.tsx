@@ -22,7 +22,7 @@ type Instancia = {
 
 const clave = (m: Mes) => `${m.anio}-${String(m.mes).padStart(2, '0')}-01`;
 
-export default function ObligacionesPantalla() {
+export function MesObligaciones() {
   const { cliente, persona } = useCasa();
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [hijos, setHijos] = useState<Hijo[]>([]);
@@ -47,7 +47,7 @@ export default function ObligacionesPantalla() {
     const ultimo = new Map<string, string>();
     for (const r of (data ?? []) as { obligacion_id: string; periodo: string }[]) if (!ultimo.has(r.obligacion_id)) ultimo.set(r.obligacion_id, r.periodo);
     const nuevas = lista.flatMap((o) =>
-      periodosPendientes(ultimo.get(o.id) ?? null, o.recurrencia, clave(mesActual), clave(mesActual)).map((periodo) => ({ obligacion_id: o.id, periodo, estado: 'pendiente' })),
+      periodosPendientes(ultimo.get(o.id) ?? null, o.recurrencia, clave(mesActual), clave(mesActual)).map((periodo) => ({ obligacion_id: o.id, periodo, estado: 'pendiente', responsable_id: o.responsable_id })),
     );
     if (nuevas.length) await cliente.from('obligacion_instancias').upsert(nuevas, { onConflict: 'obligacion_id,periodo', ignoreDuplicates: true });
   }, [cliente, mesActual]);
@@ -96,6 +96,10 @@ export default function ObligacionesPantalla() {
     if (!cliente) return;
     const r = await cliente.from('obligaciones').update({ responsable_id: responsable }).eq('id', o.id);
     if (r.error) setError('No se pudo cambiar el responsable.');
+    else {
+      // De acá en adelante: las pendientes de este mes y los siguientes cambian; lo ya pagado conserva quién se hacía cargo
+      await cliente.from('obligacion_instancias').update({ responsable_id: responsable }).eq('obligacion_id', o.id).eq('estado', 'pendiente').gte('periodo', clave(mesActual));
+    }
     setAbierta(null);
     await cargar();
   };
