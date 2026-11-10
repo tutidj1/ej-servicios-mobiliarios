@@ -4,7 +4,7 @@ import '../globals.css';
 import Script from 'next/script';
 import MedirWhatsapp from '@/components/MedirWhatsapp';
 import ScrollSuave from "@/components/ScrollSuave";
-import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, PALABRAS_CLAVE, SITE_NAME, SITE_URL } from '@/lib/site';
+import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // Configuración de la fuente Playfair Display para títulos elegantes
 const playfair = Playfair_Display({
@@ -29,7 +29,6 @@ export const metadata: Metadata = {
     template: '%s',
   },
   description: HOME_DESCRIPTION,
-  keywords: PALABRAS_CLAVE,
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   publisher: SITE_NAME,

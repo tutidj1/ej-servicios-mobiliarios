@@ -30,8 +30,8 @@ export interface PaginaProducto {
 }
 
 const ENTREGA_COMUN = [
-  'Podés retirar el pedido por tu cuenta o pedirnos la entrega y el retiro en el lugar del evento: salón, quinta o casa.',
-  'El costo del flete depende de la distancia al lugar del evento; te lo pasamos junto con la cotización.',
+  'Flete incluido dentro de Santa Fe ciudad: llevamos y retiramos el pedido en el lugar del evento (salón, quinta o casa).',
+  'Si preferís, podés retirar y devolver el pedido vos.',
   'Al terminar el evento hacemos el conteo de todo lo alquilado. Si algo se rompe o se pierde, se cobra el valor de reposición del producto.',
 ];
 

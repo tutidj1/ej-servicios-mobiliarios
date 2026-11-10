@@ -57,7 +57,7 @@ export const paginasEvento: PaginaEvento[] = [
       {
         titulo: 'Entrega, retiro y lavado',
         parrafos: [
-          'Podés retirar el pedido por tu cuenta o pedir que lo llevemos al lugar del casamiento. El costo del flete depende de la distancia y te lo informamos junto con la cotización. Cuando termina la fiesta, retiramos la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones: ni vos ni tu familia tienen que lavar nada al día siguiente.',
+          'El flete está incluido dentro de Santa Fe ciudad: llevamos el pedido al lugar del casamiento. Si preferís, podés retirarlo vos. Cuando termina la fiesta, retiramos la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones: ni vos ni tu familia tienen que lavar nada al día siguiente.',
           'Al finalizar hacemos el conteo de todo lo alquilado. Si algo se rompe o se pierde, se cobra el valor de reposición de la pieza.',
         ],
       },
@@ -130,7 +130,7 @@ export const paginasEvento: PaginaEvento[] = [
       {
         question: '¿Llevan el pedido a mi casa?',
         answer:
-          'Sí, podés retirar por tu cuenta o pedir entrega y retiro a domicilio. El costo del flete varía según la distancia al lugar del cumpleaños.',
+          'Sí. El flete está incluido dentro de Santa Fe ciudad: llevamos y retiramos el pedido. Si preferís, podés retirarlo vos.',
       },
     ],
     mensajeWhatsapp:

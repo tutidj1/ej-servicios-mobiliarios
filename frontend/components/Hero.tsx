@@ -82,7 +82,7 @@ export default function Hero({ banner, onOpenCotizar }: HeroProps) {
         >
           <span className="text-acento-amarillo text-base font-bold">✦</span>
           <p className="font-manrope text-xs sm:text-sm text-crema-base/95 font-semibold">
-            + de 40 eventos equipados en Santa Fe y zona. Puntualidad e higiene garantizada.
+            + de 40 eventos equipados en Santa Fe ciudad. Puntualidad e higiene garantizada.
           </p>
         </motion.div>
 

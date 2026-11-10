@@ -10,7 +10,7 @@ export default function Diferenciales() {
       icon: <Truck className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,
       title: 'Llevamos y traemos',
       description:
-        'Flete incluido dentro de Santa Fe Capital. Comodidad absoluta, sin cargos sorpresa.',
+        'Flete incluido dentro de Santa Fe ciudad. Comodidad absoluta, sin cargos sorpresa.',
     },
     {
       icon: <Sparkles className="w-8 h-8 text-negro-carbon stroke-[1.25]" />,

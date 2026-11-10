@@ -17,7 +17,7 @@ export default function Servicios() {
       icon: <MapPin className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Logística integrada',
       description:
-        'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe Capital y zonas de influencia.',
+        'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe ciudad.',
     },
     {
       icon: <GlassWater className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
