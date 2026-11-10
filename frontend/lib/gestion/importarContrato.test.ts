@@ -51,4 +51,22 @@ describe('contrato generado por la propia página → se vuelve a leer', () => {
     expect(r.fechaDevolucion).toBe('2026-11-22');
     expect(r.fechaFirma).toBe('2026-11-08');
   }, 30000);
+
+  it('la fecha de arriba sigue al día de inicio que se elige: cambian el día, el mes y el año', async () => {
+    const base = {
+      locador: { nombre: 'Locador de Prueba', dni: '11.111.111', telefono: '342 111 1111' },
+      locatario: { nombre: 'Javier de la Costa', dni: null, telefono: '342 000 0000' },
+      lugar: 'Sarmiento',
+      articulos: [{ nombre: 'Sillas', orden: 1, cantidad: 100 }],
+      fleteCobrado: 0,
+      total: 100000,
+      sena: null,
+    };
+    for (const [inicio, devolucion] of [['2026-12-24', '2026-12-26'], ['2027-03-05', '2027-03-07'], ['2026-11-09', '2026-11-10']]) {
+      const blob = await generarContratoPdf({ ...base, emision: inicio, fechaDevolucion: devolucion });
+      const r = interpretarContrato(await leerLineasPdf(await blob.arrayBuffer()));
+      expect(r.fechaFirma, `arriba del contrato (inicio ${inicio})`).toBe(inicio);
+      expect(r.fechaDevolucion, `devolución (inicio ${inicio})`).toBe(devolucion);
+    }
+  }, 60000);
 });

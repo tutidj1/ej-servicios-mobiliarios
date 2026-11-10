@@ -34,7 +34,7 @@ export interface DatosContrato {
   locador: Locador;
   locatario: { nombre: string; dni: string | null; telefono: string | null };
   lugar: string | null;
-  /** YYYY-MM-DD, fecha en que se firma */
+  /** YYYY-MM-DD, fecha de arriba del contrato («a los N días del mes de M de AAAA»): el día de inicio del alquiler */
   emision: string;
   /** YYYY-MM-DD */
   fechaDevolucion: string;
