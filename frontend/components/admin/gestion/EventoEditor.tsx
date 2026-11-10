@@ -538,7 +538,8 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
       locador: { nombre: datosLocador.nombre.trim(), dni: datosLocador.dni.trim(), telefono: datosLocador.telefono.trim() },
       locatario: { nombre: cliente.nombre_apellido, dni: dniLimpio, telefono: cliente.telefono },
       lugar: evento.lugar,
-      emision: hoyArgentina(),
+      // «a los … días del mes de …»: sale del día de inicio del alquiler que se eligió en el calendario
+      emision: evento.fecha_evento,
       fechaDevolucion: evento.fecha_devolucion,
       articulos,
       fleteCobrado: leerMonto(fleteTexto) ?? 0,
@@ -596,7 +597,7 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
               <div>
                 <p className={ETIQUETA}>Fechas del alquiler</p>
                 <CampoRango desde={evento.fecha_evento} hasta={evento.fecha_devolucion} onChange={(a, b) => cambiarEvento({ fecha_evento: a, fecha_entrega: a, fecha_devolucion: b })} />
-                <p className={AYUDA}>Tocá el día del evento y después el día de devolución. La devolución sale en el contrato.</p>
+                <p className={AYUDA}>Tocá el día del evento y después el día de devolución. El día del evento es la fecha que dice arriba de todo en el contrato («a los … días del mes de …») y la devolución sale en la cláusula correspondiente.</p>
               </div>
             )}
             <div>
