@@ -43,6 +43,7 @@ import { type BorradorCliente, FormCliente, guardarCliente } from './ClientesAdm
 import { CampoFecha, CampoRango } from './Calendarios';
 import { type Locador, cargarLogo, generarContratoPdf, nombreArchivoContrato } from '@/lib/gestion/contratoPdf';
 import { compartirArchivo, descargarArchivo, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
+import { useBloqueoScroll, useVisualViewport } from '@/lib/useMovil';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -95,6 +96,11 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const [locador, setLocador] = useState<Locador>({ nombre: '', dni: '', telefono: '' });
   const [locadorGuardable, setLocadorGuardable] = useState(true);
   const [asistente, setAsistente] = useState<{ item: Item; cantidad: number; marcado: boolean }[] | null>(null);
+
+  // Con el panel del contrato abierto: la página de atrás queda quieta y el panel se ajusta a lo que
+  // se ve de la pantalla (en el celular, el teclado tapa la mitad de abajo).
+  useBloqueoScroll(!!contratoPanel);
+  const areaVisible = useVisualViewport(!!contratoPanel);
 
   const cerrado = !!evento?.cerrado_en;
   const bloqueado = cerrado && !esAdmin;
@@ -580,62 +586,75 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   return (
     <div className="space-y-5 pb-44 md:pb-28">
       {contratoPanel && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setContratoPanel(null)}>
+        <div
+          className="fixed inset-x-0 top-0 bottom-0 z-50 flex items-end justify-center overflow-hidden overscroll-none bg-black/50 sm:items-center sm:p-4"
+          style={areaVisible}
+          onClick={() => setContratoPanel(null)}
+        >
+          {/*
+            El panel nunca pasa lo que se ve de la pantalla: el título y los botones quedan quietos
+            y solo se desliza el medio, así se llega a todos los campos sin quedarse trabado.
+          */}
           <div
-            className="w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain space-y-4 rounded-t-2xl bg-white p-5 pb-7 shadow-2xl sm:rounded-2xl"
+            className="flex max-h-full w-full max-w-md flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
-            onFocusCapture={(e) => {
-              const el = e.target as HTMLElement;
-              if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
-              window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
-            }}
             role="dialog"
             aria-label="Datos del contrato"
           >
-            <h2 className="font-playfair text-xl font-bold">Antes de armar el documento</h2>
-            {!bloqueado && (
+            <h2 className="shrink-0 px-5 pb-1 pt-5 font-playfair text-xl font-bold">Antes de armar el documento</h2>
+            <div
+              className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4"
+              onFocusCapture={(e) => {
+                const el = e.target as HTMLElement;
+                if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+                // Con el teclado abierto, el campo que se toca sube al centro de la parte que se desliza
+                window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+              }}
+            >
+              {!bloqueado && (
+                <div>
+                  <p className={ETIQUETA}>Fechas del alquiler</p>
+                  <CampoRango desde={evento.fecha_evento} hasta={evento.fecha_devolucion} onChange={(a, b) => cambiarEvento({ fecha_evento: a, fecha_entrega: a, fecha_devolucion: b })} />
+                  <p className={AYUDA}>Tocá el día del evento y después el día de devolución. El día del evento es la fecha que dice arriba de todo en el contrato («a los … días del mes de …») y la devolución sale en la cláusula correspondiente.</p>
+                </div>
+              )}
               <div>
-                <p className={ETIQUETA}>Fechas del alquiler</p>
-                <CampoRango desde={evento.fecha_evento} hasta={evento.fecha_devolucion} onChange={(a, b) => cambiarEvento({ fecha_evento: a, fecha_entrega: a, fecha_devolucion: b })} />
-                <p className={AYUDA}>Tocá el día del evento y después el día de devolución. El día del evento es la fecha que dice arriba de todo en el contrato («a los … días del mes de …») y la devolución sale en la cláusula correspondiente.</p>
+                <label className={ETIQUETA} htmlFor="ct-sena">Seña acordada ($)</label>
+                <input id="ct-sena" className={CAMPO} inputMode="decimal" placeholder="Dejalo vacío si todavía no hay" value={contratoPanel.sena} onChange={(e) => setContratoPanel({ ...contratoPanel, sena: e.target.value })} />
+                <p className={AYUDA}>Salen la seña y el saldo en el contrato. Si lo dejás vacío, quedan en blanco para completar a mano.</p>
               </div>
-            )}
-            <div>
-              <label className={ETIQUETA} htmlFor="ct-sena">Seña acordada ($)</label>
-              <input id="ct-sena" className={CAMPO} inputMode="decimal" placeholder="Dejalo vacío si todavía no hay" value={contratoPanel.sena} onChange={(e) => setContratoPanel({ ...contratoPanel, sena: e.target.value })} />
-              <p className={AYUDA}>Salen la seña y el saldo en el contrato. Si lo dejás vacío, quedan en blanco para completar a mano.</p>
-            </div>
-            <div>
-              <label className={ETIQUETA} htmlFor="ct-dni">DNI del cliente</label>
-              <input id="ct-dni" className={CAMPO} inputMode="numeric" value={contratoPanel.dni} onChange={(e) => setContratoPanel({ ...contratoPanel, dni: e.target.value })} />
-              <p className={AYUDA}>Se guarda en la ficha del cliente. Si lo dejás vacío, queda en blanco.</p>
-            </div>
-            <details className="rounded-xl border border-stone-200 p-3" open={!locador.nombre || !locador.dni}>
-              <summary className="cursor-pointer font-manrope text-sm font-semibold text-stone-800">
-                Datos de quien alquila (locador){!locador.nombre || !locador.dni ? ' · faltan' : ''}
-              </summary>
-              <div className="mt-3 space-y-3">
-                {(['nombre', 'dni', 'telefono'] as const).map((campo) => (
-                  <div key={campo}>
-                    <label className={ETIQUETA} htmlFor={`ct-loc-${campo}`}>{campo === 'nombre' ? 'Nombre y apellido' : campo === 'dni' ? 'DNI' : 'Teléfono'}</label>
-                    <input
-                      id={`ct-loc-${campo}`}
-                      className={CAMPO}
-                      value={contratoPanel.locador[campo]}
-                      onChange={(e) => setContratoPanel({ ...contratoPanel, locador: { ...contratoPanel.locador, [campo]: e.target.value } })}
-                    />
-                  </div>
-                ))}
-                <p className={AYUDA}>
-                  {!locadorGuardable
-                    ? 'Estos datos salen en este contrato, pero todavía no se pueden guardar (falta aplicar la actualización 0012 de la base).'
-                    : esAdmin
-                      ? 'Se guardan una sola vez y se usan en todos los contratos. Si dejás algo vacío, queda en blanco.'
-                      : 'Solo el administrador puede cambiarlos para siempre; acá salen solo en este contrato.'}
-                </p>
+              <div>
+                <label className={ETIQUETA} htmlFor="ct-dni">DNI del cliente</label>
+                <input id="ct-dni" className={CAMPO} inputMode="numeric" value={contratoPanel.dni} onChange={(e) => setContratoPanel({ ...contratoPanel, dni: e.target.value })} />
+                <p className={AYUDA}>Se guarda en la ficha del cliente. Si lo dejás vacío, queda en blanco.</p>
               </div>
-            </details>
-            <div className="flex gap-2">
+              <details className="rounded-xl border border-stone-200 p-3" open={!locador.nombre || !locador.dni}>
+                <summary className="cursor-pointer font-manrope text-sm font-semibold text-stone-800">
+                  Datos de quien alquila (locador){!locador.nombre || !locador.dni ? ' · faltan' : ''}
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {(['nombre', 'dni', 'telefono'] as const).map((campo) => (
+                    <div key={campo}>
+                      <label className={ETIQUETA} htmlFor={`ct-loc-${campo}`}>{campo === 'nombre' ? 'Nombre y apellido' : campo === 'dni' ? 'DNI' : 'Teléfono'}</label>
+                      <input
+                        id={`ct-loc-${campo}`}
+                        className={CAMPO}
+                        value={contratoPanel.locador[campo]}
+                        onChange={(e) => setContratoPanel({ ...contratoPanel, locador: { ...contratoPanel.locador, [campo]: e.target.value } })}
+                      />
+                    </div>
+                  ))}
+                  <p className={AYUDA}>
+                    {!locadorGuardable
+                      ? 'Estos datos salen en este contrato, pero todavía no se pueden guardar (falta aplicar la actualización 0012 de la base).'
+                      : esAdmin
+                        ? 'Se guardan una sola vez y se usan en todos los contratos. Si dejás algo vacío, queda en blanco.'
+                        : 'Solo el administrador puede cambiarlos para siempre; acá salen solo en este contrato.'}
+                  </p>
+                </div>
+              </details>
+            </div>
+            <div className="flex shrink-0 gap-2 border-t border-stone-200 bg-white p-4 pb-5 sm:rounded-b-2xl">
               <button type="button" disabled={generando} onClick={confirmarContrato} className={`${BTN_PRIMARIO} min-h-[52px] flex-1`}>{generando ? 'Armando…' : contratoPanel.accion === 'enviar' ? 'Armar y enviar' : 'Armar PDF'}</button>
               <button type="button" onClick={() => setContratoPanel(null)} className={BTN_SECUNDARIO}>Cancelar</button>
             </div>
