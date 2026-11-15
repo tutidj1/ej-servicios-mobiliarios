@@ -15,7 +15,7 @@ export const BANNERS_POR_DEFECTO: Record<string, Banner> = {
     titulo: 'Exclusivo para vos',
     subtitulo: 'Llevamos, traemos y lavamos la vajilla. Vos solo disfrutá tu evento.',
     imagen_url: '/hero-banner.png',
-    alt: 'EJ Servicios Mobiliarios Banner',
+    alt: 'Mesa larga de madera servida con platos, copas, velas y flores blancas en un salón',
   },
   nosotros: {
     clave: 'nosotros',

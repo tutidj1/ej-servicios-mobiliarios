@@ -17,7 +17,7 @@ export default function Servicios() {
       icon: <MapPin className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
       title: 'Logística integrada',
       description:
-        'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe Capital y zonas de influencia.',
+        'Llevamos y traemos todo el mobiliario alquilado directamente a tu salón, quinta o casa familiar en Santa Fe Ciudad, con flete incluido.',
     },
     {
       icon: <GlassWater className="w-6 h-6 text-negro-carbon stroke-[1.25]" />,
@@ -72,7 +72,7 @@ export default function Servicios() {
         </div>
 
         {/* Enlaces a las páginas de cada producto */}
-        <nav aria-label="Alquiler por producto" className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <nav aria-label="Alquiler por producto" className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {paginasProducto.map((p) => (
             <a
               key={p.slug}

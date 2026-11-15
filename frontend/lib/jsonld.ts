@@ -18,12 +18,12 @@ export function negocioLd() {
     '@id': NEGOCIO_ID,
     name: SITE_NAME,
     description:
-      'Alquiler de sillas, tablones, caballetes, vajilla, cubiertos, copas y mantelería para eventos en Santa Fe. Entrega, retiro y lavado de la vajilla.',
+      'Alquiler de sillas, tablones, vajilla y mantelería para eventos en Santa Fe Ciudad.',
     url: SITE_URL,
     telephone: TELEFONO_E164,
     image: OG_IMAGE.url,
     // TODO(Tomás): sumar localidades (Santo Tomé, Recreo, etc.) solo cuando estén confirmadas.
-    areaServed: { '@type': 'City', name: 'Santa Fe' },
+    areaServed: { '@type': 'City', name: 'Santa Fe', containedInPlace: { '@type': 'Country', name: 'Argentina' } },
     sameAs: REDES,
   };
 }

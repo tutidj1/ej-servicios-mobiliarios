@@ -57,12 +57,12 @@ export const paginasEvento: PaginaEvento[] = [
       {
         titulo: 'Entrega, retiro y lavado',
         parrafos: [
-          'Podés retirar el pedido por tu cuenta o pedir que lo llevemos al lugar del casamiento. El costo del flete depende de la distancia y te lo informamos junto con la cotización. Cuando termina la fiesta, retiramos la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones: ni vos ni tu familia tienen que lavar nada al día siguiente.',
+          'Lo llevamos al lugar del casamiento. Flete incluido. Si preferís, podés retirar el pedido vos, sin costo de flete. Cuando termina la fiesta, retiramos la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones: ni vos ni tu familia tienen que lavar nada al día siguiente.',
           'Al finalizar hacemos el conteo de todo lo alquilado. Si algo se rompe o se pierde, se cobra el valor de reposición de la pieza.',
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
     preguntas: [
       {
         question: '¿Con cuánto tiempo conviene reservar para un casamiento?',
@@ -111,11 +111,11 @@ export const paginasEvento: PaginaEvento[] = [
       {
         titulo: 'Sin lavar platos al terminar',
         parrafos: [
-          'Lo mejor de alquilar la vajilla es que después de soplar las velitas no te quedás con una pila de platos. Retiramos todo lo usado y lo lavamos nosotros. Si preferís, también podés pasar a buscar y devolver el pedido por tu cuenta, o pedir que lo llevemos y lo retiremos en tu domicilio; el flete se cotiza según la distancia.',
+          'Lo mejor de alquilar la vajilla es que después de soplar las velitas no te quedás con una pila de platos. Retiramos todo lo usado y lo lavamos nosotros. Lo llevamos y lo retiramos en tu domicilio con flete incluido. Si preferís, también podés pasar a buscar y devolver el pedido vos, sin costo de flete.',
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
     preguntas: [
       {
         question: '¿Puedo alquilar solo unas pocas sillas para un cumpleaños en casa?',
@@ -130,7 +130,7 @@ export const paginasEvento: PaginaEvento[] = [
       {
         question: '¿Llevan el pedido a mi casa?',
         answer:
-          'Sí, podés retirar por tu cuenta o pedir entrega y retiro a domicilio. El costo del flete varía según la distancia al lugar del cumpleaños.',
+          'Sí. Flete incluido. Si preferís, podés retirar el pedido vos, sin costo de flete.',
       },
     ],
     mensajeWhatsapp:
@@ -164,11 +164,11 @@ export const paginasEvento: PaginaEvento[] = [
       {
         titulo: 'Sin preocuparte por el día después',
         parrafos: [
-          'Terminada la fiesta, pasamos a retirar la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones. Hacemos el conteo de lo alquilado y, si alguna pieza se rompió o se perdió, se cobra el valor de reposición. El flete de ida y vuelta depende de la distancia al salón y te lo pasamos junto con la cotización.',
+          'Terminada la fiesta, pasamos a retirar la vajilla y la mantelería usadas y las lavamos en nuestras instalaciones. Hacemos el conteo de lo alquilado y, si alguna pieza se rompió o se perdió, se cobra el valor de reposición. Flete incluido. Si preferís, podés retirar el pedido vos, sin costo de flete.',
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
     preguntas: [
       {
         question: '¿Alquilan para fiestas de 15 con muchos invitados?',
@@ -221,7 +221,7 @@ export const paginasEvento: PaginaEvento[] = [
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-vajilla-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
     preguntas: [
       {
         question: '¿Alquilan para capacitaciones o reuniones, no solo fiestas?',
