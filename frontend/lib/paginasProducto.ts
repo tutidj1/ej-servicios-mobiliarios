@@ -90,7 +90,7 @@ export const paginasProducto: PaginaProducto[] = [
     nombreCorto: 'Vajilla',
     actualizado: '2026-11-06',
     intro:
-      'Te alquilamos la vajilla completa para que la mesa de tu evento quede prolija sin tener que comprar nada ni lavar nada después. La recibís limpia y lista para usar, y cuando termina la fiesta la retiramos y la lavamos nosotros.',
+      'Te alquilamos la vajilla y los enseres completos para que la mesa de tu evento quede prolija sin tener que comprar nada ni lavar nada después. La recibís limpia y lista para usar, y cuando termina la fiesta la retiramos y la lavamos nosotros.',
     incluye: [
       'Vajilla de loza blanca: plato principal, plato de postre, taza de té con platillo, tetera y azucarera.',
       'Cubiertos de acero inoxidable: cuchillo y tenedor de mesa, cuchara de postre, tenedor de postre y cucharita de té.',
@@ -127,7 +127,6 @@ export const paginasProducto: PaginaProducto[] = [
       'Hola! Quiero consultar por el alquiler de vajilla para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
     // Misma lista que la pestaña Vajilla del catálogo de la home
     filtroFotos: { categorias: ['vajilla', 'cubiertos', 'cristaleria'], nombreIncluye: ['ensaladera', 'frasco', 'bandeja de mozo'] },
-    tituloFotos: 'Vajilla y enseres para tu evento en Santa Fe',
   },
   {
     slug: 'alquiler-de-tablones-santa-fe',
