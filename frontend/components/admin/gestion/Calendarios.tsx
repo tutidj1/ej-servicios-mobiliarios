@@ -10,6 +10,8 @@ export type VistaCal = 'semana' | 'mes' | 'anio';
 export interface MarcaDia {
   confirmados: number;
   presupuestos: number;
+  /** Consultas de la web que todavía no se convirtieron en presupuesto. */
+  consultas?: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -56,6 +58,7 @@ export function Marcas({ marca }: { marca?: MarcaDia }) {
     <span className="flex gap-0.5" aria-hidden="true">
       {marca.confirmados > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />}
       {marca.presupuestos > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
+      {(marca.consultas ?? 0) > 0 && <span className="h-1.5 w-1.5 rounded-full bg-red-600" />}
     </span>
   );
 }

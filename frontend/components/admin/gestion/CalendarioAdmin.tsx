@@ -4,11 +4,23 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { type ResultadoEvento, diasDelRango, fechaLarga, hoyArgentina, pesos, resultadoEvento, sumarDias } from '@/lib/gestion/calculos';
 import { COLOR_ESTADO_EVENTO, type Costo, type EventoConCliente, type Linea, type FilaDisponibilidad, type Item, mensajeError, mostrarStock } from '@/lib/gestion/tipos';
+import { linkWhatsappCliente } from '@/lib/phone';
 import { type Aviso, TARJETA } from '../estilos';
 import { Encabezado, Mensaje } from '../ui';
 import { type MarcaDia, MiniCalendario, type VistaCal, rangoVisible } from './Calendarios';
 import DisponibilidadAdmin from './DisponibilidadAdmin';
 import GananciasAdmin from './GananciasAdmin';
+
+interface Consulta {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  whatsapp: string | null;
+  fecha_evento: string;
+  tipo_evento: string;
+  cantidad_invitados: number;
+  ubicacion: string | null;
+}
 
 export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id: string) => void }) {
   const hoy = hoyArgentina();
@@ -20,6 +32,7 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
   const [items, setItems] = useState<Item[]>([]);
   const [ocupacion, setOcupacion] = useState<FilaDisponibilidad[]>([]);
   const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [consultas, setConsultas] = useState<Consulta[]>([]);
 
   const { desde, hasta } = useMemo(() => rangoVisible(vista, ancla), [vista, ancla]);
 
@@ -40,6 +53,26 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
       setAviso(null);
     }
     setItems((it.data as Item[]) ?? []);
+
+    // Consultas de la web sin presupuesto: se muestran en rojo en la fecha que pidieron
+    const co = await supabase
+      .from('cotizaciones')
+      .select('id, nombre, telefono, whatsapp, fecha_evento, tipo_evento, cantidad_invitados, ubicacion')
+      .in('estado', ['pendiente', 'contactado'])
+      .gte('fecha_evento', desde)
+      .lte('fecha_evento', hasta)
+      .order('fecha_evento');
+    if (co.error) {
+      setConsultas([]);
+      return;
+    }
+    const lista = (co.data as Consulta[]) ?? [];
+    let yaConvertidas = new Set<string>();
+    if (lista.length) {
+      const cl = await supabase.from('clientes').select('lead_id').in('lead_id', lista.map((c) => c.id));
+      yaConvertidas = new Set(((cl.data as { lead_id: string }[]) ?? []).map((c) => c.lead_id));
+    }
+    setConsultas(lista.filter((c) => !yaConvertidas.has(c.id)));
   }, [desde, hasta]);
 
   useEffect(() => {
@@ -69,8 +102,12 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
       }
       meses.forEach((k) => (porMes[k] = (porMes[k] ?? 0) + 1));
     }
+    for (const c of consultas) {
+      const marca = (m[c.fecha_evento] ??= { confirmados: 0, presupuestos: 0 });
+      marca.consultas = (marca.consultas ?? 0) + 1;
+    }
     return { marcas: m, marcasMes: porMes };
-  }, [eventos, desde, hasta]);
+  }, [eventos, consultas, desde, hasta]);
 
   // Ganancia de cada evento (artículos + flete cobrado − subalquiler − costos)
   const [finanzas, setFinanzas] = useState<Record<string, ResultadoEvento>>({});
@@ -125,6 +162,7 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
   const color = (n: number) => (n < 0 ? 'text-red-700' : 'text-emerald-700');
 
   const delDia = eventos.filter((e) => e.fecha_entrega <= dia && dia <= e.fecha_devolucion);
+  const consultasDelDia = consultas.filter((c) => c.fecha_evento === dia);
   const nombreItem = (id: string) => items.find((i) => i.id === id)?.nombre ?? '';
 
   return (
@@ -164,6 +202,7 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
             <p className="mt-3 font-manrope text-xs text-stone-500">
               <span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-600" /> confirmado
               <span className="ml-3 mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" /> presupuesto
+              <span className="ml-3 mr-1 inline-block h-2 w-2 rounded-full bg-red-600" /> consulta sin presupuesto
             </p>
             <div className="mt-3 rounded-xl bg-stone-50 p-3 font-manrope">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Ganancia {textoPeriodo}</p>
@@ -200,7 +239,28 @@ export default function CalendarioAdmin({ onAbrirEvento }: { onAbrirEvento: (id:
                 {estimadoDia.n > 0 && <p className="mt-1 text-xs text-amber-800">+ {pesos(estimadoDia.ganancia)} estimados (presupuesto sin confirmar)</p>}
                 {gananciaDia.n === 0 && estimadoDia.n === 0 && <p className="text-xs text-stone-500">No hay eventos con fecha este día.</p>}
               </div>
-              {delDia.length === 0 && <p className="font-manrope text-sm text-stone-600">No hay nada este día.</p>}
+              {consultasDelDia.length > 0 && (
+                <ul className="mb-3 space-y-2">
+                  {consultasDelDia.map((c) => {
+                    const tel = c.whatsapp || c.telefono;
+                    return (
+                      <li key={c.id} className="rounded-xl border border-red-200 bg-red-50 p-3 font-manrope">
+                        <span className="font-semibold">{c.nombre}</span>{' '}
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">Consulta sin presupuesto</span>
+                        <span className="block text-xs text-stone-600">
+                          {c.tipo_evento}{c.cantidad_invitados > 0 ? ` · ${c.cantidad_invitados} invitados` : ''}{c.ubicacion ? ` · ${c.ubicacion}` : ''}
+                        </span>
+                        {tel && (
+                          <a href={linkWhatsappCliente(tel)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-semibold text-red-800 underline">
+                            Escribirle por WhatsApp
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {delDia.length === 0 && consultasDelDia.length === 0 && <p className="font-manrope text-sm text-stone-600">No hay nada este día.</p>}
               <ul className="space-y-2">
                 {delDia.map((e) => (
                   <li key={e.id}>
