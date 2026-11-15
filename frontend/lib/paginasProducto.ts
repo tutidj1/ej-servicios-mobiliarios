@@ -27,11 +27,13 @@ export interface PaginaProducto {
   mensajeWhatsapp: string;
   /** Qué productos del catálogo (Supabase) se muestran como fotos reales en la página */
   filtroFotos: { categorias?: string[]; nombreIncluye?: string[] };
+  /** Título de la sección de fotos (por defecto "Lo que te llevamos") */
+  tituloFotos?: string;
 }
 
 const ENTREGA_COMUN = [
-  'Podés retirar el pedido por tu cuenta o pedirnos la entrega y el retiro en el lugar del evento: salón, quinta o casa.',
-  'El costo del flete depende de la distancia al lugar del evento; te lo pasamos junto con la cotización.',
+  'Te llevamos y retiramos el pedido en el lugar del evento: salón, quinta o casa.',
+  'Flete incluido. Si preferís, podés retirar el pedido vos, sin costo de flete.',
   'Al terminar el evento hacemos el conteo de todo lo alquilado. Si algo se rompe o se pierde, se cobra el valor de reposición del producto.',
 ];
 
@@ -50,6 +52,7 @@ export const paginasProducto: PaginaProducto[] = [
       'Sillas blancas de plástico reforzado, apilables y cómodas.',
       'Las podés combinar en el mismo pedido con tablones, caballetes, vajilla y mantelería.',
       'Contrato de alquiler por escrito con el detalle de lo que se entrega.',
+      'Fundas para sillas: sumá fundas blancas a tus sillas para darle otro aire a tu evento. Consultá disponibilidad para tu fecha por WhatsApp.',
       // Tomás (2026-11-06): color blanco confirmado; las medidas de la silla no se publican.
     ],
     referencia: [
@@ -87,7 +90,7 @@ export const paginasProducto: PaginaProducto[] = [
     nombreCorto: 'Vajilla',
     actualizado: '2026-11-06',
     intro:
-      'Te alquilamos la vajilla completa para que la mesa de tu evento quede prolija sin tener que comprar nada ni lavar nada después. La recibís limpia y lista para usar, y cuando termina la fiesta la retiramos y la lavamos nosotros.',
+      'Te alquilamos la vajilla y los enseres completos para que la mesa de tu evento quede prolija sin tener que comprar nada ni lavar nada después. La recibís limpia y lista para usar, y cuando termina la fiesta la retiramos y la lavamos nosotros.',
     incluye: [
       'Vajilla de loza blanca: plato principal, plato de postre, taza de té con platillo, tetera y azucarera.',
       'Cubiertos de acero inoxidable: cuchillo y tenedor de mesa, cuchara de postre, tenedor de postre y cucharita de té.',
@@ -167,6 +170,54 @@ export const paginasProducto: PaginaProducto[] = [
     mensajeWhatsapp:
       'Hola! Quiero consultar por el alquiler de tablones y caballetes para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
     filtroFotos: { nombreIncluye: ['tablon', 'caballete'] },
+  },
+  {
+    slug: 'alquiler-de-manteleria-y-copas-santa-fe',
+    title: 'Alquiler de mantelería y copas en Santa Fe | EJ',
+    description:
+      'Mantelería blanca y negra, servilletas de tela y copas para tu evento en Santa Fe. Consultá disponibilidad por WhatsApp.',
+    h1: 'Alquiler de mantelería y copas para eventos en Santa Fe',
+    nombreCorto: 'Mantelería y copas',
+    actualizado: '2026-11-15',
+    intro:
+      'Una mesa bien vestida cambia todo el clima de un evento. Alquilamos mantelería blanca y negra, servilletas de tela y copas, y te lo llevamos listo para usar. Cuando termina la fiesta lo retiramos y lo lavamos nosotros.',
+    incluye: [
+      'Manteles blancos y negros para vestir tus mesas.',
+      'Servilletas de tela blancas y negras.',
+      'Copas de vino o agua.',
+      'Copas de champagne para el brindis.',
+    ],
+    referencia: [
+      'Elegís el color del mantel y de las servilletas, y los combinás con las copas que necesite cada mesa.',
+      'Podés sumar tablones, sillas y vajilla en el mismo pedido y recibirlo todo junto.',
+      'Todo queda sujeto a disponibilidad para la fecha de tu evento: consultanos con tiempo.',
+    ],
+    entrega: [
+      'La mantelería y las copas llegan limpias y listas para armar la mesa.',
+      'El lavado corre por nuestra cuenta: retiramos todo después del evento.',
+      ...ENTREGA_COMUN,
+    ],
+    preguntas: [
+      {
+        question: '¿Con cuánta anticipación puedo reservar?',
+        answer: 'Puede ser hasta un día antes de tu evento; si tenemos disponibilidad para esa fecha, se puede hacer el alquiler.',
+      },
+      {
+        question: '¿Hay cantidad mínima para alquilar mantelería o copas?',
+        answer: 'No. Podés alquilar desde unas pocas piezas hasta lo que necesite tu evento.',
+      },
+      {
+        question: '¿Hay contrato de alquiler?',
+        answer: 'Sí. Se firma un contrato de alquiler con el detalle de lo que se entrega.',
+      },
+      {
+        question: '¿Cómo sé si hay disponibilidad para mi fecha?',
+        answer: 'La disponibilidad depende de la fecha. Escribinos por WhatsApp con el día de tu evento y te confirmamos.',
+      },
+    ],
+    mensajeWhatsapp:
+      'Hola! Quiero consultar por el alquiler de mantelería y copas para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
+    filtroFotos: { nombreIncluye: ['mantel', 'servilleta', 'copa'] },
   },
 ];
 

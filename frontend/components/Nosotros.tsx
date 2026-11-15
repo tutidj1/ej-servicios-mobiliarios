@@ -8,7 +8,7 @@ import type { Banner } from '@/lib/banners';
 export const Nosotros: React.FC<{ banner: Banner }> = ({ banner }) => {
   const stats = [
     { value: '+40', label: 'Eventos equipados' },
-    { value: '100%', label: 'Flete incluido' },
+    { value: 'Incluido', label: 'Flete' },
     { value: '0', label: 'Lavado a tu cargo' },
   ];
 

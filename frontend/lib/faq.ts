@@ -4,7 +4,7 @@ export const faqs = [
   {
     question: '¿Qué tipos de eventos equipan?',
     answer:
-      'Alquilamos sillas, tablones, vajilla, cubiertos, cristalería, mantelería y accesorios para casamientos, cumpleaños, cumpleaños de 15, aniversarios, bautismos, comuniones y reuniones familiares en Santa Fe Capital y alrededores.',
+      'Alquilamos sillas, tablones, vajilla, cubiertos, cristalería, mantelería y accesorios para casamientos, cumpleaños, cumpleaños de 15, aniversarios, bautismos, comuniones y reuniones familiares en Santa Fe Ciudad.',
   },
   {
     question: '¿Con cuánta anticipación debo hacer la reserva?',
@@ -29,7 +29,7 @@ export const faqs = [
   {
     question: '¿Pueden entregarme y retirar el pedido a domicilio?',
     answer:
-      'Sí, podés retirar por tu cuenta o solicitar despacho y retiro a domicilio. El costo varía según la distancia al lugar del evento.',
+      'Sí. Flete incluido. Si preferís, podés retirar el pedido vos, sin costo de flete.',
   },
   {
     question: '¿Cómo pido una cotización?',

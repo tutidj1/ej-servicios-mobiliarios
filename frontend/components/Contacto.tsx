@@ -18,7 +18,7 @@ const Contacto: React.FC = () => {
       return;
     }
 
-    const texto = `✉️ *NUEVO MENSAJE DE CONTACTO — EJ*\n\n👤 *Nombre:* ${nombre}\n📧 *Correo:* ${email || '_No especificado_'}\n\n💬 *Mensaje:*\n"${mensaje}"\n\n—\n_Enviado desde ejserviciosmobiliarios.com_`;
+    const texto = `✉️ *NUEVO MENSAJE DE CONTACTO — EJ*\n\n👤 *Nombre:* ${nombre}\n📧 *Correo:* ${email || '_No especificado_'}\n\n💬 *Mensaje:*\n"${mensaje}"\n\n—\n_Enviado desde ejserviciomobiliarios.com_`;
     
     const NUMERO_MAMA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5493425068365';
     const url = `https://wa.me/${NUMERO_MAMA}?text=${encodeURIComponent(texto)}`;

@@ -25,6 +25,12 @@ const MESES = [
 
 const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
 
+/** La promo de noviembre 2026 termina el 30/11/2026: desde el 1/12 se oculta sola (America/Argentina/Buenos_Aires). */
+export function promoVencida(ahora: Date = new Date()): boolean {
+  const dia = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_HORARIA }).format(ahora); // AAAA-MM-DD
+  return dia >= '2026-12-01';
+}
+
 export interface PromoMeses {
   mesActual: string;
   anio: number;

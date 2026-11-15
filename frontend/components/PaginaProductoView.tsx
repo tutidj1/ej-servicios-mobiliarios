@@ -78,7 +78,7 @@ export default function PaginaProductoView({ pagina, productos }: { pagina: Pagi
         {fotos.length > 0 && (
           <section className="py-16 border-b border-gris-borde">
             <div className="max-w-5xl mx-auto px-4 sm:px-6">
-              <h2 className="font-playfair text-3xl font-bold text-negro-carbon mb-8">Lo que te llevamos</h2>
+              <h2 className="font-playfair text-3xl font-bold text-negro-carbon mb-8">{pagina.tituloFotos ?? 'Lo que te llevamos'}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {fotos.map((p) => (
                   <figure key={p.id} className="bg-blanco-puro border border-gris-borde">
