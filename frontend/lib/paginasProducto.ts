@@ -17,6 +17,8 @@ export interface PaginaProducto {
   h1: string;
   /** Nombre corto para menús y enlaces */
   nombreCorto: string;
+  /** Nombre más corto para el menú de arriba (por defecto, nombreCorto) */
+  nombreMenu?: string;
   /** Fecha de la última edición del contenido (se usa como lastmod en el sitemap) */
   actualizado: string;
   intro: string;
@@ -178,6 +180,7 @@ export const paginasProducto: PaginaProducto[] = [
       'Mantelería blanca y negra, servilletas de tela y copas para tu evento en Santa Fe. Consultá disponibilidad por WhatsApp.',
     h1: 'Alquiler de mantelería y copas para eventos en Santa Fe',
     nombreCorto: 'Mantelería y copas',
+    nombreMenu: 'Mantelería',
     actualizado: '2026-11-15',
     intro:
       'Una mesa bien vestida cambia todo el clima de un evento. Alquilamos mantelería blanca y negra, servilletas de tela y copas, y te lo llevamos listo para usar. Cuando termina la fiesta lo retiramos y lo lavamos nosotros.',

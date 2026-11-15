@@ -32,7 +32,7 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
     { name: 'Inicio', href: '/#inicio' },
     { name: 'Servicios', href: '/#servicios' },
     { name: 'Nosotros', href: '/#nosotros' },
-    ...paginasProducto.map((p) => ({ name: p.nombreCorto, href: `/${p.slug}` })),
+    ...paginasProducto.map((p) => ({ name: p.nombreMenu ?? p.nombreCorto, href: `/${p.slug}` })),
     { name: 'Catálogo', href: '/#catalogo' },
     { name: 'Contacto', href: '/#contacto' },
   ];
@@ -74,7 +74,7 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
             <div className="w-10 h-10 rounded-none bg-negro-carbon flex items-center justify-between text-crema-base font-playfair font-bold text-lg select-none px-2.5 shrink-0">
               <span>EJ</span>
             </div>
-            <div className="hidden sm:flex flex-col text-left gap-0.5">
+            <div className="hidden sm:flex xl:hidden 2xl:flex flex-col text-left gap-0.5">
               <span className={`font-playfair font-bold text-sm tracking-wide uppercase transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'md:text-blanco-puro text-negro-carbon'}`}>
                 EJ Servicios Mobiliarios
               </span>
@@ -84,7 +84,7 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
             </div>
           </a>
 
-          <div className="hidden lg:flex items-center gap-5 xl:gap-7">
+          <div className="hidden xl:flex items-center gap-4 2xl:gap-7">
             {navLinks.map((link) => (
               <a
                 key={link.name}
@@ -101,10 +101,10 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
             ))}
           </div>
 
-          <div className="hidden lg:block">{botonCotizar('sm')}</div>
+          <div className="hidden xl:block shrink-0">{botonCotizar('sm')}</div>
 
           <button
-            className={`lg:hidden p-1 outline-none transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'text-blanco-puro'}`}
+            className={`xl:hidden p-1 outline-none transition-colors duration-300 ${scrolled ? 'text-negro-carbon' : 'text-blanco-puro'}`}
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle Menu"
           >
@@ -115,12 +115,12 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed inset-0 z-30 bg-negro-carbon/60 transition-opacity duration-300 lg:hidden ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-30 bg-negro-carbon/60 transition-opacity duration-300 xl:hidden ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsOpen(false)}
       />
 
       <div
-        data-lenis-prevent className={`fixed top-0 right-0 h-full w-[280px] overflow-y-auto bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        data-lenis-prevent className={`fixed top-0 right-0 h-full w-[280px] overflow-y-auto bg-crema-base z-50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 ease-in-out xl:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex flex-col gap-8">
           <div className="flex items-center justify-between border-b border-gris-borde pb-4">
