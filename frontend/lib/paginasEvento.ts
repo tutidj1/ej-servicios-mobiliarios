@@ -62,7 +62,7 @@ export const paginasEvento: PaginaEvento[] = [
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-santa-fe'],
     preguntas: [
       {
         question: '¿Con cuánto tiempo conviene reservar para un casamiento?',
@@ -115,7 +115,7 @@ export const paginasEvento: PaginaEvento[] = [
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-santa-fe'],
     preguntas: [
       {
         question: '¿Puedo alquilar solo unas pocas sillas para un cumpleaños en casa?',
@@ -168,7 +168,7 @@ export const paginasEvento: PaginaEvento[] = [
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-manteleria-santa-fe'],
     preguntas: [
       {
         question: '¿Alquilan para fiestas de 15 con muchos invitados?',
@@ -221,7 +221,7 @@ export const paginasEvento: PaginaEvento[] = [
         ],
       },
     ],
-    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-manteleria-y-copas-santa-fe'],
+    productos: ['alquiler-de-sillas-santa-fe', 'alquiler-de-tablones-santa-fe', 'alquiler-de-vajilla-santa-fe', 'alquiler-de-manteleria-santa-fe'],
     preguntas: [
       {
         question: '¿Alquilan para capacitaciones o reuniones, no solo fiestas?',
