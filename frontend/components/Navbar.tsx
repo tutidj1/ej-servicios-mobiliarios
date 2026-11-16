@@ -69,7 +69,7 @@ export default function Navbar({ onOpenCotizar, cotizarHref, solida = false }: N
   return (
     <>
       <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-crema-base/80 backdrop-blur-md border-b border-gris-borde py-4' : 'bg-transparent py-6'}`} data-scrolled={scrolled ? 'true' : 'false'}>
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-6 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3" aria-label="EJ Servicios Mobiliarios, inicio">
             <div className="w-10 h-10 rounded-none bg-negro-carbon flex items-center justify-between text-crema-base font-playfair font-bold text-lg select-none px-2.5 shrink-0">
               <span>EJ</span>
