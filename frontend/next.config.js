@@ -40,6 +40,11 @@ const cspCasa = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // pdfjs-dist menciona "canvas" (módulo nativo opcional de Node) que el navegador no usa: se ignora para que el build no dependa de él.
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    return config;
+  },
   env: {
     NEXT_PUBLIC_CASA_SUPABASE_URL: casaUrl,
     NEXT_PUBLIC_CASA_SUPABASE_ANON_KEY: process.env.CASA_SUPABASE_ANON_KEY || '',
