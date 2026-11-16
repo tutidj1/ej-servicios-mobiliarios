@@ -61,6 +61,12 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    // La página de mantelería se llamaba "mantelería y copas": el enlace viejo lleva a la nueva
+    return [
+      { source: '/alquiler-de-manteleria-y-copas-santa-fe', destination: '/alquiler-de-manteleria-santa-fe', permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

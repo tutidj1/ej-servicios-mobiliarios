@@ -174,29 +174,27 @@ export const paginasProducto: PaginaProducto[] = [
     filtroFotos: { nombreIncluye: ['tablon', 'caballete'] },
   },
   {
-    slug: 'alquiler-de-manteleria-y-copas-santa-fe',
-    title: 'Alquiler de mantelería y copas en Santa Fe | EJ',
+    slug: 'alquiler-de-manteleria-santa-fe',
+    title: 'Alquiler de mantelería en Santa Fe | EJ',
     description:
-      'Mantelería blanca y negra, servilletas de tela y copas para tu evento en Santa Fe. Consultá disponibilidad por WhatsApp.',
-    h1: 'Alquiler de mantelería y copas para eventos en Santa Fe',
-    nombreCorto: 'Mantelería y copas',
-    nombreMenu: 'Mantelería',
+      'Mantelería blanca y negra y servilletas de tela para tu evento en Santa Fe. Consultá disponibilidad por WhatsApp.',
+    h1: 'Alquiler de mantelería para eventos en Santa Fe',
+    nombreCorto: 'Mantelería',
     actualizado: '2026-11-15',
     intro:
-      'Una mesa bien vestida cambia todo el clima de un evento. Alquilamos mantelería blanca y negra, servilletas de tela y copas, y te lo llevamos listo para usar. Cuando termina la fiesta lo retiramos y lo lavamos nosotros.',
+      'Una mesa bien vestida cambia todo el clima de un evento. Alquilamos mantelería blanca y negra y servilletas de tela, y te las llevamos listas para usar. Cuando termina la fiesta lo retiramos y lo lavamos nosotros.',
     incluye: [
-      'Manteles blancos y negros para vestir tus mesas.',
+      'Mantelería blanca para vestir tus mesas.',
+      'Mantelería negra para vestir tus mesas.',
       'Servilletas de tela blancas y negras.',
-      'Copas de vino o agua.',
-      'Copas de champagne para el brindis.',
     ],
     referencia: [
-      'Elegís el color del mantel y de las servilletas, y los combinás con las copas que necesite cada mesa.',
+      'Elegís el color del mantel y de las servilletas, blanco o negro, según el estilo de tu evento.',
       'Podés sumar tablones, sillas y vajilla en el mismo pedido y recibirlo todo junto.',
       'Todo queda sujeto a disponibilidad para la fecha de tu evento: consultanos con tiempo.',
     ],
     entrega: [
-      'La mantelería y las copas llegan limpias y listas para armar la mesa.',
+      'La mantelería y las servilletas llegan limpias y listas para armar la mesa.',
       'El lavado corre por nuestra cuenta: retiramos todo después del evento.',
       ...ENTREGA_COMUN,
     ],
@@ -206,7 +204,7 @@ export const paginasProducto: PaginaProducto[] = [
         answer: 'Puede ser hasta un día antes de tu evento; si tenemos disponibilidad para esa fecha, se puede hacer el alquiler.',
       },
       {
-        question: '¿Hay cantidad mínima para alquilar mantelería o copas?',
+        question: '¿Hay cantidad mínima para alquilar mantelería?',
         answer: 'No. Podés alquilar desde unas pocas piezas hasta lo que necesite tu evento.',
       },
       {
@@ -219,8 +217,8 @@ export const paginasProducto: PaginaProducto[] = [
       },
     ],
     mensajeWhatsapp:
-      'Hola! Quiero consultar por el alquiler de mantelería y copas para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
-    filtroFotos: { nombreIncluye: ['mantel', 'servilleta', 'copa'] },
+      'Hola! Quiero consultar por el alquiler de mantelería para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
+    filtroFotos: { nombreIncluye: ['mantel', 'servilleta'] },
   },
 ];
 
