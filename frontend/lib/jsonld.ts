@@ -18,7 +18,7 @@ export function negocioLd() {
     '@id': NEGOCIO_ID,
     name: SITE_NAME,
     description:
-      'Alquiler de sillas, tablones, vajilla y mantelería para eventos en Santa Fe Ciudad.',
+      'Alquiler de sillas, tablones, vajilla y mantelería para eventos en Santa Fe y alrededores cercanos.',
     url: SITE_URL,
     telephone: TELEFONO_E164,
     image: OG_IMAGE.url,
