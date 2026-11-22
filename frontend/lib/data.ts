@@ -32,7 +32,8 @@ export async function getProductos(): Promise<Producto[]> {
     if (error) throw error;
     if (!data || data.length === 0) return productosEstaticos;
 
-    return data.map((item: any) => ({
+    // Solo se publican en la web los productos que tienen foto (sin foto siguen en el catálogo del admin y en los presupuestos)
+    return data.filter((item: any) => typeof item.imagen_url === 'string' && item.imagen_url.trim() !== '').map((item: any) => ({
       id: item.id,
       nombre: item.nombre,
       categoria: item.categoria,
