@@ -218,7 +218,7 @@ export const paginasProducto: PaginaProducto[] = [
     ],
     mensajeWhatsapp:
       'Hola! Quiero consultar por el alquiler de mantelería para un evento en Santa Fe. Fecha: ... Cantidad de invitados: ...',
-    filtroFotos: { nombreIncluye: ['mantel', 'servilleta'] },
+    filtroFotos: { categorias: ['manteleria'], nombreIncluye: ['mantel', 'servilleta'] },
   },
 ];
 

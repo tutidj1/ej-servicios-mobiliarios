@@ -18,3 +18,19 @@ describe('página de vajilla', () => {
     );
   });
 });
+
+describe('página de mantelería', () => {
+  const manteleria = paginasProducto.find((p) => p.slug === 'alquiler-de-manteleria-santa-fe')!;
+
+  it('muestra la mantelería nueva que se agregue al catálogo, aunque tenga otro nombre', () => {
+    [['Mantelería blanca', 'Mantelería'], ['Servilletas de tela', 'Mantelería'], ['Manteles redondos Blancos', 'Mantelería'], ['Cubre Mantel Azul', 'Mantelería'], ['Camino de mesa', 'Mantelería']].forEach(([nombre, categoria]) =>
+      expect(productoCorresponde(manteleria.filtroFotos, { nombre, categoria })).toBe(true),
+    );
+  });
+
+  it('deja afuera lo que no es mantelería', () => {
+    [['Sillas de plástico reforzado', 'Mobiliario'], ['Copa de champagne', 'Cristalería'], ['Plato principal', 'Vajilla']].forEach(([nombre, categoria]) =>
+      expect(productoCorresponde(manteleria.filtroFotos, { nombre, categoria })).toBe(false),
+    );
+  });
+});

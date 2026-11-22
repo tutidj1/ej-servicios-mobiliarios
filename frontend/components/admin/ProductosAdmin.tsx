@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Eye, EyeOff, ImageIcon, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { productosEstaticos } from '@/lib/productos';
+import { sincronizarCatalogo } from '@/lib/gestion/sincronizarCatalogo';
 import {
   AYUDA,
   Aviso,
@@ -87,7 +88,15 @@ export default function ProductosAdmin() {
     setCargando(true);
     const { data, error } = await supabase.from('productos').select('*').order('orden', { ascending: true });
     if (error) setAviso({ tipo: 'error', texto: 'No se pudieron cargar los productos.' });
-    else setFilas((data as FilaProducto[]) ?? []);
+    else {
+      setFilas((data as FilaProducto[]) ?? []);
+      // Lo que se agregó al catálogo también tiene que poder elegirse en los presupuestos
+      sincronizarCatalogo(supabase).then((r) => {
+        if (r.creados > 0) {
+          setAviso({ tipo: 'ok', texto: `Se sumaron ${r.creados} artículos del catálogo a los presupuestos: ${r.nombres.join(', ')}.` });
+        }
+      });
+    }
     setCargando(false);
   }, []);
 
@@ -138,18 +147,31 @@ export default function ProductosAdmin() {
       etiqueta_whatsapp: resto.etiqueta_whatsapp?.trim() || null,
     };
 
-    const { error } = id
-      ? await supabase.from('productos').update(datos).eq('id', id)
-      : await supabase.from('productos').insert(datos);
+    let nuevoId: string | undefined;
+    let error;
+    if (id) {
+      ({ error } = await supabase.from('productos').update(datos).eq('id', id));
+    } else {
+      const r = await supabase.from('productos').insert(datos).select('id').single();
+      error = r.error;
+      nuevoId = r.data?.id;
+    }
 
     if (!error) await refrescarWeb();
+    // Un producto nuevo también queda disponible para armar presupuestos
+    if (!error && nuevoId) await sincronizarCatalogo(supabase, { ids: [nuevoId] });
     setGuardando(false);
     if (error) {
       setAvisoForm({ tipo: 'error', texto: 'No se pudo guardar. Revisá los datos e intentá de nuevo.' });
       return;
     }
     setEdicion(null);
-    setAviso({ tipo: 'ok', texto: 'Producto guardado. Ya está publicado en la web.' });
+    setAviso({
+      tipo: 'ok',
+      texto: datos.imagen_url
+        ? 'Producto guardado. Ya está publicado en la web y disponible en los presupuestos.'
+        : 'Producto guardado y disponible en los presupuestos. En la web no se muestra hasta que le pongas una foto.',
+    });
     cargar();
   };
 
@@ -308,6 +330,11 @@ export default function ProductosAdmin() {
                           {f.activo ? 'Visible' : 'Oculto'}
                         </span>
                       </div>
+                      {f.activo && !f.imagen_url && (
+                        <p className="mt-1 font-manrope text-xs font-semibold text-amber-800">
+                          Sin foto: no se muestra en la web (sí está en los presupuestos).
+                        </p>
+                      )}
                       <div className="mt-2 flex items-center gap-2">
                         <label htmlFor={`cat-${f.id}`} className="font-manrope text-xs text-stone-500 shrink-0">Categoría</label>
                         <select
@@ -428,6 +455,11 @@ export default function ProductosAdmin() {
                       />
                     </label>
                     <p className={AYUDA}>JPG, PNG o WEBP de hasta 5 MB.</p>
+                    {!edicion.imagen_url && (
+                      <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 font-manrope text-xs font-semibold text-amber-900">
+                        Si querés que aparezca en la página web, subí una foto del mobiliario. Sin foto no se muestra en la web, pero sí se puede usar en los presupuestos.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

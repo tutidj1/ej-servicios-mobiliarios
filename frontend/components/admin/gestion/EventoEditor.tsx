@@ -44,6 +44,7 @@ import { CampoFecha, CampoRango } from './Calendarios';
 import { type Locador, cargarLogo, generarContratoPdf, nombreArchivoContrato } from '@/lib/gestion/contratoPdf';
 import { compartirArchivo, descargarArchivo, totalPresupuesto } from '@/lib/gestion/presupuestoPdf';
 import { useBloqueoScroll, useVisualViewport } from '@/lib/useMovil';
+import { sincronizarCatalogo } from '@/lib/gestion/sincronizarCatalogo';
 
 /** Línea en edición: los montos se guardan como texto mientras la persona escribe. */
 interface LineaEdicion extends Linea {
@@ -72,6 +73,9 @@ export const ARTICULO_TOTAL_ACORDADO = 'Total acordado (sin detalle de precios)'
 function aLineaEdicion(l: Linea): LineaEdicion {
   return { ...l, precioTexto: mostrarMonto(l.precio_unitario), costoSubTexto: mostrarMonto(l.costo_subalquiler_unitario) };
 }
+
+// Evita repetir la revisión del catálogo cada vez que se abre un evento
+let catalogoSincronizado = false;
 
 export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; esAdmin: boolean; onVolver: () => void }) {
   const [evento, setEvento] = useState<Evento | null>(null);
@@ -107,6 +111,11 @@ export default function EventoEditor({ id, esAdmin, onVolver }: { id: string; es
   const itemPorId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
 
   const cargar = useCallback(async () => {
+    // Primera vez que se abre un evento: se completan los artículos con lo nuevo del catálogo
+    if (!catalogoSincronizado) {
+      catalogoSincronizado = true;
+      await sincronizarCatalogo(supabase);
+    }
     const [ev, ln, co, pa, it, cf] = await Promise.all([
       supabase.from('eventos').select('*, clientes(*)').eq('id', id).single(),
       supabase.from('evento_lineas').select('*').eq('evento_id', id),
