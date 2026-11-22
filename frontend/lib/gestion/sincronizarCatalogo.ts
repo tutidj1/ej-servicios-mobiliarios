@@ -20,8 +20,26 @@ export interface ArticuloExistente {
   producto_id: string | null;
 }
 
-/** Los artículos sembrados con el inventario son anteriores: solo se completan los productos creados desde esta fecha. */
-export const SINCRONIZAR_DESDE = '2026-11-15';
+/**
+ * Productos del catálogo original que ya están en el inventario con otro nombre (los artículos de la plantilla del
+ * contrato). Sin esto se crearían duplicados: "Sillas de plástico reforzado" ya es el artículo "Sillas".
+ */
+export const EQUIVALENCIAS: Record<string, string> = {
+  'sillas de plastico reforzado': 'sillas',
+  'caballetes de hierro': 'caballetes',
+  'tablones de madera 220cm x 60cm': 'tablones de madera',
+  'cuchillo de mesa': 'cuchillos',
+  'tenedor de mesa': 'tenedores',
+  'tenedor de postre': 'tenedores de postre',
+  'cucharita de te': 'cucharas de te',
+  'copa de vino / agua': 'copas de vino / agua',
+  'ensaladera de acero inoxidable': 'ensaladera',
+  'frasco dispenser de vidrio x2 con canilla.': 'frasco dispensador',
+  'frapera de plastico': 'frapera',
+  'hielera de plastico': 'hielera con pinza',
+  'servilletas de tela': 'servilletas',
+  'plato para mesa dulce': 'platos de postre',
+};
 
 export function normalizar(texto: string): string {
   return texto
@@ -66,7 +84,7 @@ export function planSincronizacion(
     if (filtro.ids && !filtro.ids.includes(p.id)) continue;
     if (!filtro.ids && filtro.desde && (p.created_at ?? '') < filtro.desde) continue;
     if (vinculados.has(p.id)) continue;
-    const igual = porNombre.get(normalizar(p.nombre));
+    const igual = porNombre.get(normalizar(p.nombre)) ?? porNombre.get(EQUIVALENCIAS[normalizar(p.nombre)] ?? '');
     if (igual) {
       if (!igual.producto_id && !usados.has(igual.id)) {
         plan.vincular.push({ productoId: p.id, articuloId: igual.id });
@@ -82,21 +100,20 @@ export function planSincronizacion(
 }
 
 /**
- * Completa el presupuesto con lo que está en el catálogo. Sin `ids`, revisa los productos creados desde
- * SINCRONIZAR_DESDE; con `ids`, solo esos (al guardar un producto nuevo). Devuelve cuántos artículos se crearon.
+ * Completa el presupuesto con lo que está en el catálogo. Sin `ids` revisa todos los productos; con `ids`, solo esos
+ * (al guardar un producto nuevo). Devuelve los nombres de los artículos que se crearon.
  */
 export async function sincronizarCatalogo(
   supabase: SupabaseClient,
   filtro: { ids?: string[] } = {},
-): Promise<{ creados: number; error?: string }> {
+): Promise<{ creados: number; nombres: string[]; error?: string }> {
   const [pr, ar] = await Promise.all([
     supabase.from('productos').select('id, nombre, categoria, created_at'),
     supabase.from('items').select('id, nombre, alias, producto_id'),
   ]);
-  if (pr.error || ar.error) return { creados: 0, error: (pr.error ?? ar.error)?.message ?? 'No se pudo leer' };
+  if (pr.error || ar.error) return { creados: 0, nombres: [], error: (pr.error ?? ar.error)?.message ?? 'No se pudo leer' };
 
   const plan = planSincronizacion((pr.data as ProductoCatalogo[]) ?? [], (ar.data as ArticuloExistente[]) ?? [], {
-    desde: SINCRONIZAR_DESDE,
     ids: filtro.ids,
   });
 
@@ -104,7 +121,7 @@ export async function sincronizarCatalogo(
     await supabase.from('items').update({ producto_id: v.productoId }).eq('id', v.articuloId).is('producto_id', null);
   }
 
-  if (!plan.crear.length) return { creados: 0 };
+  if (!plan.crear.length) return { creados: 0, nombres: [] };
   const filas = plan.crear.map((p) => ({
     nombre: p.nombre.trim().slice(0, 120),
     categoria: categoriaDeProducto(p.categoria),
@@ -115,6 +132,6 @@ export async function sincronizarCatalogo(
     producto_id: p.id,
   }));
   const { error } = await supabase.from('items').insert(filas);
-  if (error) return { creados: 0, error: error.message };
-  return { creados: filas.length };
+  if (error) return { creados: 0, nombres: [], error: error.message };
+  return { creados: filas.length, nombres: filas.map((f) => f.nombre) };
 }

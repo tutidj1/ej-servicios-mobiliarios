@@ -91,7 +91,11 @@ export default function ProductosAdmin() {
     else {
       setFilas((data as FilaProducto[]) ?? []);
       // Lo que se agregó al catálogo también tiene que poder elegirse en los presupuestos
-      sincronizarCatalogo(supabase);
+      sincronizarCatalogo(supabase).then((r) => {
+        if (r.creados > 0) {
+          setAviso({ tipo: 'ok', texto: `Se sumaron ${r.creados} artículos del catálogo a los presupuestos: ${r.nombres.join(', ')}.` });
+        }
+      });
     }
     setCargando(false);
   }, []);
