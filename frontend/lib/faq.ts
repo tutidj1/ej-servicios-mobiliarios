@@ -4,7 +4,7 @@ export const faqs = [
   {
     question: '¿Qué tipos de eventos equipan?',
     answer:
-      'Alquilamos sillas, tablones, vajilla, cubiertos, cristalería, mantelería y accesorios para casamientos, cumpleaños, cumpleaños de 15, aniversarios, bautismos, comuniones y reuniones familiares en Santa Fe Ciudad.',
+      'Alquilamos sillas, tablones, vajilla, cubiertos, cristalería, mantelería y accesorios para casamientos, cumpleaños, cumpleaños de 15, aniversarios, bautismos, comuniones y reuniones familiares en Santa Fe y alrededores cercanos.',
   },
   {
     question: '¿Con cuánta anticipación debo hacer la reserva?',
