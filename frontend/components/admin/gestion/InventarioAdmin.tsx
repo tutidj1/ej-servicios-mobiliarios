@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { sincronizarCatalogo } from '@/lib/gestion/sincronizarCatalogo';
 import { CATEGORIAS, type Categoria, type Item, leerMonto, mensajeError, mostrarMonto, mostrarStock } from '@/lib/gestion/tipos';
 import type { Sugerencia } from '@/lib/gestion/calculos';
 import { AYUDA, type Aviso, BTN_PELIGRO_SUAVE, BTN_PRIMARIO, BTN_SECUNDARIO, CAMPO, ETIQUETA, TARJETA } from '../estilos';
@@ -68,7 +69,12 @@ export default function InventarioAdmin() {
   }, []);
 
   useEffect(() => {
-    cargar();
+    // Lo que se agregó al catálogo de la web también tiene que figurar acá: se completa antes de mostrar la lista
+    sincronizarCatalogo(supabase).then((r) => {
+      cargar().then(() => {
+        if (r.creados > 0) setAviso({ tipo: 'ok', texto: `Se sumaron ${r.creados} artículos del catálogo al inventario: ${r.nombres.join(', ')}.` });
+      });
+    });
   }, [cargar]);
 
   const editar = (i: Item) =>
