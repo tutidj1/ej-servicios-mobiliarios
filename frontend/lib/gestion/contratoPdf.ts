@@ -18,6 +18,9 @@ export const CLAUSULAS = {
     'El Locatario asume la responsabilidad total por la guarda y conservación de los bienes desde su recepción hasta su devolución efectiva. En caso de rotura, daño parcial, total o pérdida de cualquier elemento del inventario, el Locatario se obliga a abonar el valor de reposición del producto. Dicho valor será determinado según el precio de mercado vigente al día de la fecha de pago, considerando un producto de idéntica marca, calidad y características al original.',
   terceraAntes: 'Los bienes deberán ser devueltos en la fecha acordada (',
   terceraDespues: '). El retraso en la devolución generará un cargo adicional por jornada.',
+  // Va en negrita, al final, arriba de las firmas
+  cancelacion:
+    'EN CASO DE CANCELACIÓN DEL EVENTO: si se cancela dentro de las 72 horas previas al evento, la seña no se devuelve. La seña es del 50% del total del evento. Si el Locatario cancela sin haber abonado seña, deberá abonar igualmente el valor del flete indicado en este contrato, porque el traslado se coordina con días de anticipación.',
   cuarta:
     'Al firmar este contrato, el Locatario declara haber revisado el inventario y estar de pleno acuerdo con todas las cláusulas aquí escritas, reconociendo el estado del material recibido y las penalidades por daños establecidas.',
 };
@@ -224,6 +227,12 @@ export async function generarContratoPdf(d: DatosContrato): Promise<Blob> {
   parrafo('SEGUNDA: RESPONSABILIDAD POR DAÑOS O FALTANTES', CLAUSULAS.segunda);
   parrafo('TERCERA: CONDICIONES DE DEVOLUCIÓN', `${CLAUSULAS.terceraAntes}${fechaCorta(d.fechaDevolucion)}${CLAUSULAS.terceraDespues}`);
   parrafo('CUARTA: CONFORMIDAD', CLAUSULAS.cuarta);
+
+  // Cancelación: en negrita, abajo de todo y arriba de las firmas
+  negrita();
+  const lineasCancelacion = doc.splitTextToSize(CLAUSULAS.cancelacion, R - L) as string[];
+  doc.text(lineasCancelacion, L, y);
+  y += lineasCancelacion.length * 5.07;
 
   // Firmas
   const fy = 236;

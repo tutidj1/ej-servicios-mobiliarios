@@ -61,6 +61,15 @@ describe('contrato PDF (réplica de la plantilla)', () => {
       expect(texto, t).toContain(t);
     expect(/subalquil/i.test(texto)).toBe(false);
   });
+  it('lleva la cláusula de cancelación en negrita, antes de las firmas', async () => {
+    expect(CLAUSULAS.cancelacion).toContain('72 horas');
+    expect(CLAUSULAS.cancelacion).toContain('la seña no se devuelve');
+    expect(CLAUSULAS.cancelacion).toContain('50% del total');
+    expect(CLAUSULAS.cancelacion).toContain('sin haber abonado seña');
+    expect(CLAUSULAS.cancelacion).toContain('flete');
+    const texto = new TextDecoder('latin1').decode(new Uint8Array(await (await generarContratoPdf(datos)).arrayBuffer()));
+    expect(texto).toContain('CANCELACI');
+  });
   it('con el logo incrustado sigue siendo válido', async () => {
     const png = readFileSync(new URL('../../public/images/logo-ej.jpg', import.meta.url));
     const logo = `data:image/jpeg;base64,${png.toString('base64')}`;
